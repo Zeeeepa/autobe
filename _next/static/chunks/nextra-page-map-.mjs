@@ -81,13 +81,7 @@ export const pageMap = [{
       name: "compiler",
       route: "/docs/concepts/compiler",
       frontMatter: {
-        "sidebarTitle": "Compiler"
-      }
-    }, {
-      name: "openapi",
-      route: "/docs/concepts/openapi",
-      frontMatter: {
-        "sidebarTitle": "Openapi"
+        "title": "Guide Documents > Concepts > Compiler"
       }
     }, {
       name: "waterfall",

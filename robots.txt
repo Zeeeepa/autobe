@@ -1,0 +1,9 @@
+# *
+User-agent: *
+Allow: /
+
+# Host
+Host: https://wrtnlabs.io/autobe
+
+# Sitemaps
+Sitemap: https://wrtnlabs.io/autobe/sitemap.xml
