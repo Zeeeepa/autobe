@@ -93,7 +93,7 @@ export const pageMap = [{
       name: "waterfall",
       route: "/docs/concepts/waterfall",
       frontMatter: {
-        "sidebarTitle": "Waterfall"
+        "title": "Guide Documents > Concepts > Waterfall"
       }
     }]
   }, {
