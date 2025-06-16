@@ -4,6 +4,7 @@ import docs_agent_meta from "../../../pages/docs/agent/_meta.js";
 import docs_backend_meta from "../../../pages/docs/backend/_meta.js";
 import docs_concepts_meta from "../../../pages/docs/concepts/_meta.js";
 import docs_related_meta from "../../../pages/docs/related/_meta.js";
+import docs_roadmap_meta from "../../../pages/docs/roadmap/_meta.js";
 import docs_websocket_meta from "../../../pages/docs/websocket/_meta.js";
 export const pageMap = [{
   data: meta
@@ -118,9 +119,27 @@ export const pageMap = [{
   }, {
     name: "roadmap",
     route: "/docs/roadmap",
-    frontMatter: {
-      "sidebarTitle": "Roadmap"
-    }
+    children: [{
+      data: docs_roadmap_meta
+    }, {
+      name: "alpha",
+      route: "/docs/roadmap/alpha",
+      frontMatter: {
+        "sidebarTitle": "Alpha"
+      }
+    }, {
+      name: "beta",
+      route: "/docs/roadmap/beta",
+      frontMatter: {
+        "title": "Roadmap > Beta Release (progress)"
+      }
+    }, {
+      name: "v1.0",
+      route: "/docs/roadmap/v1.0",
+      frontMatter: {
+        "sidebarTitle": "V1.0"
+      }
+    }]
   }, {
     name: "setup",
     route: "/docs/setup",
