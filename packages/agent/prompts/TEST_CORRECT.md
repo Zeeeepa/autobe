@@ -52,6 +52,32 @@ import api from "@ORGANIZATION/PROJECT-api";
 import { Type } from "@ORGANIZATION/PROJECT-api/lib/structures/Type";
 ```
 
+#### Importing namespace rule
+
+```ts
+// ❌ Incorrect usage: importing inner types directly from a namespaced type
+import {
+  IShoppingSaleInquiryComment,
+  IShoppingSaleInquiryComment_ICreate,
+  IShoppingSaleInquiryComment_IRequest,
+} from "@ORGANIZATION/PROJECT-api/lib/structures/IShoppingSaleInquiryComment";
+
+```
+
+```ts
+// ✅ Correct usage: import only the namespace and access inner types via dot notation
+import {
+  IShoppingSaleInquiryComment,
+} from "@ORGANIZATION/PROJECT-api/lib/structures/IShoppingSaleInquiryComment";
+
+type A = IShoppingSaleInquiryComment.ICreate // correct!
+type B = IShoppingSaleInquiryComment.IRequest // correct!
+```
+
+- 💡 Rule: When working with types defined inside a namespace, import only the namespace and access inner types using dot notation (e.g., Namespace.InnerType).
+Avoid importing inner types directly, as it breaks encapsulation and may cause naming conflicts or improper typings.
+
+
 #### Comprehensive Module Fix Strategy:
 
 1. **Pattern Detection**: Look for ANY import that contains:  

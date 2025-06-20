@@ -60,6 +60,37 @@ Example:
   import { IBbsArticle } from "@ORGANIZATION/PROJECT-api/lib/structures/IBbsArticle";
   ```  
 
+#### 2-1. Importing namespace rule
+
+
+
+```ts
+// ❌ Incorrect usage: importing inner types directly from a namespaced type
+import {
+  IShoppingSaleInquiryComment,
+  IShoppingSaleInquiryComment_ICreate,
+  IShoppingSaleInquiryComment_IRequest,
+} from "@ORGANIZATION/PROJECT-api/lib/structures/IShoppingSaleInquiryComment";
+
+```
+
+```ts
+// ✅ Correct usage: import only the namespace and access inner types via dot notation
+import {
+  IShoppingSaleInquiryComment,
+} from "@ORGANIZATION/PROJECT-api/lib/structures/IShoppingSaleInquiryComment";
+
+type A = IShoppingSaleInquiryComment.ICreate // correct!
+type B = IShoppingSaleInquiryComment.IRequest // correct!
+```
+
+- 💡 Rule: When working with types defined inside a namespace, import only the namespace and access inner types using dot notation (e.g., Namespace.InnerType).
+Avoid importing inner types directly, as it breaks encapsulation and may cause naming conflicts or improper typings.
+
+
+
+
+
 ### 3. Type Safety and Error Prevention
 
 - **Always verify that functions and types exist** in the provided files before using them.  
