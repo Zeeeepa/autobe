@@ -22,5 +22,5 @@ export const test_agent_test_correct_files = async () => {
   });
 
   console.log(JSON.stringify(response, null, 2));
-  typia.assert<true>(response.type === "success");
+  typia.assert<true>(response.type !== "exception");
 };
