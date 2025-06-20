@@ -247,12 +247,24 @@ async function process<Model extends ILlmSchema.Model>(
         if (diagnostic.start === undefined || diagnostic.length === undefined)
           return "";
 
+        const checkDtoRegexp = `Cannot find module '@ORGANIZATION/template-api/lib/structures/IBbsArticleComment' or its corresponding type declarations.`;
+        const [group] = [
+          ...checkDtoRegexp.matchAll(
+            /Cannot find module '(.*lib\/structures\/.*)'/g,
+          ),
+        ];
+
+        const [_, filename] = group ?? [];
+
         return [
           "## Error Information",
           `- Position: Characters ${diagnostic.start} to ${diagnostic.start + diagnostic.length}`,
           `- Error Message: ${diagnostic.messageText}`,
           `- Problematic Code: \`${code.substring(diagnostic.start, diagnostic.start + diagnostic.length)}\``,
-          "",
+          filename
+            ? `The type files located under **/lib/structures are declared in '@ORGANIZATION/PROJECT-api/lib/structures'.\n` +
+              `Note: '@ORGANIZATION/PROJECT-api' must be written exactly as is and should not be replaced.\n`
+            : "",
         ].join("\n");
       }),
       "## Instructions",
