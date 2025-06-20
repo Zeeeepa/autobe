@@ -4,6 +4,7 @@ import { IAutoBeTestPlan } from "@autobe/interface/src/test/AutoBeTestPlan";
 import {
   ILlmApplication,
   ILlmSchema,
+  IValidation,
   OpenApiTypeChecker,
 } from "@samchon/openapi";
 import { IPointer } from "tstl";
@@ -150,6 +151,51 @@ function createApplication<Model extends ILlmSchema.Model>(props: {
   const application: ILlmApplication<Model> = collection[
     props.model
   ] as unknown as ILlmApplication<Model>;
+
+  application.functions[0].validate = (next: unknown) => {
+    const result: IValidation<ICreateTestCodeProps> =
+      typia.validate<ICreateTestCodeProps>(next);
+    if (result.success === false) return result;
+
+    const errors: IValidation.IError[] = [];
+
+    const matched = [
+      ...result.data.content.matchAll(
+        /import\s*{[^}]*?_[^}]*?}\s*from\s*['"]@ORGANIZATION\/PROJECT-api\/lib\/structures\/[^'"]+['"];/g,
+      ),
+    ];
+
+    if (matched.length) {
+      errors.push(
+        ...matched
+          .map((el) => {
+            const [importStatement] = el;
+            return importStatement;
+          })
+          .map<IValidation.IError>((importStatement) => {
+            return {
+              path: "data.content",
+              value: result.data,
+              expected: [
+                "Invalid import: Types containing an underscore (_) must be accessed via their namespace.",
+                "```ts",
+                importStatement,
+                "```",
+              ].join("\n"),
+            };
+          }),
+      );
+
+      return {
+        success: false,
+        errors,
+        data: next,
+      };
+    }
+
+    return result;
+  };
+
   return {
     protocol: "class",
     name: "Create Test Code",
