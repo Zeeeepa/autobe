@@ -1,9 +1,6 @@
 import { IAgenticaController, MicroAgentica } from "@agentica/core";
-import {
-  AutoBeOpenApi,
-  AutoBeTest,
-  AutoBeTestProgressEvent,
-} from "@autobe/interface";
+import { AutoBeOpenApi, AutoBeTestProgressEvent } from "@autobe/interface";
+import { IAutoBeTestPlan } from "@autobe/interface/src/test/AutoBeTestPlan";
 import {
   ILlmApplication,
   ILlmSchema,
@@ -19,27 +16,27 @@ import { transformTestProgressHistories } from "./transformTestProgressHistories
 
 export async function orchestrateTestProgress<Model extends ILlmSchema.Model>(
   ctx: AutoBeContext<Model>,
-  scenarios: AutoBeTest.Scenario[],
+  plans: (IAutoBeTestPlan.IPlan & { method: string; path: string })[],
 ): Promise<AutoBeTestProgressEvent[]> {
   const start: Date = new Date();
   let complete: number = 0;
 
   const events: AutoBeTestProgressEvent[] = await Promise.all(
     /**
-     * Generate test code for each scenario. Maps through scenarios array to
-     * create individual test code implementations. Each scenario is processed
-     * to generate corresponding test code and progress events.
+     * Generate test code for each plan. Maps through plans array to create
+     * individual test code implementations. Each plan is processed to generate
+     * corresponding test code and progress events.
      */
-    scenarios.map(async (scenario) => {
-      const code: ICreateTestCodeProps = await process(ctx, scenario);
+    plans.map(async (plan) => {
+      const code: ICreateTestCodeProps = await process(ctx, plan);
 
       const event: AutoBeTestProgressEvent = {
         type: "testProgress",
         created_at: start.toISOString(),
-        filename: `${code.domain}/${scenario.functionName}.ts`,
+        filename: `${code.domain}/${plan.functionName}.ts`,
         content: code.content,
         completed: ++complete,
-        total: scenarios.length,
+        total: plans.length,
         step: ctx.state().interface?.step ?? 0,
       };
       ctx.dispatch(event);
@@ -51,24 +48,24 @@ export async function orchestrateTestProgress<Model extends ILlmSchema.Model>(
 }
 
 /**
- * Process function that generates test code for each individual scenario. Takes
- * the AutoBeContext and scenario information as input and uses MicroAgentica to
+ * Process function that generates test code for each individual plan. Takes the
+ * AutoBeContext and plan information as input and uses MicroAgentica to
  * generate appropriate test code through LLM interaction.
  *
  * @param ctx - The AutoBeContext containing model, vendor and configuration
- * @param scenario - The test scenario information to generate code for
+ * @param plan - The test plan information to generate code for
  * @returns Promise resolving to ICreateTestCodeProps containing the generated
  *   test code
  */
 async function process<Model extends ILlmSchema.Model>(
   ctx: AutoBeContext<Model>,
-  scenario: AutoBeTest.Scenario,
+  plan: IAutoBeTestPlan.IPlan & { method: string; path: string },
 ): Promise<ICreateTestCodeProps> {
   const pointer: IPointer<ICreateTestCodeProps | null> = {
     value: null,
   };
   const document: AutoBeOpenApi.IDocument = filterDocument(
-    scenario,
+    plan,
     ctx.state().interface!.document,
   );
   const agentica = new MicroAgentica({
@@ -91,10 +88,10 @@ async function process<Model extends ILlmSchema.Model>(
 
   await agentica.conversate(
     [
-      "Create test code for below scenario:",
+      "Create test code for below plan:",
       "",
       "```json",
-      JSON.stringify(scenario, null, 2),
+      JSON.stringify(plan, null, 2),
       "```",
     ].join("\n"),
   );
@@ -103,14 +100,21 @@ async function process<Model extends ILlmSchema.Model>(
 }
 
 function filterDocument(
-  scenario: AutoBeTest.Scenario,
+  plan: IAutoBeTestPlan.IPlan & { method: string; path: string },
   document: AutoBeOpenApi.IDocument,
 ): AutoBeOpenApi.IDocument {
   const operations: AutoBeOpenApi.IOperation[] = document.operations.filter(
-    (op) =>
-      scenario.endpoints.find(
-        (o) => o.method === op.method && o.path === op.path,
-      ) !== undefined,
+    (op) => {
+      if (plan.method === op.method && plan.path === op.path) {
+        return true;
+      } else if (
+        plan.dependsOn.some(
+          (dp) => dp.method === op.method && dp.path === op.path,
+        )
+      ) {
+        return true;
+      }
+    },
   );
   const components: AutoBeOpenApi.IComponents = {
     schemas: {},
@@ -186,9 +190,8 @@ interface ICreateTestCodeProps {
   /**
    * Strategic approach for test implementation.
    *
-   * Define the high-level strategy and logical flow for testing the given
-   * scenario. Focus on test methodology, data preparation, and assertion
-   * strategy.
+   * Define the high-level strategy and logical flow for testing the given plan.
+   * Focus on test methodology, data preparation, and assertion strategy.
    *
    * ### Critical Requirements
    *
@@ -199,8 +202,8 @@ interface ICreateTestCodeProps {
    *
    * #### Test Methodology
    *
-   * - Identify test scenario type (CRUD operation, authentication flow,
-   *   validation test)
+   * - Identify test plan type (CRUD operation, authentication flow, validation
+   *   test)
    * - Define test data requirements and preparation strategy
    * - Plan positive/negative test cases and edge cases
    * - Design assertion logic and validation points
@@ -208,7 +211,7 @@ interface ICreateTestCodeProps {
    * #### Execution Strategy
    *
    * - Outline step-by-step test execution flow
-   * - Plan error handling and exception scenarios
+   * - Plan error handling and exception plans
    * - Define cleanup and teardown procedures
    * - Identify dependencies and prerequisites
    *
@@ -218,7 +221,7 @@ interface ICreateTestCodeProps {
    *     1. Prepare valid article data with required fields
    *     2. Execute POST request to create article
    *     3. Validate response structure and data integrity
-   *     4. Test error scenarios (missing fields, invalid data)
+   *     4. Test error plans (missing fields, invalid data)
    *     5. Verify database state changes
    *     6. Reconsider the plan if it doesn't follow the Test Generation
    *        Guildelines.

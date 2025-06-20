@@ -43,6 +43,7 @@ const getTestPlanGroups = (
           path: "/votes/votes/{id}",
           plans: [
             {
+              functionName: "test_api_remove_voting",
               draft:
                 "Delete a vote as the owner or admin and confirm it is removed from vote listings and content tallies are updated. Attempt deletion as non-owner/non-admin, or delete a non-existent vote, and check for errors. Confirm audit logging if implemented.",
               dependsOn: [

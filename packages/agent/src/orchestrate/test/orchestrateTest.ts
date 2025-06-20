@@ -3,7 +3,6 @@ import {
   AutoBeTestHistory,
   AutoBeTestProgressEvent,
 } from "@autobe/interface";
-import { AutoBeTestScenarioEvent } from "@autobe/interface/src/events/AutoBeTestScenarioEvent";
 import { ILlmSchema } from "@samchon/openapi";
 import { v4 } from "uuid";
 
@@ -12,7 +11,6 @@ import { IAutoBeApplicationProps } from "../../context/IAutoBeApplicationProps";
 import { orchestrateTestCorrect } from "./orchestrateTestCorrect";
 import { orchestrateTestPlan } from "./orchestrateTestPlan";
 import { orchestrateTestProgress } from "./orchestrateTestProgress";
-import { orchestrateTestScenario } from "./orchestrateTestScenario";
 
 export const orchestrateTest =
   <Model extends ILlmSchema.Model>(ctx: AutoBeContext<Model>) =>
@@ -48,19 +46,21 @@ export const orchestrateTest =
     // PLAN
     const { planGroups } = await orchestrateTestPlan(ctx);
 
-    // SCENARIOS
-    const scenarioEvent: AutoBeTestScenarioEvent =
-      await orchestrateTestScenario(ctx, planGroups);
-
-    const scenarios = scenarioEvent.scenarios
-      .map((scenario) => {
-        return scenario.scenarios;
-      })
-      .flat();
+    const plans = planGroups.flatMap((pg) => {
+      return pg.plans.map((plan) => {
+        return {
+          method: pg.method,
+          path: pg.path,
+          draft: plan.draft,
+          functionName: plan.functionName,
+          dependsOn: plan.dependsOn,
+        };
+      });
+    });
 
     const codes: AutoBeTestProgressEvent[] = await orchestrateTestProgress(
       ctx,
-      scenarios,
+      plans,
     );
 
     const correct = await orchestrateTestCorrect(ctx, codes);
