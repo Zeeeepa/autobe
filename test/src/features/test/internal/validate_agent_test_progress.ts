@@ -32,7 +32,7 @@ export const validate_agent_test_progress = async (
 
   const planGroups: IAutoBeTestPlan.IPlanGroup[] = JSON.parse(
     await fs.promises.readFile(
-      `${ROOT}/assets/repositories/samchon/shopping-backend/test/test_plan_groups.json`,
+      `${ROOT}/assets/repositories/${owner}/${project}/test/test_plan_groups.json`,
       "utf8",
     ),
   );
