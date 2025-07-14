@@ -16,7 +16,8 @@ export const validate_agent_analyze_main = async (
   if (TestGlobal.env.CHATGPT_API_KEY === undefined) return false;
 
   // PREPARE ASSETS
-  const [history]: AutoBeHistory[] = await TestHistory.getAnalyze(project);
+  const [history]: AutoBeHistory[] = await TestHistory.getInital(project);
+  console.log(history);
   typia.assertGuard<AutoBeUserMessageHistory>(history);
   const content: string | null =
     history.contents[0].type === "text" ? history.contents[0].text : null;

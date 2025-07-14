@@ -1,21 +1,20 @@
-import { IAgenticaController, MicroAgentica } from "@agentica/core";
 import {
   AutoBeAnalyzeHistory,
   AutoBeAssistantMessageHistory,
 } from "@autobe/interface";
-import { ILlmApplication, ILlmSchema } from "@samchon/openapi";
+import { ILlmSchema } from "@samchon/openapi";
 import typia from "typia";
 import { v4 } from "uuid";
 
-import { AutoBeSystemPromptConstant } from "../../constants/AutoBeSystemPromptConstant";
 import { AutoBeContext } from "../../context/AutoBeContext";
 import { IAutoBeApplicationProps } from "../../context/IAutoBeApplicationProps";
-import { assertSchemaModel } from "../../context/assertSchemaModel";
-import { enforceToolCall } from "../../utils/enforceToolCall";
 import { AutoBeAnalyzeAgent } from "./AutoBeAnalyzeAgent";
-import { IFile } from "./AutoBeAnalyzeFileSystem";
 import { AutoBeAnalyzePointer } from "./AutoBeAnalyzePointer";
 import { AutoBeAnalyzeReviewer } from "./AutoBeAnalyzeReviewer";
+import {
+  IComposeInput,
+  orchestrateAnalyzeComposer,
+} from "./orchestrateAnalyzeComposer";
 
 /** @todo Kakasoo */
 export const orchestrateAnalyze =
@@ -32,36 +31,12 @@ export const orchestrateAnalyze =
       created_at,
     });
 
-    const controller = createController<Model>({
-      model: ctx.model,
-      execute: new DeterminingFiles(),
-    });
-
-    const agentica = new MicroAgentica({
-      model: ctx.model,
-      vendor: ctx.vendor,
-      controllers: [controller],
-      config: {
-        locale: ctx.config?.locale,
-        executor: {
-          describe: null,
-        },
-        systemPrompt: {
-          common: () => AutoBeSystemPromptConstant.ANALYZE_PLANNER,
-        },
-      },
-      histories: [
-        ...ctx
-          .histories()
-          .filter(
-            (el) => el.type === "assistantMessage" || el.type === "userMessage",
-          ),
-      ],
-    });
-    enforceToolCall(agentica);
+    const agentica = orchestrateAnalyzeComposer(ctx);
 
     const determined = await agentica
-      .conversate("Design a complete list of documents for that document")
+      .conversate(
+        "Design a complete list of documents and user roles for this project. Define user roles that can authenticate via API and create appropriate documentation files.",
+      )
       .finally(() => {
         const tokenUsage = agentica.getTokenUsage();
         ctx.usage().record(tokenUsage, ["analyze"]);
@@ -86,11 +61,15 @@ export const orchestrateAnalyze =
 
     const described = determined.find((el) => el.type === "describe");
     const determinedOutput = described?.executes.find(
-      (el) => el.protocol === "class" && typia.is<IDeterminingInput>(el.value),
-    )?.value as IDeterminingInput;
+      (el) => el.protocol === "class" && typia.is<IComposeInput>(el.value),
+    )?.value as IComposeInput;
+
+    console.log(JSON.stringify(determinedOutput, null, 2));
 
     const prefix = determinedOutput.prefix;
+    const describedRoles = determinedOutput.roles;
     const describedFiles = determinedOutput.files;
+
     if (describedFiles.length === 0) {
       const history: AutoBeAssistantMessageHistory = {
         id: v4(),
@@ -121,8 +100,19 @@ export const orchestrateAnalyze =
         await agent.conversate(
           [
             `# Instruction`,
-            `The names of all the files are as follows: ${describedFiles.join(",")}`,
+            `The names of all the files are as follows: ${describedFiles.map((f) => f.filename).join(",")}`,
             "Assume that all files are in the same folder. Also, when pointing to the location of a file, go to the relative path.",
+            "",
+            `The following user roles have been defined for this system:`,
+            ...describedRoles.map(
+              (role) => `- ${role.name}: ${role.description}`,
+            ),
+            "These roles will be used for API authentication and should be considered when creating documentation.",
+            "",
+            `Document Length Specification:`,
+            `- You are responsible for writing ONLY ONE document: ${filename}`,
+            `- Each page should contain approximately 2,000 characters`,
+            `- DO NOT write content for other documents - focus only on ${filename}`,
             "",
             `Among the various documents, the part you decided to take care of is as follows.: ${filename}`,
             `Only write this document named '${filename}'.`,
@@ -149,6 +139,7 @@ export const orchestrateAnalyze =
         type: "analyze",
         reason: props.reason,
         prefix,
+        roles: describedRoles,
         files: files,
         step,
         created_at,
@@ -180,87 +171,3 @@ export const orchestrateAnalyze =
     });
     return history;
   };
-
-export interface IDeterminingInput {
-  /**
-   * Prefix for file names and all prisma schema files, table, interface, and
-   * variable names. For example, if you were to create a bulletin board
-   * service, the prefix would be bbs. At this time, the name of the document
-   * would be, for example, 00_bbs_table_of_contents, and bbs would have to be
-   * attached to the name of all documents. This value would then be passed to
-   * other agents as well, in the form of bbs_article, bbs_article_snapshot, and
-   * bbs_comments in the table name. Interfaces will likewise be used in
-   * interfaces and tests because they originate from the name of prisma scheme.
-   * Do not use prefixes that are related to the technology stack (e.g., ts_,
-   * api_, react_) or unnatural prefixes that typically wouldn’t appear in table
-   * names or domain models (e.g., zz_, my_, dev_).
-   *
-   * @title Prefix
-   */
-  prefix: string;
-
-  /**
-   * File name must be English. and it must contains the numbering and prefix.
-   *
-   * @title file names and reason to create.
-   */
-  files: Array<Pick<IFile, "filename" | "reason">>;
-}
-
-class DeterminingFiles {
-  /**
-   * Determining the Initial File List.
-   *
-   * Design a list of initial documents that you need to create for that
-   * requirement. The list of documents is determined only by the name of the
-   * file. If you determine from the conversation that the user's requirements
-   * have not been fully gathered, you must stop the analysis and continue
-   * collecting the remaining requirements. In this case, you do not need to
-   * generate any files. Simply pass an empty array to `input.files`, which is
-   * the input value for the `determine` tool.
-   *
-   * @param input Prefix and files
-   * @returns
-   */
-  determine(input: IDeterminingInput): IDeterminingInput {
-    return input;
-  }
-}
-
-function createController<Model extends ILlmSchema.Model>(props: {
-  model: Model;
-  execute: DeterminingFiles;
-}): IAgenticaController.IClass<Model> {
-  assertSchemaModel(props.model);
-  const application: ILlmApplication<Model> = collection[
-    props.model
-  ] as unknown as ILlmApplication<Model>;
-  return {
-    protocol: "class",
-    name: "Planning",
-    application,
-    // execute: props.execute,
-    execute: {
-      determine: (input) => {
-        return input;
-      },
-    } satisfies DeterminingFiles,
-  };
-}
-
-const claude = typia.llm.application<
-  DeterminingFiles,
-  "claude",
-  { reference: true }
->();
-const collection = {
-  chatgpt: typia.llm.application<
-    DeterminingFiles,
-    "chatgpt",
-    { reference: true }
-  >(),
-  claude,
-  llama: claude,
-  deepseek: claude,
-  "3.1": claude,
-};
