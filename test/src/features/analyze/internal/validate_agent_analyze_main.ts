@@ -31,8 +31,9 @@ export const validate_agent_analyze_main = async (
 
   if (results.every((el) => el.type !== "analyze")) {
     results = await go("Don't ask me to do that, and just do it right now.");
-    if (results.every((el) => el.type !== "analyze"))
+    if (results.every((el) => el.type !== "analyze")) {
       throw new Error("Some history type must be analyze.");
+    }
   }
 
   // REPORT RESULT

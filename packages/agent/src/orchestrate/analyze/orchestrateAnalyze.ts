@@ -8,13 +8,12 @@ import { v4 } from "uuid";
 
 import { AutoBeContext } from "../../context/AutoBeContext";
 import { IAutoBeApplicationProps } from "../../context/IAutoBeApplicationProps";
-import { AutoBeAnalyzeAgent } from "./AutoBeAnalyzeAgent";
 import { AutoBeAnalyzePointer } from "./AutoBeAnalyzePointer";
-import { AutoBeAnalyzeReviewer } from "./AutoBeAnalyzeReviewer";
 import {
   IComposeInput,
   orchestrateAnalyzeComposer,
 } from "./orchestrateAnalyzeComposer";
+import { writeDocumentUntilReviewPassed } from "./writeDocumentUntilReviewPassed";
 
 /** @todo Kakasoo */
 export const orchestrateAnalyze =
@@ -35,7 +34,11 @@ export const orchestrateAnalyze =
 
     const determined = await agentica
       .conversate(
-        "Design a complete list of documents and user roles for this project. Define user roles that can authenticate via API and create appropriate documentation files.",
+        [
+          `Design a complete list of documents and user roles for this project.`,
+          `Define user roles that can authenticate via API and create appropriate documentation files.`,
+          `You must respect the number of documents specified by the user.`,
+        ].join("\n"),
       )
       .finally(() => {
         const tokenUsage = agentica.getTokenUsage();
@@ -64,8 +67,6 @@ export const orchestrateAnalyze =
       (el) => el.protocol === "class" && typia.is<IComposeInput>(el.value),
     )?.value as IComposeInput;
 
-    console.log(JSON.stringify(determinedOutput, null, 2));
-
     const prefix = determinedOutput.prefix;
     const describedRoles = determinedOutput.roles;
     const describedFiles = determinedOutput.files;
@@ -87,45 +88,21 @@ export const orchestrateAnalyze =
     }
 
     const pointers = await Promise.all(
-      describedFiles.map(async ({ filename, reason }) => {
-        const pointer: AutoBeAnalyzePointer = { value: null };
-
-        const agent = new AutoBeAnalyzeAgent(
-          AutoBeAnalyzeReviewer,
+      describedFiles.map(async ({ filename }) => {
+        const pointer: AutoBeAnalyzePointer = { value: { files: {} } };
+        await writeDocumentUntilReviewPassed(
           ctx,
           pointer,
-          describedFiles.map((el) => el.filename),
+          describedFiles,
+          filename,
+          describedRoles,
+          3,
         );
-
-        await agent.conversate(
-          [
-            `# Instruction`,
-            `The names of all the files are as follows: ${describedFiles.map((f) => f.filename).join(",")}`,
-            "Assume that all files are in the same folder. Also, when pointing to the location of a file, go to the relative path.",
-            "",
-            `The following user roles have been defined for this system:`,
-            ...describedRoles.map(
-              (role) => `- ${role.name}: ${role.description}`,
-            ),
-            "These roles will be used for API authentication and should be considered when creating documentation.",
-            "",
-            `Document Length Specification:`,
-            `- You are responsible for writing ONLY ONE document: ${filename}`,
-            `- Each page should contain approximately 2,000 characters`,
-            `- DO NOT write content for other documents - focus only on ${filename}`,
-            "",
-            `Among the various documents, the part you decided to take care of is as follows.: ${filename}`,
-            `Only write this document named '${filename}'.`,
-            "Never write other documents.",
-            "",
-            "The reason why this document needs to be written is as follows.",
-            `- reason: ${reason}`,
-          ].join("\n"),
-        );
-
         return pointer;
       }),
     );
+
+    console.log(JSON.stringify(pointers, null, 2));
 
     const files = pointers
       .map((pointer) => {
