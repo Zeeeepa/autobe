@@ -25,9 +25,11 @@ export interface IComposeInput {
 
   /**
    * If the user has requested a specific number of pages, enter that number.
-   * Otherwise, provide an appropriate number of documents necessary to meet the
+   * Otherwise, provide an appropriate number of documents needed to meet the
    * user's requirements. This number must always match the length of the files
-   * property.
+   * property, must be greater than 1, and must include the table of contents.
+   * For example, if the user requests 3 pages, the total should be 4, including
+   * the table of contents.
    */
   page: number;
 
