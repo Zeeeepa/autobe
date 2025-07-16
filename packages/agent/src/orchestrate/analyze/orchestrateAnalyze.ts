@@ -102,8 +102,6 @@ export const orchestrateAnalyze =
       }),
     );
 
-    console.log(JSON.stringify(pointers, null, 2));
-
     const files = pointers
       .map((pointer) => {
         return pointer.value?.files ?? {};

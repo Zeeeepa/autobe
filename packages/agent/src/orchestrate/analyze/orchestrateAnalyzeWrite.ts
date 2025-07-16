@@ -1,9 +1,11 @@
 import { IAgenticaController, MicroAgentica } from "@agentica/core";
 import { ILlmApplication, ILlmSchema } from "@samchon/openapi";
+import { IPointer } from "tstl";
 import typia from "typia";
 
 import { AutoBeContext } from "../../context/AutoBeContext";
 import { assertSchemaModel } from "../../context/assertSchemaModel";
+import { randomBackoffStrategy } from "../../utils/backoffRetry";
 import { enforceToolCall } from "../../utils/enforceToolCall";
 import {
   AutoBeAnalyzeFileSystem,
@@ -27,6 +29,7 @@ export const orchestrateAnalyzeWrite = <Model extends ILlmSchema.Model>(
     review: string | null;
   },
   pointer: AutoBeAnalyzePointer,
+  isAborted: IPointer<boolean>,
 ): MicroAgentica<Model> => {
   const controller = createController<Model>({
     model: ctx.model,
@@ -35,6 +38,7 @@ export const orchestrateAnalyzeWrite = <Model extends ILlmSchema.Model>(
       pointer.value ??= { files: {} };
       Object.assign(pointer.value.files, files);
     },
+    abort: () => (isAborted.value = true),
   });
 
   const agent = new MicroAgentica({
@@ -43,6 +47,7 @@ export const orchestrateAnalyzeWrite = <Model extends ILlmSchema.Model>(
     vendor: ctx.vendor,
     config: {
       locale: ctx.config?.locale,
+      backoffStrategy: randomBackoffStrategy,
       executor: {
         describe: null,
       },
@@ -57,6 +62,7 @@ function createController<Model extends ILlmSchema.Model>(props: {
   model: Model;
   execute: AutoBeAnalyzeFileSystem;
   build: (input: AutoBEAnalyzeFileMap) => void;
+  abort: () => void;
 }): IAgenticaController.IClass<Model> {
   assertSchemaModel(props.model);
   const application: ILlmApplication<Model> = collection[
@@ -69,6 +75,8 @@ function createController<Model extends ILlmSchema.Model>(props: {
     execute: {
       abort: (input) => {
         const response = props.execute.abort(input);
+        props.abort();
+
         return response;
       },
       createOrUpdateFiles: async (input) => {

@@ -1,5 +1,5 @@
-import { MicroAgenticaHistory } from "@agentica/core";
 import { ILlmSchema } from "@samchon/openapi";
+import { IPointer } from "tstl";
 
 import { AutoBeContext } from "../../context/AutoBeContext";
 import { IFile } from "./AutoBeAnalyzeFileSystem";
@@ -18,8 +18,14 @@ export async function writeDocumentUntilReviewPassed<
   roles: AutoBeAnalyzeRole[],
   retry = 3,
 ): Promise<AutoBeAnalyzePointer> {
+  let isAborted: IPointer<boolean> = { value: false };
+
   let review: string | null = null;
   for (let i = 0; i < retry; i++) {
+    if (isAborted.value === true) {
+      return pointer;
+    }
+
     const write = "Wirte Document OR Abort." as const;
     const writer = orchestrateAnalyzeWrite(
       ctx,
@@ -30,38 +36,20 @@ export async function writeDocumentUntilReviewPassed<
         review,
       },
       pointer,
+      isAborted,
     );
 
-    const histories = await writer.conversate(review ?? write);
+    await writer.conversate(review ?? write).finally(() => {
+      const tokenUsage = writer.getTokenUsage();
+      ctx.usage().record(tokenUsage, ["analyze"]);
+    });
+
     if (pointer.value === null) {
       throw new Error("Failed to write document by unknown reason.");
-    }
-
-    if (isAborted(histories)) {
-      return pointer;
     }
 
     review = await orchestrateAnalyzeReviewer(ctx, pointer.value);
   }
 
   return pointer;
-}
-
-function isAborted<Model extends ILlmSchema.Model>(
-  histories: MicroAgenticaHistory<Model>[],
-) {
-  const lastMessage = histories[histories.length - 1]!;
-  if (!lastMessage) {
-    throw new Error("No last message found in histories");
-  }
-
-  const aborted =
-    lastMessage.type === "describe" &&
-    lastMessage.executes.some((e) => {
-      if (e.protocol === "class" && e.operation.function.name === "abort") {
-        return true;
-      }
-    });
-
-  return aborted;
 }

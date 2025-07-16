@@ -85,6 +85,9 @@ export const transformAnalyzeWriteHistories = <Model extends ILlmSchema.Model>(
         `Among the various documents, the part you decided to take care of is as follows.: ${input.targetFile}`,
         `Only write this document named '${input.targetFile}'.`,
         "Never write other documents.",
+        "",
+        "# Reason to write this document",
+        `- ${input.totalFiles.find((el) => el.filename === input.targetFile)?.reason}`,
       ].join("\n"),
     },
   ];
