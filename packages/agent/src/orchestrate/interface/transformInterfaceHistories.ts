@@ -110,32 +110,6 @@ export const transformInterfaceHistories = (
         "* `mvShoppingDailyStats`",
         "* `mvShoppingAggregateView`",
         "",
-        // Requirement Analysis Report
-        `## Requirement Analysis Report`,
-        "",
-        "```json",
-        JSON.stringify(state.analyze.files),
-        "```",
-        "",
-        state.analyze?.roles
-          ? [
-              "## Role Assignment",
-              "",
-              "Available roles: ",
-              "",
-              `${JSON.stringify(state.analyze.roles)}`,
-              "",
-              "For each API operation, assign `authorizationRoles` field:",
-              "* `authorizationRoles: null` - Public access, no authentication",
-              '* `authorizationRoles: ["roleName"]` - Restricted access, use exact names from available roles',
-              "* No duplicate roles in array",
-              "* Always set authorizationRoles field explicitly",
-            ].join("\n")
-          : [
-              "## Authorization",
-              "",
-              "No roles provided. Do not include any authorization-related fields in the API operations.",
-            ].join("\n"),
       ].join("\n"),
     },
     {

@@ -452,7 +452,7 @@ export namespace AutoBeOpenApi {
      * Therefore, if a user type cannot be clearly and uniquely distinguished in
      * the database, It **cannot** be used as a valid `role` here.
      */
-    role: string;
+    name: string;
 
     /**
      * Detailed description of the authorization role
