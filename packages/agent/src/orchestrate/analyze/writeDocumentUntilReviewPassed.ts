@@ -26,7 +26,7 @@ export async function writeDocumentUntilReviewPassed<
       return pointer;
     }
 
-    const write = "Wirte Document OR Abort." as const;
+    const write = "Write Document OR Abort." as const;
     const writer = orchestrateAnalyzeWrite(
       ctx,
       {
