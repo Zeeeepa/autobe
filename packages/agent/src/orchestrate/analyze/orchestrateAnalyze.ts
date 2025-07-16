@@ -3,16 +3,14 @@ import {
   AutoBeAssistantMessageHistory,
 } from "@autobe/interface";
 import { ILlmSchema } from "@samchon/openapi";
-import typia from "typia";
+import { IPointer } from "tstl";
 import { v4 } from "uuid";
 
 import { AutoBeContext } from "../../context/AutoBeContext";
 import { IAutoBeApplicationProps } from "../../context/IAutoBeApplicationProps";
 import { AutoBeAnalyzePointer } from "./AutoBeAnalyzePointer";
-import {
-  IComposeInput,
-  orchestrateAnalyzeComposer,
-} from "./orchestrateAnalyzeComposer";
+import { orchestrateAnalyzeComposer } from "./orchestrateAnalyzeComposer";
+import { IComposeInput } from "./structures/IAutoBeAnalyzeComposerApplication";
 import { writeDocumentUntilReviewPassed } from "./writeDocumentUntilReviewPassed";
 
 /** @todo Kakasoo */
@@ -30,7 +28,8 @@ export const orchestrateAnalyze =
       created_at,
     });
 
-    const agentica = orchestrateAnalyzeComposer(ctx);
+    const pointer: IPointer<IComposeInput | null> = { value: null };
+    const agentica = orchestrateAnalyzeComposer(ctx, pointer);
 
     const determined = await agentica
       .conversate(
@@ -45,33 +44,19 @@ export const orchestrateAnalyze =
         ctx.usage().record(tokenUsage, ["analyze"]);
       });
 
-    const lastMessage = determined[determined.length - 1]!;
-    if (lastMessage.type === "assistantMessage") {
-      const history: AutoBeAssistantMessageHistory = {
+    if (pointer.value === null) {
+      return {
         id: v4(),
+        text: "Failed to analyze your request. please request again.",
         type: "assistantMessage",
-        text: lastMessage.text,
-        created_at,
         completed_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
       };
-      ctx.dispatch({
-        type: "assistantMessage",
-        text: lastMessage.text,
-        created_at,
-      });
-      return history;
     }
 
-    const described = determined.find((el) => el.type === "describe");
-    const determinedOutput = described?.executes.find(
-      (el) => el.protocol === "class" && typia.is<IComposeInput>(el.value),
-    )?.value as IComposeInput;
+    const { files: tableOfContents, prefix, roles } = pointer.value;
 
-    const prefix = determinedOutput.prefix;
-    const describedRoles = determinedOutput.roles;
-    const describedFiles = determinedOutput.files;
-
-    if (describedFiles.length === 0) {
+    if (tableOfContents.length === 0) {
       const history: AutoBeAssistantMessageHistory = {
         id: v4(),
         type: "assistantMessage",
@@ -88,14 +73,14 @@ export const orchestrateAnalyze =
     }
 
     const pointers = await Promise.all(
-      describedFiles.map(async ({ filename }) => {
+      tableOfContents.map(async ({ filename }) => {
         const pointer: AutoBeAnalyzePointer = { value: { files: {} } };
         await writeDocumentUntilReviewPassed(
           ctx,
           pointer,
-          describedFiles,
+          tableOfContents,
           filename,
-          describedRoles,
+          roles,
           3,
         );
         return pointer;
@@ -114,7 +99,7 @@ export const orchestrateAnalyze =
         type: "analyze",
         reason: props.reason,
         prefix,
-        roles: describedRoles,
+        roles: roles,
         files: files,
         step,
         created_at,
