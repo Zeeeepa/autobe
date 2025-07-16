@@ -105,7 +105,7 @@ async function process<Model extends ILlmSchema.Model>(
     controllers: [
       createApplication({
         model: ctx.model,
-        roles: ctx.state().analyze?.roles,
+        roles: ctx.state().analyze?.roles.map((it) => it.name) ?? null,
         build: (endpoints) => {
           pointer.value ??= [];
           pointer.value.push(...endpoints);
