@@ -6,7 +6,7 @@ import { TestGlobal } from "../TestGlobal";
 import { TestProject } from "../structures/TestProject";
 
 export namespace TestHistory {
-  export const getInital = (project: TestProject): Promise<AutoBeHistory[]> =>
+  export const getInitial = (project: TestProject): Promise<AutoBeHistory[]> =>
     getHistories({
       project,
       type: "initial",
