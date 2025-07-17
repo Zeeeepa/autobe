@@ -90,6 +90,7 @@ function createController<Model extends ILlmSchema.Model>(props: {
     application,
     execute: {
       compose: (input) => {
+        props.build(input);
         return props.execute.compose(input);
       },
     } satisfies IAutoBeAnalyzeComposerApplication,
