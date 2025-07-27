@@ -21,7 +21,7 @@ specification.</p>
 <li><code>query</code>: Query parameter of <a href="_samchon_openapi.IHttpMigrateRoute-1.html#query" class="tsd-kind-property">IHttpMigrateRoute.query</a></li>
 <li><code>body</code>: Body parameter of <a href="_samchon_openapi.IHttpMigrateRoute-1.html#body" class="tsd-kind-property">IHttpMigrateRoute.body</a></li>
 </ul>
-<pre><code class="typescript"><span class="hl-1">{</span><br/><span class="hl-1">  ...</span><span class="hl-2">pathParameters</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">query</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">body</span><span class="hl-1">,</span><br/><span class="hl-1">}</span>
+<pre><code class="typescript"><span class="hl-1">{</span><br/><span class="hl-1">  ...</span><span class="hl-4">pathParameters</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">query</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">body</span><span class="hl-1">,</span><br/><span class="hl-1">}</span>
 </code><button type="button">Copy</button></pre>
 
 </div><div class="tsd-comment tsd-typography"><div class="tsd-tag-author"><h4 class="tsd-anchor-link"><a id="author" class="tsd-anchor"></a>Author<a href="#author" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>Jeongho Nam - <a href="https://github.com/samchon">https://github.com/samchon</a></p>
@@ -122,12 +122,12 @@ rule is:</p>
 <li><code>query</code>: Query parameter of <a href="_samchon_openapi.IHttpMigrateRoute-1.html#query" class="tsd-kind-property">IHttpMigrateRoute.query</a></li>
 <li><code>body</code>: Body parameter of <a href="_samchon_openapi.IHttpMigrateRoute-1.html#body" class="tsd-kind-property">IHttpMigrateRoute.body</a></li>
 </ul>
-<pre><code class="typescript"><span class="hl-1">{</span><br/><span class="hl-1">  ...</span><span class="hl-2">pathParameters</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">query</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">body</span><span class="hl-1">,</span><br/><span class="hl-1">}</span>
+<pre><code class="typescript"><span class="hl-1">{</span><br/><span class="hl-1">  ...</span><span class="hl-4">pathParameters</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">query</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">body</span><span class="hl-1">,</span><br/><span class="hl-1">}</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Otherwise, the parameters would be multiple, and the sequence of the
 parameters are following below rules:</p>
-<pre><code class="typescript"><span class="hl-1">[</span><br/><span class="hl-1">  ...</span><span class="hl-2">pathParameters</span><span class="hl-1">,</span><br/><span class="hl-1">  ...(</span><span class="hl-2">query</span><span class="hl-1"> ? [</span><span class="hl-2">query</span><span class="hl-1">] : []),</span><br/><span class="hl-1">  ...(</span><span class="hl-2">body</span><span class="hl-1"> ? [</span><span class="hl-2">body</span><span class="hl-1">] : []),</span><br/><span class="hl-1">];</span>
+<pre><code class="typescript"><span class="hl-1">[</span><br/><span class="hl-1">  ...</span><span class="hl-4">pathParameters</span><span class="hl-1">,</span><br/><span class="hl-1">  ...(</span><span class="hl-4">query</span><span class="hl-1"> ? [</span><span class="hl-4">query</span><span class="hl-1">] : []),</span><br/><span class="hl-1">  ...(</span><span class="hl-4">body</span><span class="hl-1"> ? [</span><span class="hl-4">body</span><span class="hl-1">] : []),</span><br/><span class="hl-1">];</span>
 </code><button type="button">Copy</button></pre>
 
 </div><div class="tsd-comment tsd-typography"></div><aside class="tsd-sources"><ul><li>Defined in <a href="https://github.com/samchon/openapi/blob/337ce3506a50396610c3866aad9c031ba3c3b9a5/src/structures/IHttpLlmFunction.ts#L122">src/structures/IHttpLlmFunction.ts:122</a></li></ul></aside></section><section class="tsd-panel tsd-member"><a id="path" class="tsd-anchor"></a><h3 class="tsd-anchor-link"><span>path</span><a href="#path" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><div class="tsd-signature"><span class="tsd-kind-property">path</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span></div><div class="tsd-comment tsd-typography"><p>Path of the endpoint.</p>
