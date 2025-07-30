@@ -6,6 +6,7 @@ import {
   AutoBeRealizeTestStartEvent,
   AutoBeTestStartEvent,
 } from "@autobe/interface";
+import { AutoBeModifyStartEvent } from "@autobe/interface/src/events/AutoBeModifyStartEvent";
 import { AutoBeRealizeAuthorizationStartEvent } from "@autobe/interface/src/events/AutoBeRealizeAuthorizationStartEvent";
 import StartIcon from "@mui/icons-material/Start";
 import { Card, CardContent, Chip } from "@mui/material";
@@ -46,7 +47,8 @@ export namespace AutoBePlaygroundStartEventMovie {
       | AutoBeTestStartEvent
       | AutoBeRealizeStartEvent
       | AutoBeRealizeAuthorizationStartEvent
-      | AutoBeRealizeTestStartEvent;
+      | AutoBeRealizeTestStartEvent
+      | AutoBeModifyStartEvent;
   }
 }
 
@@ -68,6 +70,8 @@ function getTitle(
       return "Realize Authorization";
     case "realizeTestStart":
       return "Final E2E Test";
+    case "modifyStart":
+      return "Modify";
     default:
       event satisfies never;
       throw new Error("Unknown event type"); // unreachable

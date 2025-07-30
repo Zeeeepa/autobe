@@ -109,6 +109,18 @@ export const createAutoBeController = <Model extends ILlmSchema.Model>(props: {
             description: "API interfaces are not yet completed.",
           };
       },
+      modify: async (next) => {
+        console.log("modify", next);
+        props.context.dispatch({
+          type: "modifyStart",
+          reason: next.reason,
+          created_at: new Date().toISOString(),
+        });
+        return {
+          type: "success",
+          description: "Document has been modified successfully.",
+        };
+      },
     } satisfies IAutoBeApplication,
   };
 };

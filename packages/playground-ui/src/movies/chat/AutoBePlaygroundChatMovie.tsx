@@ -110,6 +110,7 @@ export function AutoBePlaygroundChatMovie(
         .getTokenUsage()
         .then(setTokenUsage)
         .catch(() => {});
+      console.log(e);
       setEventGroups(e);
     });
     props.service

@@ -37,6 +37,7 @@ import {
   AutoBeUserMessageEvent,
 } from "../events";
 import { AutoBeInterfaceGroupsEvent } from "../events/AutoBeInterfaceGroupsEvent";
+import { AutoBeModifyStartEvent } from "../events/AutoBeModifyStartEvent";
 import { AutoBeRealizeAuthorizationCompleteEvent } from "../events/AutoBeRealizeAuthorizationCompleteEvent";
 import { AutoBeRealizeAuthorizationStartEvent } from "../events/AutoBeRealizeAuthorizationStartEvent";
 
@@ -461,4 +462,13 @@ export interface IAutoBeRpcListener {
    * validation.
    */
   realizeTestComplete?(event: AutoBeRealizeTestCompleteEvent): Promise<void>;
+
+  /**
+   * Optional handler for modify start events.
+   *
+   * Called when the Modify agent begins modifying the document, enabling client
+   * applications to show that the document is being modified and prepare
+   * progress tracking for the modify phase.
+   */
+  modifyStart?(event: AutoBeModifyStartEvent): Promise<void>;
 }

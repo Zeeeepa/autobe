@@ -25,6 +25,8 @@ export function AutoBePlaygroundEventMovie<Event extends AutoBeEvent>(
     case "realizeStart":
     case "realizeTestStart":
     case "realizeAuthorizationStart":
+    case "modifyStart":
+      console.log(props.events.at(0));
       return <AutoBePlaygroundStartEventMovie event={back} />;
     // SCENARIO EVENTS
     case "prismaComponents":

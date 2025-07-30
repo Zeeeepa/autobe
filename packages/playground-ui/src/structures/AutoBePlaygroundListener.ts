@@ -175,6 +175,10 @@ export class AutoBePlaygroundListener {
         this.state_.delete("realizeTestOperation");
         this.insert(event);
       },
+
+      modifyStart: async (event) => {
+        this.insert(event);
+      },
     };
   }
 

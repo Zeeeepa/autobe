@@ -12,4 +12,5 @@ export interface AutoBeState {
   interface: AutoBeInterfaceHistory | null;
   test: AutoBeTestHistory | null;
   realize: AutoBeRealizeHistory | null;
+  modify: null;
 }

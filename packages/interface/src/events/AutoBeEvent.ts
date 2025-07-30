@@ -10,6 +10,7 @@ import { AutoBeInterfaceGroupsEvent } from "./AutoBeInterfaceGroupsEvent";
 import { AutoBeInterfaceOperationsEvent } from "./AutoBeInterfaceOperationsEvent";
 import { AutoBeInterfaceSchemasEvent } from "./AutoBeInterfaceSchemasEvent";
 import { AutoBeInterfaceStartEvent } from "./AutoBeInterfaceStartEvent";
+import { AutoBeModifyStartEvent } from "./AutoBeModifyStartEvent";
 import { AutoBePrismaCompleteEvent } from "./AutoBePrismaCompleteEvent";
 import { AutoBePrismaComponentsEvent } from "./AutoBePrismaComponentsEvent";
 import { AutoBePrismaCorrectEvent } from "./AutoBePrismaCorrectEvent";
@@ -63,6 +64,8 @@ import { AutoBeUserMessageEvent } from "./AutoBeUserMessageEvent";
 export type AutoBeEvent =
   | AutoBeAssistantMessageEvent
   | AutoBeUserMessageEvent
+  // MODIFY
+  | AutoBeModifyStartEvent
   // ANALYZE
   | AutoBeAnalyzeStartEvent
   | AutoBeAnalyzeWriteEvent
@@ -143,6 +146,10 @@ export namespace AutoBeEvent {
   export type Mapper = {
     assistantMessage: AutoBeAssistantMessageEvent;
     userMessage: AutoBeUserMessageEvent;
+
+    // MODIFY
+    modifyStart: AutoBeModifyStartEvent;
+
     // ANALYZE
     analyzeStart: AutoBeAnalyzeStartEvent;
     analyzeWrite: AutoBeAnalyzeWriteEvent;

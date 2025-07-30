@@ -38,6 +38,8 @@ export interface IAutoBeTokenUsageJson {
   test: IAutoBeInternalTokenUsageJson;
   /** Token usage for the implementation phase */
   realize: IAutoBeInternalTokenUsageJson;
+  /** Token usage for the modify phase */
+  modify: IAutoBeInternalTokenUsageJson;
 }
 
 /**

@@ -10,5 +10,6 @@ export const createAutoBeState = (histories: AutoBeHistory[]): AutoBeState => {
     interface: reversed.find((h) => h.type === "interface") ?? null,
     test: reversed.find((h) => h.type === "test") ?? null,
     realize: reversed.find((h) => h.type === "realize") ?? null,
+    modify: null,
   };
 };

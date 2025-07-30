@@ -10,6 +10,7 @@ export class AutoBeTokenUsage {
   public readonly interface: AgenticaTokenUsage;
   public readonly test: AgenticaTokenUsage;
   public readonly realize: AgenticaTokenUsage;
+  public readonly modify: AgenticaTokenUsage;
 
   public constructor(props?: IAutoBeTokenUsageJson) {
     if (props === undefined) {
@@ -19,6 +20,7 @@ export class AutoBeTokenUsage {
       this.interface = new AgenticaTokenUsage();
       this.test = new AgenticaTokenUsage();
       this.realize = new AgenticaTokenUsage();
+      this.modify = new AgenticaTokenUsage();
       return;
     }
 
@@ -28,6 +30,7 @@ export class AutoBeTokenUsage {
     this.interface = new AgenticaTokenUsage(props.interface);
     this.test = new AgenticaTokenUsage(props.test);
     this.realize = new AgenticaTokenUsage(props.realize);
+    this.modify = new AgenticaTokenUsage(props.modify);
   }
 
   public record(
@@ -55,6 +58,7 @@ export class AutoBeTokenUsage {
       interface: AgenticaTokenUsage.plus(usageA.interface, usageB.interface),
       test: AgenticaTokenUsage.plus(usageA.test, usageB.test),
       realize: AgenticaTokenUsage.plus(usageA.realize, usageB.realize),
+      modify: AgenticaTokenUsage.plus(usageA.modify, usageB.modify),
     });
   }
 
@@ -66,12 +70,21 @@ export class AutoBeTokenUsage {
       interface: this.interface.toJSON(),
       test: this.test.toJSON(),
       realize: this.realize.toJSON(),
+      modify: this.modify.toJSON(),
     };
   }
 
   /** @internal */
   private static keys(): ("facade" | keyof IAutoBeApplication)[] {
-    return ["facade", "analyze", "prisma", "interface", "test", "realize"];
+    return [
+      "facade",
+      "analyze",
+      "prisma",
+      "interface",
+      "test",
+      "realize",
+      "modify",
+    ];
   }
 }
 
