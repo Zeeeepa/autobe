@@ -111,19 +111,17 @@ export interface IAutoBeApplication {
   realize(props: IAutoBeApplicationProps): Promise<IAutoBeApplicationResult>;
 
   /**
-   * Modify the analyze document, interface, test, realize, etc.
+   * Modify the analyze document, prisma schema.
    *
-   * Executes the modify agent to modify the analyze document, interface, test,
-   * realize, etc.
+   * Executes the modify agent to modify the analyze document, prisma schema.
    *
-   * **PREREQUISITE**: Only call this function after the {@link analyze}
-   * functions have been successfully executed. The Modify agent requires the
-   * completed document to modify the document. Without a completed document,
-   * this function should NOT be called. You can modify the document as many
-   * times as you want.
+   * **PREREQUISITE**: Only call this function after the {@link analyze},
+   * {@link prisma} functions have been successfully executed. The Modify agent
+   * requires the completed document to modify the document. Without a completed
+   * document, this function should NOT be called. You can modify the document
+   * as many times as you want.
    *
-   * The agent will modify the document or implementation codes with each other
-   * agents
+   * The agent will modify the document or prisma models with each other agents.
    */
   modify(props: IAutoBeApplicationProps): Promise<IAutoBeApplicationResult>;
 }
