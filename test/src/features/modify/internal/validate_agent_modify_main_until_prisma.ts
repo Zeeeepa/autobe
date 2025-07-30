@@ -8,15 +8,15 @@ import { AutoBeModifyStartEvent } from "@autobe/interface/src/events/AutoBeModif
 import { TestFactory } from "../../../TestFactory";
 import { TestGlobal } from "../../../TestGlobal";
 import { TestProject } from "../../../structures/TestProject";
-import { prepare_agent_modify } from "./prepare_agent_modify";
+import { prepare_agent_prisma } from "../../prisma/internal/prepare_agent_prisma";
 
-export const validate_agent_modify_main = async (
+export const validate_agent_modify_main_until_prisma = async (
   factory: TestFactory,
   project: TestProject,
 ) => {
   if (TestGlobal.env.CHATGPT_API_KEY === undefined) return false;
 
-  const { agent } = await prepare_agent_modify(factory, project);
+  const { agent } = await prepare_agent_prisma(factory, project);
   const snapshots: AutoBeEventSnapshot[] = [];
   const listen = (event: AutoBeEvent) => {
     snapshots.push({
