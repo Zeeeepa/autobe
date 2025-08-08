@@ -48,9 +48,8 @@ export async function writeDocumentUntilReviewPassed<
 
   ctx.dispatch({
     type: "analyzeWrite",
-    files: {
-      ...pointer.value?.files,
-    },
+    filename: props.file.filename,
+    content: pointer.value.files[props.file.filename] || "",
     total: props.progress.total,
     completed: ++props.progress.completed,
     step: ctx.state().analyze?.step ?? 0,
@@ -62,9 +61,8 @@ export async function writeDocumentUntilReviewPassed<
 
   ctx.dispatch({
     type: "analyzeReview",
-    files: {
-      ...pointer.value.files,
-    },
+    filename: props.file.filename,
+    content: pointer.value.files[props.file.filename] || "",
     review: reviewResult.type === "accept" ? "accept" : reviewResult.value,
     total: props.progress.total,
     completed: props.progress.completed,

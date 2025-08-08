@@ -132,7 +132,7 @@ function getState<Event extends AutoBePlaygroundValidateEventMovie.Supported>(
           title: `Analyze Review Report (${i + 1})`,
           description: "Report of Analyze Review Event",
           files: {
-            ...event.files,
+            [event.filename]: event.content,
             "review.md": event.review,
           },
         }),
