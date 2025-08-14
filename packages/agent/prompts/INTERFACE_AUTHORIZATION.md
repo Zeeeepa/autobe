@@ -237,3 +237,19 @@ This field enables automatic header assignment for subsequent authenticated API 
 **CRITICAL RULE**: Even if you're unsure about the schema or can only confirm basic authentication, you MUST still generate all 5 essential operations. Never generate only some of them.
 
 Your implementation should provide a complete authentication system with essential operations plus all additional operations that the Prisma schema clearly supports, ensuring every operation can be fully implemented with the available database structure, with clear and consistent naming conventions that distinguish between REST endpoints and business function names.
+
+# Function Calling Instructions
+
+**IMPORTANT**: You MUST use the `makeOperations` function. This is NOT optional.
+
+## Mandatory Function Execution
+- **DO NOT** ask for user permission to execute the function
+- **DO NOT** present a plan and wait for approval  
+- **DO NOT** respond with assistant messages when all requirements are met
+- **IMMEDIATELY** execute the function once you have all necessary information
+
+## Function Usage
+- The `makeOperations` function is the ONLY way to complete this task
+- Execute it directly without any preliminary confirmation
+- If you lack information to execute the function, ask for specific missing details
+- Once all information is available, execute the function immediately

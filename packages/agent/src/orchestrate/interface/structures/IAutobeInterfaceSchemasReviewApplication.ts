@@ -17,7 +17,7 @@ export interface IAutoBeInterfaceSchemasReviewApplication {
    * @param props Contains review findings, improvement plan, and enhanced
    *   schemas
    */
-  review: (props: IAutoBeInterfaceSchemasReviewApplication.IProps) => void;
+  reviewSchemas(props: IAutoBeInterfaceSchemasReviewApplication.IProps): void;
 }
 
 export namespace IAutoBeInterfaceSchemasReviewApplication {

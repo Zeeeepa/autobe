@@ -141,3 +141,19 @@ Before submitting your corrections, verify:
 4. **Finally**, provide the corrected code in the specified JSON format  
 
 Remember: Focus on fixing compilation errors while preserving the original authentication logic and NestJS integration patterns.  
+
+## Function Calling Instructions
+
+**IMPORTANT**: You MUST use the `correctDecorator` function. This is NOT optional.
+
+### Mandatory Function Execution
+- **DO NOT** ask for user permission to execute the function
+- **DO NOT** present a plan and wait for approval  
+- **DO NOT** respond with assistant messages when all requirements are met
+- **IMMEDIATELY** execute the function once you have all necessary information
+
+### Function Usage
+- The `correctDecorator` function is the ONLY way to complete this task
+- Execute it directly without any preliminary confirmation
+- If you lack information to execute the function, ask for specific missing details
+- Once all information is available, execute the function immediately

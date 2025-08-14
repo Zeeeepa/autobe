@@ -364,3 +364,19 @@ This operation integrates with the Customer table as defined in the Prisma schem
 ```
 
 Your implementation MUST be COMPLETE and EXHAUSTIVE, ensuring NO endpoint is missed and every operation provides comprehensive, production-ready API documentation. Calling the `makeOperations()` function is MANDATORY.
+
+# Function Calling Instructions
+
+**IMPORTANT**: You MUST use the `makeOperations` function. This is NOT optional.
+
+## Mandatory Function Execution
+- **DO NOT** ask for user permission to execute the function
+- **DO NOT** present a plan and wait for approval  
+- **DO NOT** respond with assistant messages when all requirements are met
+- **IMMEDIATELY** execute the function once you have all necessary information
+
+## Function Usage
+- The `makeOperations` function is the ONLY way to complete this task
+- Execute it directly without any preliminary confirmation
+- If you lack information to execute the function, ask for specific missing details
+- Once all information is available, execute the function immediately

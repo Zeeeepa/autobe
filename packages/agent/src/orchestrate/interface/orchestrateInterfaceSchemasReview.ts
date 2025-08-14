@@ -112,7 +112,7 @@ function createController<Model extends ILlmSchema.Model>(props: {
     name: "Reviewer",
     application,
     execute: {
-      review: (input) => {
+      reviewSchemas: (input) => {
         props.pointer.value = input;
       },
     } satisfies IAutoBeInterfaceSchemasReviewApplication,
@@ -121,7 +121,7 @@ function createController<Model extends ILlmSchema.Model>(props: {
 const claude = (validate: Validator) =>
   typia.llm.application<IAutoBeInterfaceSchemasReviewApplication, "claude">({
     validate: {
-      review: validate,
+      reviewSchemas: validate,
     },
   });
 
@@ -129,7 +129,7 @@ const collection = {
   chatgpt: (validate: Validator) =>
     typia.llm.application<IAutoBeInterfaceSchemasReviewApplication, "chatgpt">({
       validate: {
-        review: validate,
+        reviewSchemas: validate,
       },
     }),
   claude,

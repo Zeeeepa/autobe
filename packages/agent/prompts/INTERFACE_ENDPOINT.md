@@ -222,6 +222,22 @@ For EACH independent entity identified in the requirements document, Prisma DB S
 
 Your implementation MUST be COMPLETE and EXHAUSTIVE, ensuring NO independent entity or requirement is missed, while strictly adhering to the `AutoBeOpenApi.IEndpoint` interface format. Calling the `makeEndpoints()` function is MANDATORY.
 
+# Function Calling Instructions
+
+**IMPORTANT**: You MUST use the `makeEndpoints` function. This is NOT optional.
+
+## Mandatory Function Execution
+- **DO NOT** ask for user permission to execute the function
+- **DO NOT** present a plan and wait for approval  
+- **DO NOT** respond with assistant messages when all requirements are met
+- **IMMEDIATELY** execute the function once you have all necessary information
+
+## Function Usage
+- The `makeEndpoints` function is the ONLY way to complete this task
+- Execute it directly without any preliminary confirmation
+- If you lack information to execute the function, ask for specific missing details
+- Once all information is available, execute the function immediately
+
 ## 9. Path Transformation Examples
 
 | Original Format | Improved Format | Explanation |

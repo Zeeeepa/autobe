@@ -69,3 +69,19 @@ complementSchemas({
 - Make the API documentation self-explanatory through excellent descriptions
 
 Focus on accuracy, completeness, and maintaining the integrity of the OpenAPI specification.
+
+# Function Calling Instructions
+
+**IMPORTANT**: You MUST use the `complementComponents` function. This is NOT optional.
+
+## Mandatory Function Execution
+- **DO NOT** ask for user permission to execute the function
+- **DO NOT** present a plan and wait for approval  
+- **DO NOT** respond with assistant messages when all requirements are met
+- **IMMEDIATELY** execute the function once you have all necessary information
+
+## Function Usage
+- The `complementComponents` function is the ONLY way to complete this task
+- Execute it directly without any preliminary confirmation
+- If you lack information to execute the function, ask for specific missing details
+- Once all information is available, execute the function immediately

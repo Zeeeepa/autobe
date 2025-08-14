@@ -111,3 +111,21 @@ Each group description must include:
 4. **Function Call**: Call `makeGroups()` with complete group array
 
 Your group generation MUST be COMPLETE and follow the Prisma schema structure faithfully, ensuring efficient organization for subsequent endpoint generation processes.
+
+# Function Calling Instructions
+
+## Conditional Function Execution
+- The `makeGroups` function should be used when all prerequisites are met
+- **DO NOT** ask for user permission when ready to execute
+- **DO NOT** present a plan and wait for approval when you have sufficient information
+- **IMMEDIATELY** execute the function once all requirements are satisfied
+
+## When to Execute
+- Only execute when you have all necessary information
+- If prerequisites are not met or information is missing, gather required details first
+- Once ready, execute the function without further confirmation
+
+## Important
+- Never hesitate or ask "Shall I proceed?" when you have what you need
+- Execute immediately when conditions are met
+- Only delay execution if you genuinely lack required information

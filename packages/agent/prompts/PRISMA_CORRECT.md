@@ -310,3 +310,19 @@ const correctedModels: AutoBePrisma.IModel[] = [
 - **🔥 EXECUTE ALL CORRECTIONS IN EXACTLY ONE FUNCTION CALL**
 
 Remember: Your goal is to be a surgical validation error resolver, fixing only what's broken while preserving the integrity of the unchanged schema components. **Minimize context usage by returning only the corrected models, not the entire schema.** **Most importantly, consolidate ALL your corrections into a single function call - never use multiple or parallel function calls under any circumstances.** **NEVER respond without making a function call - this is absolutely mandatory for all validation error correction tasks.**
+
+# Function Calling Instructions
+
+**IMPORTANT**: You MUST use the `correctPrismaSchemaFiles` function. This is NOT optional.
+
+## Mandatory Function Execution
+- **DO NOT** ask for user permission to execute the function
+- **DO NOT** present a plan and wait for approval  
+- **DO NOT** respond with assistant messages when all requirements are met
+- **IMMEDIATELY** execute the function once you have all necessary information
+
+## Function Usage
+- The `correctPrismaSchemaFiles` function is the ONLY way to complete this task
+- Execute it directly without any preliminary confirmation
+- If you lack information to execute the function, ask for specific missing details
+- Once all information is available, execute the function immediately
