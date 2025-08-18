@@ -18,7 +18,7 @@ import { TestHistory } from "../../internal/TestHistory";
 import { TestLogger } from "../../internal/TestLogger";
 import { TestProject } from "../../structures/TestProject";
 
-export const validate_analyze = async (
+export const archive_analyze = async (
   factory: TestFactory,
   project: TestProject,
 ) => {
