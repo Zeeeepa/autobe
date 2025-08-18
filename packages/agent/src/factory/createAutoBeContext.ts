@@ -1,5 +1,6 @@
 import {
   AgenticaJsonParseErrorEvent,
+  AgenticaResponseEvent,
   AgenticaValidateEvent,
   MicroAgentica,
   MicroAgenticaHistory,
@@ -82,6 +83,7 @@ export const createAutoBeContext = <Model extends ILlmSchema.Model>(props: {
       });
       const validates: AgenticaValidateEvent<Model>[] = [];
       const parseErrors: AgenticaJsonParseErrorEvent<Model>[] = [];
+      let response: AgenticaResponseEvent | null = null;
 
       agent.on("request", (event) => {
         if (next.enforceFunctionCall === true && event.body.tools)
@@ -97,6 +99,7 @@ export const createAutoBeContext = <Model extends ILlmSchema.Model>(props: {
           .catch(() => {});
       });
       agent.on("response", (event) => {
+        response = event;
         void props
           .dispatch({
             ...event,
@@ -137,6 +140,7 @@ export const createAutoBeContext = <Model extends ILlmSchema.Model>(props: {
               : null,
           validate: validates.at(-1),
           parse: parseErrors.at(-1),
+          response: JSON.stringify(await response!.join(), null, 2),
         });
         throw new Error(
           `Failed to function calling in the ${next.source} step`,

@@ -23,25 +23,29 @@ export namespace IAutoBeInterfaceComplementApplication {
     /**
      * TypeScript draft code for complement schema definitions.
      *
-     * This property contains TypeScript interface definitions for missing schema
-     * types that were referenced but not defined in the initial schema generation.
-     * Similar to the main schema draft, this serves as a preliminary TypeScript
-     * representation before converting to JSON Schema format.
+     * This property contains TypeScript interface definitions for missing
+     * schema types that were referenced but not defined in the initial schema
+     * generation. Similar to the main schema draft, this serves as a
+     * preliminary TypeScript representation before converting to JSON Schema
+     * format.
      *
-     * The draft helps ensure that complementary schemas maintain consistency with
-     * the existing type system and follow the same conventions as the primary schemas.
-     * 
+     * The draft helps ensure that complementary schemas maintain consistency
+     * with the existing type system and follow the same conventions as the
+     * primary schemas.
+     *
      * This draft typically includes:
+     *
      * - Missing entity interfaces referenced via $ref
      * - Nested object types used within other schemas
      * - Shared utility types or enumerations
      * - Any transitively referenced types
      *
-     * The final schemas in the `schemas` property should be validated against and
-     * derived from this TypeScript draft to ensure type safety and consistency
-     * across the entire API specification.
+     * The final schemas in the `schemas` property should be validated against
+     * and derived from this TypeScript draft to ensure type safety and
+     * consistency across the entire API specification.
      *
      * Example complement draft:
+     *
      * ```typescript
      * interface IUserProfile {
      *   id: string;
@@ -49,7 +53,7 @@ export namespace IAutoBeInterfaceComplementApplication {
      *   displayName: string;
      *   avatarUrl?: string;
      * }
-     * 
+     *
      * interface IAddress {
      *   street: string;
      *   city: string;
@@ -74,17 +78,35 @@ export namespace IAutoBeInterfaceComplementApplication {
      * Example structure:
      *
      * ```typescript
-     * {
-     *   "UserProfile": {
-     *     "type": "object",
-     *     "properties": {
-     *       "id": { "type": "string" },
-     *       "name": { "type": "string" },
-     *       "email": { "type": "string", "format": "email" }
-     *     },
-     *     "required": ["id", "name", "email"]
+     * [
+     *   {
+     *     key: "IUserProfile",
+     *     description: "User profile information",
+     *     value: {
+     *       type: "object",
+     *       properties: {
+     *         id: { type: "string" },
+     *         userId: { type: "string" },
+     *         displayName: { type: "string" },
+     *         avatarUrl: { type: "string", nullable: true }
+     *       },
+     *       required: ["id", "userId", "displayName"]
+     *     }
+     *   },
+     *   {
+     *     key: "IAddress",
+     *     description: "Physical address information",
+     *     value: {
+     *       type: "object",
+     *       properties: {
+     *         street: { type: "string" },
+     *         city: { type: "string" },
+     *         postalCode: { type: "string" }
+     *       },
+     *       required: ["street", "city", "postalCode"]
+     *     }
      *   }
-     * }
+     * ]
      * ```
      *
      * Each schema definition follows the JSON Schema specification and will be
@@ -92,6 +114,55 @@ export namespace IAutoBeInterfaceComplementApplication {
      * making them available for $ref references throughout the API
      * specification.
      */
-    schemas: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive>;
+    schemas: IComponentSchema[];
+  }
+
+  /**
+   * Component schema definition for OpenAPI specification.
+   * 
+   * Represents a single schema component in the OpenAPI document.
+   * Each component is a named schema that can be referenced throughout
+   * the API specification using $ref.
+   * 
+   * @example
+   * ```typescript
+   * {
+   *   key: "IUserProfile",
+   *   description: "User profile containing personal information",
+   *   value: {
+   *     type: "object",
+   *     properties: {
+   *       id: { type: "string", format: "uuid" },
+   *       displayName: { type: "string" }
+   *     },
+   *     required: ["id", "displayName"]
+   *   }
+   * }
+   * ```
+   */
+  export interface IComponentSchema {
+    /**
+     * Schema name used for referencing.
+     * 
+     * This key will be used in $ref paths throughout the OpenAPI document.
+     * Convention: Use PascalCase with 'I' prefix (e.g., "IUserProfile", "IAddress")
+     */
+    key: string;
+    
+    /**
+     * Human-readable description of the schema.
+     * 
+     * Should provide context about the schema's purpose and usage,
+     * especially for complementary types that support main entities.
+     */
+    description: string;
+    
+    /**
+     * JSON Schema definition.
+     * 
+     * The actual schema structure following JSON Schema Draft 7 specification,
+     * which defines the shape and validation rules for this component.
+     */
+    value: AutoBeOpenApi.IJsonSchema;
   }
 }

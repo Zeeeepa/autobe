@@ -5,7 +5,6 @@ import {
   ILlmSchema,
   OpenApiTypeChecker,
 } from "@samchon/openapi";
-import { OpenApiV3_1Emender } from "@samchon/openapi/lib/converters/OpenApiV3_1Emender";
 import { IPointer } from "tstl";
 import typia from "typia";
 
@@ -49,15 +48,17 @@ async function step<Model extends ILlmSchema.Model>(
       model: ctx.model,
       build: (next) => {
         pointer.value ??= {};
-        Object.assign(
-          pointer.value,
-          (OpenApiV3_1Emender.convertComponents({
-            schemas: next,
-          }).schemas ?? {}) as Record<
-            string,
-            AutoBeOpenApi.IJsonSchemaDescriptive
-          >,
-        );
+        const content: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive> =
+          Object.fromEntries(
+            next.map((tuple) => [
+              tuple.key,
+              {
+                ...tuple.value,
+                description: tuple.description,
+              },
+            ]),
+          );
+        Object.assign(pointer.value, content);
       },
     }),
     enforceFunctionCall: true,
@@ -118,7 +119,7 @@ const getMissed = (document: AutoBeOpenApi.IDocument): string[] => {
 function createController<Model extends ILlmSchema.Model>(props: {
   model: Model;
   build: (
-    schemas: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive>,
+    schemas: IAutoBeInterfaceComplementApplication.IComponentSchema[],
   ) => void;
 }): IAgenticaController.IClass<Model> {
   assertSchemaModel(props.model);

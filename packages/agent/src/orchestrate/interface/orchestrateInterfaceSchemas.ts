@@ -102,9 +102,18 @@ async function process<Model extends ILlmSchema.Model>(
       model: ctx.model,
       build: async (next) => {
         pointer.value ??= {};
-        Object.assign(pointer.value, next);
+        const content: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive> =
+          Object.fromEntries(
+            next.map((tuple) => [
+              tuple.key,
+              {
+                ...tuple.value,
+                description: tuple.description,
+              },
+            ]),
+          );
+        Object.assign(pointer.value, content);
       },
-      pointer,
     }),
     enforceFunctionCall: true,
     message: [
@@ -155,12 +164,8 @@ async function process<Model extends ILlmSchema.Model>(
 function createController<Model extends ILlmSchema.Model>(props: {
   model: Model;
   build: (
-    next: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive>,
+    next: IAutoBeInterfaceSchemaApplication.IComponentSchema[],
   ) => Promise<void>;
-  pointer: IPointer<Record<
-    string,
-    AutoBeOpenApi.IJsonSchemaDescriptive
-  > | null>;
 }): IAgenticaController.IClass<Model> {
   assertSchemaModel(props.model);
 

@@ -32,12 +32,13 @@ export namespace IAutoBeInterfaceSchemasReviewApplication {
     /**
      * Issues and problems found during schema analysis.
      *
-     * DO: Document only problems that need fixing.
-     * DO NOT: Include positive feedback, compliments, or confirmations
+     * DO: Document only problems that need fixing. DO NOT: Include positive
+     * feedback, compliments, or confirmations
      *
      * Focus exclusively on issues organized by severity:
      *
      * Severity levels:
+     *
      * - Security vulnerabilities (exposed passwords, missing auth boundaries)
      * - Missing required variants, incorrect type mappings
      * - Missing format specifications, incomplete relationships
@@ -68,6 +69,7 @@ export namespace IAutoBeInterfaceSchemasReviewApplication {
      * Final validated and enhanced schemas ready for production use.
      *
      * DO:
+     *
      * - Include valid OpenAPI schema definitions
      * - Include all entities that were in the original input
      * - Provide fixed versions if original schemas have issues
@@ -75,7 +77,7 @@ export namespace IAutoBeInterfaceSchemasReviewApplication {
      * - Include created variants if schemas are missing them
      *
      * DO NOT:
-     * - Return an empty object {} (this will delete all schemas)
+     *
      * - Return undefined or null
      * - Include explanations or excuses in schema descriptions
      * - Leave broken schemas unfixed
@@ -84,9 +86,56 @@ export namespace IAutoBeInterfaceSchemasReviewApplication {
      * entity names and context. This field becomes the final schemas used by
      * the system, so it must always contain complete, valid schemas.
      */
-    content: Record<
-      string,
-      AutoBeOpenApi.IJsonSchemaDescriptive<AutoBeOpenApi.IJsonSchema>
-    >;
+    content: IComponentSchema[];
+  }
+
+  /**
+   * Component schema definition for OpenAPI specification.
+   * 
+   * Represents a single schema component in the OpenAPI document.
+   * Each component is a named schema that can be referenced throughout
+   * the API specification using $ref.
+   * 
+   * @example
+   * ```typescript
+   * {
+   *   key: "IUser",
+   *   description: "User entity with enhanced security and validation",
+   *   value: {
+   *     type: "object",
+   *     properties: {
+   *       id: { type: "string", format: "uuid" },
+   *       email: { type: "string", format: "email" },
+   *       passwordHash: { type: "string", writeOnly: true }
+   *     },
+   *     required: ["id", "email"]
+   *   }
+   * }
+   * ```
+   */
+  export interface IComponentSchema {
+    /**
+     * Schema name used for referencing.
+     * 
+     * This key will be used in $ref paths throughout the OpenAPI document.
+     * Convention: Use PascalCase with 'I' prefix (e.g., "IUser", "IUser.IUpdate")
+     */
+    key: string;
+    
+    /**
+     * Human-readable description of the schema.
+     * 
+     * Should provide context about the schema's purpose and usage,
+     * including any security considerations or validation rules applied.
+     */
+    description: string;
+    
+    /**
+     * JSON Schema definition.
+     * 
+     * The actual schema structure following JSON Schema Draft 7 specification,
+     * which defines the shape and validation rules for this component.
+     */
+    value: AutoBeOpenApi.IJsonSchema;
   }
 }

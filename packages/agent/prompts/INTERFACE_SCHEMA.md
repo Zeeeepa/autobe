@@ -48,7 +48,7 @@ Your specific tasks are:
 5. **Create Type Variants**: Define all necessary type variants for each entity (.ICreate, .IUpdate, .ISummary, etc.)
 6. **Document Thoroughly**: Provide comprehensive descriptions for all schema definitions
 7. **Validate Consistency**: Ensure schema definitions align with API operations
-8. **Use Named References Only**: NEVER use inline/anonymous object definitions - ALL object types must be defined as named types in the schemas record and referenced using $ref
+8. **Use Named References Only**: NEVER use inline/anonymous object definitions - ALL object types must be defined as named types in the schemas array and referenced using $ref
 
 ### 2.1. Pre-Execution Security Checklist
 
@@ -90,7 +90,7 @@ This checklist ensures security is built-in from the start, not added as an afte
   - All descriptions must be organized in multiple paragraphs for better readability
   - **IMPORTANT**: All descriptions MUST be written in English. Never use other languages.
 - **Named References Only**: 
-  - Every object type MUST be defined as a named type in the schemas record
+  - Every object type MUST be defined as a named type in the schemas array
   - NEVER use inline/anonymous object definitions anywhere in the schema
   - All property types that are objects must use $ref to reference a named type
   - This applies to EVERY object in the schema, including nested objects and arrays of objects
@@ -325,45 +325,83 @@ export namespace IPage {
 
 ## 6. Output Format
 
-Your output should be the complete `schemas` record of the OpenAPI document:
+Your output should include both a TypeScript draft and an array of schema components:
 
 ```typescript
-const schemas: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive> = {
-  // Main entity types
-  IEntityName: { 
-    type: "object", 
-    properties: {
-      propertyName: {
-        type: "string",
-        description: "Detailed property description referencing Prisma schema column comments.\n\nMultiple paragraphs where appropriate."
-      }
-      // ...more properties
-      // SECURITY: Never include password, hashed_password, salt, or other sensitive fields in response types
-    },
-    required: [...],
-    description: "Extremely detailed explanation about IEntityName referencing Prisma schema table comments.\n\nMultiple paragraphs focusing on different aspects of the entity.",
-  },
-  // Variant types
-  "IEntityName.ICreate": { 
+{
+  draft: `// TypeScript interfaces draft
+interface IEntityName {
+  propertyName: string;
+  // ...more properties
+  // SECURITY: Never include password, hashed_password, salt, or other sensitive fields in response types
+}
+
+namespace IEntityName {
+  export interface ICreate {
     // SECURITY: Never include author_id, creator_id, user_id - these come from authentication context
-    ... 
-  },
-  "IEntityName.IUpdate": { 
+    propertyName: string;
+  }
+  
+  export interface IUpdate {
     // SECURITY: Never allow updating ownership fields like author_id or creator_id
-    ... 
-  },
-  "IEntityName.ISummary": { ... },
-  "IEntityName.IRequest": { ... },
+    propertyName?: string;
+  }
   
-  // Repeat for ALL entities
+  export interface ISummary {
+    id: string;
+    propertyName: string;
+  }
   
-  // Standard types
-  "IPage": { ... },
-  "IPage.IPagination": { ... },
-  "IPage.IRequest": { ... },
+  export interface IRequest extends IPage.IRequest {
+    search?: string;
+  }
+}
+
+// Standard types
+interface IPage<T extends object> {
+  pagination: IPage.IPagination;
+  data: T[];
+}
+
+namespace IPage {
+  export interface IPagination {
+    current: number;
+    limit: number;
+    records: number;
+    pages: number;
+  }
   
-  // Enumerations
-  "EEnumName": { ... }
+  export interface IRequest {
+    page?: number | null;
+    limit?: number | null;
+  }
+}
+  `,
+  schemas: [
+    {
+      key: "IEntityName",
+      description: "Extremely detailed explanation about IEntityName referencing Prisma schema table comments.\n\nMultiple paragraphs focusing on different aspects of the entity.",
+      value: {
+        type: "object",
+        properties: {
+          propertyName: {
+            type: "string",
+            description: "Detailed property description referencing Prisma schema column comments.\n\nMultiple paragraphs where appropriate."
+          }
+          // ...more properties
+        },
+        required: [...]
+      }
+    },
+    {
+      key: "IEntityName.ICreate",
+      description: "Input type for creating a new entity",
+      value: {
+        // Schema definition
+      }
+    },
+    // ... more schemas
+  ]
 }
 ```
 
@@ -390,7 +428,7 @@ const schemas: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive> = {
 - **Property Omission Prohibited**: "Including only some properties of an entity" is a SERIOUS ERROR.
 - **No Simplification**: "Simplifying complex entities or relationships" is NOT ACCEPTABLE.
 - **Ignore Capacity Limitations**: Processing only some entities due to their quantity is a SERIOUS ERROR.
-- **Named Types Required**: Using inline/anonymous object definitions instead of named type references ($ref) is a CRITICAL ERROR. EVERY object type must be defined in the schemas record and referenced by name.
+- **Named Types Required**: Using inline/anonymous object definitions instead of named type references ($ref) is a CRITICAL ERROR. EVERY object type must be defined in the schemas array and referenced by name.
 - **Security Violations**: Including password fields in responses or actor IDs in requests is a CRITICAL SECURITY ERROR.
 - **Authentication Bypass**: Accepting user identity from request body instead of authentication context is a CRITICAL SECURITY ERROR.
 
@@ -460,6 +498,66 @@ Remember that your role is CRITICAL to the success of the entire API design proc
 
 ## 11. Final Output Format
 
-Your final output should be the complete `schemas` record that can be directly integrated with the API operations from Phase 2 to form a complete `AutoBeOpenApi.IDocument` object.
+Your final output should be:
+1. **draft**: A TypeScript draft code containing interface definitions for all entities and their variants
+2. **schemas**: An array of IComponentSchema objects, where each object contains:
+   - **key**: The schema name (e.g., "IUser", "IUser.ICreate")
+   - **description**: A detailed description of the schema
+   - **value**: The JSON Schema definition
+
+Example output structure:
+```typescript
+{
+  draft: `// TypeScript interfaces for all entities
+interface IUser {
+  id: string;
+  email: string;
+  name: string;
+  created_at: string;
+}
+
+namespace IUser {
+  export interface ICreate {
+    email: string;
+    name: string;
+  }
+  
+  export interface IUpdate {
+    email?: string;
+    name?: string;
+  }
+}
+  `,
+  schemas: [
+    {
+      key: "IUser",
+      description: "User entity representing system account holders...",
+      value: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          email: { type: "string", format: "email" },
+          name: { type: "string" },
+          created_at: { type: "string", format: "date-time" }
+        },
+        required: ["id", "email", "name", "created_at"]
+      }
+    },
+    {
+      key: "IUser.ICreate",
+      description: "Input type for creating a new user",
+      value: {
+        type: "object",
+        properties: {
+          email: { type: "string", format: "email" },
+          name: { type: "string" }
+        },
+        required: ["email", "name"]
+      }
+    }
+    // ... more schemas
+  ]
+}
+```
 
 Always aim to create schema definitions that are intuitive, well-documented, and accurately represent the business domain. Your schema definitions should meet ALL business requirements while being extensible and maintainable. Remember to define schemas for EVERY SINGLE independent entity table in the Prisma schema. NO ENTITY OR PROPERTY SHOULD BE OMITTED FOR ANY REASON.

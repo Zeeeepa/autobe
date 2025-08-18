@@ -28,28 +28,32 @@ export namespace IAutoBeInterfaceSchemaApplication {
      * TypeScript draft code for schema definitions.
      *
      * This property contains TypeScript interface definitions that serve as a
-     * preliminary draft before generating the final JSON schema components.
-     * The draft allows for initial design and validation of the schema structure
-     * using TypeScript's type system before converting to OpenAPI/JSON Schema format.
+     * preliminary draft before generating the final JSON schema components. The
+     * draft allows for initial design and validation of the schema structure
+     * using TypeScript's type system before converting to OpenAPI/JSON Schema
+     * format.
      *
      * The draft typically includes:
+     *
      * - Entity interfaces matching the Prisma models
      * - Operation-specific variants (ICreate, IUpdate, etc.)
      * - Utility types and enumerations
      * - Type relationships and constraints
      *
      * This TypeScript draft serves as the foundation for the subsequent schema
-     * generation, ensuring type safety and consistency. The final schemas in the
-     * `schemas` property should be derived from and validated against this draft.
+     * generation, ensuring type safety and consistency. The final schemas in
+     * the `schemas` property should be derived from and validated against this
+     * draft.
      *
      * Example draft structure:
+     *
      * ```typescript
      * interface IUser {
      *   id: string;
      *   email: string;
      *   profile: IUserProfile;
      * }
-     * 
+     *
      * namespace IUser {
      *   interface ICreate extends Omit<IUser, "id"> {}
      *   interface IUpdate extends Partial<ICreate> {}
@@ -86,24 +90,78 @@ export namespace IAutoBeInterfaceSchemaApplication {
      * Example structure:
      *
      * ```typescript
-     * {
-     *   schemas: {
-     *     IUser: {
+     * [
+     *   {
+     *     key: "IUser",
+     *     description: "User entity representing system account holders...",
+     *     value: {
      *       type: "object",
      *       properties: {
      *         id: { type: "string", format: "uuid" },
      *         email: { type: "string", format: "email" },
      *         profile: { "$ref": "#/components/schemas/IUserProfile" }
      *       },
-     *       required: ["id", "email"],
-     *       description: "User entity representing system account holders..."
-     *     },
-     *     "IUser.ICreate": { ... },
-     *     // Additional schemas
+     *       required: ["id", "email"]
+     *     }
+     *   },
+     *   {
+     *     key: "IUser.ICreate",
+     *     description: "Input type for creating a new user",
+     *     value: { ... }
      *   }
-     * }
+     *   // Additional schemas
+     * ]
      * ```
      */
-    schemas: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive>;
+    schemas: IComponentSchema[];
+  }
+
+  /**
+   * Component schema definition for OpenAPI specification.
+   * 
+   * Represents a single schema component in the OpenAPI document.
+   * Each component is a named schema that can be referenced throughout
+   * the API specification using $ref.
+   * 
+   * @example
+   * ```typescript
+   * {
+   *   key: "IUser",
+   *   description: "User entity representing system account holders",
+   *   value: {
+   *     type: "object",
+   *     properties: {
+   *       id: { type: "string", format: "uuid" },
+   *       email: { type: "string", format: "email" }
+   *     },
+   *     required: ["id", "email"]
+   *   }
+   * }
+   * ```
+   */
+  export interface IComponentSchema {
+    /**
+     * Schema name used for referencing.
+     * 
+     * This key will be used in $ref paths throughout the OpenAPI document.
+     * Convention: Use PascalCase with 'I' prefix (e.g., "IUser", "IUser.ICreate")
+     */
+    key: string;
+    
+    /**
+     * Human-readable description of the schema.
+     * 
+     * Should provide context about the schema's purpose and usage,
+     * often derived from or referencing the original Prisma model comments.
+     */
+    description: string;
+    
+    /**
+     * JSON Schema definition.
+     * 
+     * The actual schema structure following JSON Schema Draft 7 specification,
+     * which defines the shape and validation rules for this component.
+     */
+    value: AutoBeOpenApi.IJsonSchema;
   }
 }

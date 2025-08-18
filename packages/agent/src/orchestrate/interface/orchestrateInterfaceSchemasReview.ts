@@ -48,19 +48,30 @@ export async function orchestrateInterfaceSchemasReview<
       return {};
     }
 
+    const content: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive> =
+      Object.fromEntries(
+        pointer.value.content.map((tuple) => [
+          tuple.key,
+          {
+            ...tuple.value,
+            description: tuple.description,
+          },
+        ]),
+      );
+
     ctx.dispatch({
       type: "interfaceSchemasReview",
       schemas: schemas,
       review: pointer.value.review,
       plan: pointer.value.plan,
-      content: pointer.value.content,
+      content,
       tokenUsage,
       step: ctx.state().analyze?.step ?? 0,
       total: progress.total,
       completed: ++progress.completed,
       created_at: new Date().toISOString(),
     } satisfies AutoBeInterfaceSchemasReviewEvent);
-    return pointer.value.content;
+    return content;
   } catch (error) {
     console.error("Error occurred during interface schemas review:", error);
     ++progress.completed;

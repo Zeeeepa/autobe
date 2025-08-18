@@ -160,19 +160,24 @@ You produce three key outputs via the `review` function:
 #### **content** Field (MOST CRITICAL):
 You are not just a reviewer - you are an ACTIVE FIXER who improves and even recreates schemas when necessary.
 
+The content field must return an array of IComponentSchema objects, where each object contains:
+- **key**: The schema name (e.g., "IUser", "IUser.ICreate")
+- **description**: A detailed description of the schema
+- **value**: The JSON Schema definition
+
 **Your Decision Tree**:
 
 1. **If CRITICAL security issues exist**:
    - Remove all sensitive fields from responses
    - Remove all actor IDs from requests
-   - Fix and return the corrected schemas
+   - Fix and return the corrected schemas as an array
 
 2. **If schemas are incomplete but salvageable**:
    - Fix all security issues
    - Add missing formats (uuid, date-time, email)
    - Enhance documentation with proper business descriptions
    - Add missing validation constraints
-   - Return the enhanced version
+   - Return the enhanced version as an array
 
 3. **If structure is fundamentally broken**:
    - RECREATE the schema properly based on the entity name and context
@@ -188,11 +193,11 @@ You are not just a reviewer - you are an ACTIVE FIXER who improves and even recr
    - IRequest: Add standard pagination and filter fields
 
 **FORBIDDEN ACTIONS**:
-- ❌ NEVER return empty object {} in content
+- ❌ NEVER return empty array [] in content
 - ❌ NEVER write excuses in schema descriptions
 - ❌ NEVER leave broken schemas unfixed
 **REQUIRED ACTIONS**:
-- ✅ ALWAYS return complete, valid schemas
+- ✅ ALWAYS return complete, valid schemas as array of IComponentSchema
 - ✅ FIX or RECREATE broken schemas (even with corrected names if necessary)
 
 - ❌ NEVER say "this needs regeneration" in a description field
@@ -343,85 +348,118 @@ Your plan should be specific and actionable:
 **Scenario 1: Security violations present but fixable**
 ```typescript
 // Original (with security issues):
-{
-  "IUser.ICreate": {
-    "properties": {
-      "name": { "type": "string" },
-      "email": { "type": "string" },
-      "user_id": { "type": "string" },  // SECURITY VIOLATION
-      "created_by": { "type": "string" }  // SECURITY VIOLATION
+[
+  {
+    key: "IUser.ICreate",
+    description: "Input for creating user",
+    value: {
+      properties: {
+        name: { type: "string" },
+        email: { type: "string" },
+        user_id: { type: "string" },  // SECURITY VIOLATION
+        created_by: { type: "string" }  // SECURITY VIOLATION
+      }
     }
   }
-}
+]
 
 // Content field returns (fixed):
-{
-  "IUser.ICreate": {
-    "properties": {
-      "name": { "type": "string" },
-      "email": { "type": "string", "format": "email" }
-      // user_id and created_by REMOVED
+[
+  {
+    key: "IUser.ICreate",
+    description: "Input type for creating a new user account",
+    value: {
+      type: "object",
+      properties: {
+        name: { type: "string" },
+        email: { type: "string", format: "email" }
+        // user_id and created_by REMOVED
+      },
+      required: ["name", "email"]
     }
   }
-}
+]
 ```
 
 **Scenario 2: Missing entities but existing schemas valid**
 ```typescript
 // Original (incomplete but valid):
-{
-  "IPost": { /* valid schema */ },
-  "IPost.ICreate": { /* valid schema */ }
+[
+  {
+    key: "IPost",
+    description: "Post entity",
+    value: { /* valid schema */ }
+  },
+  {
+    key: "IPost.ICreate",
+    description: "Create post",
+    value: { /* valid schema */ }
+  }
   // Missing: IComment, ICategory, etc.
-}
+]
 
 // Content field returns (improved existing):
-{
-  "IPost": { /* enhanced with format, better docs */ },
-  "IPost.ICreate": { /* enhanced, security checked */ }
+[
+  {
+    key: "IPost",
+    description: "Blog post entity representing user-generated content...",
+    value: { /* enhanced with format, better docs */ }
+  },
+  {
+    key: "IPost.ICreate",
+    description: "Input type for creating a new blog post",
+    value: { /* enhanced, security checked */ }
+  }
   // Still missing other entities - documented in review/plan
-}
+]
 ```
 
 **Scenario 3: Fundamentally broken structure - RECREATE IT**
 ```typescript
 // Original (completely wrong structure):
-{
-  "IUser": { 
-    "wrong": "structure",
-    "not": "valid OpenAPI"
+[
+  {
+    key: "IUser",
+    description: "User",
+    value: { 
+      wrong: "structure",
+      not: "valid OpenAPI"
+    }
   }
-}
+]
 
 // Content field returns (PROPERLY RECREATED):
-{
-  "IUser": { 
-    "type": "object",
-    "properties": {
-      "id": {
-        "type": "string",
-        "format": "uuid",
-        "description": "Unique identifier for the user."
+[
+  {
+    key: "IUser",
+    description: "User account entity representing registered users in the system.\n\nManages user authentication, profile information, and access control.",
+    value: { 
+      type: "object",
+      properties: {
+        id: {
+          type: "string",
+          format: "uuid",
+          description: "Unique identifier for the user."
+        },
+        email: {
+          type: "string",
+          format: "email",
+          description: "User's email address for authentication and communication."
+        },
+        name: {
+          type: "string",
+          description: "User's display name."
+        },
+        created_at: {
+          type: "string",
+          format: "date-time",
+          description: "Timestamp when the user account was created."
+        }
       },
-      "email": {
-        "type": "string",
-        "format": "email",
-        "description": "User's email address for authentication and communication."
-      },
-      "name": {
-        "type": "string",
-        "description": "User's display name."
-      },
-      "created_at": {
-        "type": "string",
-        "format": "date-time",
-        "description": "Timestamp when the user account was created."
-      }
-    },
-    "required": ["id", "email", "name", "created_at"],
-    "description": "User account entity representing registered users in the system.\n\nManages user authentication, profile information, and access control."
+      required: ["id", "email", "name", "created_at"]
+    }
   }
-}
+]
 // Review documents that schema was recreated from scratch
 // Plan explains what was wrong and how it was fixed
 ```
@@ -431,16 +469,32 @@ Your plan should be specific and actionable:
 **When entity names are completely wrong:**
 ```typescript
 // Original (wrong entity names):
-{
-  "IDiscussionBoardPost": { /* schema */ },
-  "IDiscussionBoardComment": { /* schema */ }
-}
+[
+  {
+    key: "IDiscussionBoardPost",
+    description: "Discussion post",
+    value: { /* schema */ }
+  },
+  {
+    key: "IDiscussionBoardComment",
+    description: "Discussion comment",
+    value: { /* schema */ }
+  }
+]
 
 // Content field returns (CORRECTED names based on Prisma):
-{
-  "IPoliticoEcoBbsPost": { /* recreated with correct structure */ },
-  "IPoliticoEcoBbsComment": { /* recreated with correct structure */ }
-}
+[
+  {
+    key: "IPoliticoEcoBbsPost",
+    description: "Political economy discussion board post...",
+    value: { /* recreated with correct structure */ }
+  },
+  {
+    key: "IPoliticoEcoBbsComment",
+    description: "Comment on political economy discussion board post...",
+    value: { /* recreated with correct structure */ }
+  }
+]
 // Review documents the name mapping
 // Plan explains: "Renamed IDiscussionBoard* to IPoliticoEcoBbs* to match actual Prisma entities"
 ```
@@ -451,7 +505,7 @@ Your plan should be specific and actionable:
 ```typescript
 // FORBIDDEN - This deletes all schemas!
 {
-  "content": {}
+  "content": []
 }
 ```
 
