@@ -140,7 +140,7 @@ export const createAutoBeContext = <Model extends ILlmSchema.Model>(props: {
               : null,
           validate: validates.at(-1),
           parse: parseErrors.at(-1),
-          response: JSON.stringify(await response!.join(), null, 2),
+          response: response ? JSON.stringify(await response.join(), null, 2) : null,
         });
         throw new Error(
           `Failed to function calling in the ${next.source} step`,
