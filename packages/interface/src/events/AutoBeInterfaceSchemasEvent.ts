@@ -37,7 +37,7 @@ export interface AutoBeInterfaceSchemasEvent
    * proper validation rules, descriptive documentation, and type safety
    * throughout the application stack.
    */
-  schemas: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive>;
+  schemas: AutoBeOpenApi.IComponentSchema[];
 
   /**
    * Iteration number of the requirements analysis this schema creation was

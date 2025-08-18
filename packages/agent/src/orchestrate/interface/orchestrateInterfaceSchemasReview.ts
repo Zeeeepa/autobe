@@ -2,6 +2,7 @@ import { IAgenticaController } from "@agentica/core";
 import {
   AutoBeInterfaceSchemasReviewEvent,
   AutoBeOpenApi,
+  AutoBeProgressEventBase,
 } from "@autobe/interface";
 import { ILlmApplication, ILlmSchema } from "@samchon/openapi";
 import { IPointer } from "tstl";
@@ -16,12 +17,9 @@ export async function orchestrateInterfaceSchemasReview<
 >(
   ctx: AutoBeContext<Model>,
   operations: AutoBeOpenApi.IOperation[],
-  schemas: Record<
-    string,
-    AutoBeOpenApi.IJsonSchemaDescriptive<AutoBeOpenApi.IJsonSchema>
-  >,
-  progress: { total: number; completed: number },
-): Promise<Record<string, AutoBeOpenApi.IJsonSchemaDescriptive>> {
+  schemas: AutoBeOpenApi.IComponentSchema[],
+  progress: AutoBeProgressEventBase,
+): Promise<AutoBeOpenApi.IComponentSchema[]> {
   try {
     const pointer: IPointer<IAutoBeInterfaceSchemasReviewApplication.IProps | null> =
       {
@@ -45,20 +43,10 @@ export async function orchestrateInterfaceSchemasReview<
     if (pointer.value === null) {
       console.error("Failed to extract review information.");
       ++progress.completed;
-      return {};
+      return [];
     }
 
-    const content: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive> =
-      Object.fromEntries(
-        pointer.value.content.map((tuple) => [
-          tuple.key,
-          {
-            ...tuple.value,
-            description: tuple.description,
-          },
-        ]),
-      );
-
+    const content: AutoBeOpenApi.IComponentSchema[] = pointer.value.content;
     ctx.dispatch({
       type: "interfaceSchemasReview",
       schemas: schemas,
@@ -75,17 +63,14 @@ export async function orchestrateInterfaceSchemasReview<
   } catch (error) {
     console.error("Error occurred during interface schemas review:", error);
     ++progress.completed;
-    return {};
+    return [];
   }
 }
 
 function createController<Model extends ILlmSchema.Model>(props: {
   model: Model;
   pointer: IPointer<IAutoBeInterfaceSchemasReviewApplication.IProps | null>;
-  schemas: Record<
-    string,
-    AutoBeOpenApi.IJsonSchemaDescriptive<AutoBeOpenApi.IJsonSchema>
-  >;
+  schemas: AutoBeOpenApi.IComponentSchema[];
 }): IAgenticaController.IClass<Model> {
   const application: ILlmApplication<Model> = collection[
     props.model === "chatgpt" ? "chatgpt" : "claude"

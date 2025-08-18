@@ -887,9 +887,15 @@ export namespace AutoBeOpenApi {
    */
   export interface IComponents {
     /**
-     * An object to hold reusable DTO schemas.
+     * An array of reusable DTO schemas.
      *
-     * In other words, a collection of named JSON schemas.
+     * Stores named JSON schemas in an array format instead of a Record object.
+     * Each schema is stored with its key (name) and value (schema definition)
+     * in an IComponentSchema object.
+     *
+     * This array-based structure allows AI function calling to more accurately
+     * and safely generate type definitions by explicitly providing key-value
+     * pairs rather than relying on dynamic object key generation.
      *
      * IMPORTANT: For each schema in this collection:
      *
@@ -905,10 +911,68 @@ export namespace AutoBeOpenApi {
      *    understand the purpose, functionality, and constraints of each type
      *    and property without needing to reference other documentation
      */
-    schemas: Record<string, IJsonSchemaDescriptive>;
+    schemas: IComponentSchema[];
 
     /** Whether includes `Authorization` header or not. */
     authorization: IAuthorization[];
+  }
+
+  /**
+   * Component schema definition with key-value structure.
+   *
+   * Represents a named schema in the components section, storing both the
+   * schema name (key) and its definition (value) explicitly. This structure
+   * replaces the traditional Record<string, IJsonSchema> approach to provide
+   * better type safety and more accurate AI generation capabilities.
+   */
+  export interface IComponentSchema {
+    /**
+     * The schema name identifier.
+     *
+     * This key is used to reference the schema from other parts of the API
+     * specification. In OpenAPI, this would form part of the $ref path:
+     * `#/components/schemas/{key}`
+     *
+     * Naming conventions:
+     *
+     * - Main entity types: `IEntityName` (e.g., `IShoppingSale`)
+     * - Operation types: `IEntityName.IOperation` (e.g., `IShoppingSale.ICreate`)
+     * - View types: `IEntityName.ISummary`, `IEntityName.IInvert`
+     * - Container types: `IPageIEntityName`
+     */
+    key: string;
+
+    /**
+     * Brief description of what this schema represents.
+     *
+     * CRITICAL INSTRUCTIONS FOR OPTIMAL AI GENERATION:
+     *
+     * 1. ALWAYS refer to and incorporate the description comments from the
+     *    corresponding Prisma DB schema tables. The descriptions should match
+     *    the style, level of detail, and terminology used in the Prisma
+     *    schema.
+     * 2. While this is a brief overview, it should still be clear and informative.
+     *    More detailed descriptions following the multiple-paragraph format
+     *    should be included within the schema's value definition itself.
+     * 3. This description should succinctly explain:
+     *
+     *    - What entity or concept this schema represents
+     *    - Its primary purpose in the API
+     *    - Its relationship to the database model
+     * 4. For schemas representing database entities, ensure the description
+     *    reflects the corresponding table description in the Prisma DB schema
+     *
+     * > MUST be written in English. Never use other languages.
+     */
+    description: string;
+
+    /**
+     * The actual schema definition.
+     *
+     * Contains the complete JSON Schema specification for this component,
+     * including all properties, types, and constraints.
+     */
+    value: IJsonSchema;
   }
 
   /**
@@ -931,7 +995,8 @@ export namespace AutoBeOpenApi {
     | IJsonSchema.IArray
     | IJsonSchema.IObject
     | IJsonSchema.IReference
-    | IJsonSchema.IOneOf;
+    | IJsonSchema.IOneOf
+    | IJsonSchema.INull;
   export namespace IJsonSchema {
     /** Constant value type. */
     export interface IConstant {
@@ -1087,18 +1152,24 @@ export namespace AutoBeOpenApi {
       /**
        * Properties of the object.
        *
-       * The `properties` means a list of key-value pairs of the object's
-       * regular properties. The key is the name of the regular property, and
-       * the value is the type schema info.
+       * An array of property definitions for the object, where each property is
+       * stored with its key (name), value (schema), description, and required
+       * status in an IProperty object.
        *
-       * IMPORTANT: Each property in this object MUST have a detailed
-       * description that references and aligns with the description comments
-       * from the corresponding Prisma DB schema column.
+       * This array-based structure replaces the traditional Record<string,
+       * IJsonSchema> approach and eliminates the separate 'required' array. It
+       * provides better type safety and more accurate AI generation
+       * capabilities by explicitly defining each property's characteristics in
+       * a single object.
        *
-       * If you need additional properties that is represented by dynamic key,
+       * IMPORTANT: Each property in this array MUST have a detailed description
+       * that references and aligns with the description comments from the
+       * corresponding Prisma DB schema column.
+       *
+       * If you need additional properties that are represented by dynamic keys,
        * you can use the {@link additionalProperties} instead.
        */
-      properties: Record<string, IJsonSchemaDescriptive>;
+      properties: IProperty[];
 
       /**
        * Additional properties' info.
@@ -1114,42 +1185,81 @@ export namespace AutoBeOpenApi {
        * - `IJsonSchema`: `Record<string, T>`
        */
       additionalProperties?: false | IJsonSchema;
+    }
+
+    /**
+     * Property definition for object schemas.
+     *
+     * Represents a single property within an object schema, combining the
+     * property name, schema definition, description, and required status into a
+     * single structure. This replaces the traditional approach of separate
+     * 'properties' and 'required' fields in JSON Schema.
+     */
+    export interface IProperty {
+      /**
+       * Property name identifier.
+       *
+       * The name of the property as it appears in the object. Must follow the
+       * naming conventions established in the Prisma schema.
+       */
+      key: string;
 
       /**
-       * List of key values of the required properties.
+       * Detailed description of the property.
        *
-       * The `required` means a list of the key values of the required
-       * {@link properties}. If some property key is not listed in the `required`
-       * list, it means that property is optional. Otherwise some property key
-       * exists in the `required` list, it means that the property must be
-       * filled.
+       * CRITICAL INSTRUCTIONS FOR OPTIMAL AI GENERATION:
        *
-       * Below is an example of the {@link properties} and `required`.
+       * 1. ALWAYS refer to and incorporate the description comments from the
+       *    corresponding Prisma DB schema tables and columns. The descriptions
+       *    should match the style, level of detail, and terminology used in the
+       *    Prisma schema.
+       * 2. ALL descriptions MUST be organized into MULTIPLE PARAGRAPHS separated
+       *    by line breaks. Single-paragraph descriptions should be avoided.
+       * 3. Descriptions should comprehensively cover:
        *
-       * ```typescript
-       * interface SomeObject {
-       *   id: string;
-       *   email: string;
-       *   name?: string;
-       * }
-       * ```
+       *    - The purpose and business meaning of the type or property
+       *    - Relationships to other entities
+       *    - Validation rules, constraints, and edge cases
+       *    - Usage context and examples when helpful
+       * 4. For each property, ensure its description reflects the corresponding
+       *    column description in the Prisma DB schema, maintaining the same
+       *    level of detail and terminology
+       * 5. Descriptions should be so detailed and clear that anyone reading them
+       *    can fully understand the type or property without needing to
+       *    reference any other documentation
        *
-       * As you can see, `id` and `email` {@link properties} are {@link required},
-       * so that they are listed in the `required` list.
+       * The description MUST be organized into MULTIPLE PARAGRAPHS (separated
+       * by line breaks) based on different aspects of the property:
        *
-       * ```json
-       * {
-       *   "type": "object",
-       *   "properties": {
-       *     "id": { "type": "string" },
-       *     "email": { "type": "string" },
-       *     "name": { "type": "string" }
-       *   },
-       *   "required": ["id", "email"]
-       * }
-       * ```
+       * - The purpose and business meaning of the property
+       * - Relationships to other entities in the system
+       * - Validation rules, constraints, and edge cases
+       * - Usage context and examples when helpful
+       *
+       * This structured approach improves readability and helps readers better
+       * understand the property's various characteristics and use cases.
+       *
+       * > MUST be written in English. Never use other languages.
        */
-      required: string[];
+      description: string;
+
+      /**
+       * The property's type schema.
+       *
+       * Defines the data type and constraints for this property value.
+       */
+      value: IJsonSchema;
+
+      /**
+       * Whether this property is required.
+       *
+       * If true, the property must be present in valid object instances. If
+       * false, the property is optional and may be omitted.
+       *
+       * This eliminates the need for a separate 'required' array in the object
+       * schema definition.
+       */
+      required: boolean;
     }
 
     /** Reference type directing named schema. */
@@ -1210,67 +1320,6 @@ export namespace AutoBeOpenApi {
       type: Type;
     }
   }
-
-  /**
-   * Descriptive type schema info.
-   *
-   * `AutoBeOpenApi.IJsonSchemaDescriptive` is a type schema info of the OpenAPI
-   * Generative, but it has a `description` property which is required.
-   *
-   * `AutoBeOpenApi.IJsonSchemaDescriptive` basically follows the JSON schema
-   * specification of OpenAPI v3.1, but a little bit shrunk to remove ambiguous
-   * and duplicated expressions of OpenAPI v3.1 for the convenience, clarity,
-   * and AI generation.
-   *
-   * CRITICAL INSTRUCTIONS FOR OPTIMAL AI GENERATION:
-   *
-   * When creating descriptions for components, types, and properties:
-   *
-   * 1. ALWAYS refer to and incorporate the description comments from the
-   *    corresponding Prisma DB schema tables and columns. The descriptions
-   *    should match the style, level of detail, and terminology used in the
-   *    Prisma schema.
-   * 2. ALL descriptions MUST be organized into MULTIPLE PARAGRAPHS separated by
-   *    line breaks. Single-paragraph descriptions should be avoided.
-   * 3. Descriptions should comprehensively cover:
-   *
-   *    - The purpose and business meaning of the type or property
-   *    - Relationships to other entities
-   *    - Validation rules, constraints, and edge cases
-   *    - Usage context and examples when helpful
-   * 4. For each property of an object type, ensure its description reflects the
-   *    corresponding column description in the Prisma DB schema, maintaining
-   *    the same level of detail and terminology
-   * 5. Descriptions should be so detailed and clear that anyone reading them can
-   *    fully understand the type or property without needing to reference any
-   *    other documentation
-   */
-  export type IJsonSchemaDescriptive<Schema extends IJsonSchema = IJsonSchema> =
-    Omit<Schema, "description"> & {
-      /**
-       * Description about the type.
-       *
-       * CRITICAL: This description MUST be extensively detailed and MUST
-       * reference and align with the description comments from the
-       * corresponding Prisma DB schema tables and columns.
-       *
-       * The description MUST be organized into MULTIPLE PARAGRAPHS (separated
-       * by line breaks) based on different aspects of the type:
-       *
-       * - The purpose and business meaning of the type
-       * - Relationships to other entities in the system
-       * - Validation rules, constraints, and edge cases
-       * - Usage context and examples when helpful
-       *
-       * This structured approach improves readability and helps readers better
-       * understand the type's various characteristics and use cases. The
-       * description should be so comprehensive that anyone reading it can fully
-       * understand the type without needing to reference other documentation.
-       *
-       * > MUST be written in English. Never use other languages.
-       */
-      description: string;
-    };
 
   /* -----------------------------------------------------------
     BACKGROUNDS

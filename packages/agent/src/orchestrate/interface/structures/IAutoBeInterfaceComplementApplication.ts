@@ -88,10 +88,10 @@ export namespace IAutoBeInterfaceComplementApplication {
      *         id: { type: "string" },
      *         userId: { type: "string" },
      *         displayName: { type: "string" },
-     *         avatarUrl: { type: "string", nullable: true }
+     *         avatarUrl: { type: "string", nullable: true },
      *       },
-     *       required: ["id", "userId", "displayName"]
-     *     }
+     *       required: ["id", "userId", "displayName"],
+     *     },
      *   },
      *   {
      *     key: "IAddress",
@@ -101,12 +101,12 @@ export namespace IAutoBeInterfaceComplementApplication {
      *       properties: {
      *         street: { type: "string" },
      *         city: { type: "string" },
-     *         postalCode: { type: "string" }
+     *         postalCode: { type: "string" },
      *       },
-     *       required: ["street", "city", "postalCode"]
-     *     }
-     *   }
-     * ]
+     *       required: ["street", "city", "postalCode"],
+     *     },
+     *   },
+     * ];
      * ```
      *
      * Each schema definition follows the JSON Schema specification and will be
@@ -114,55 +114,6 @@ export namespace IAutoBeInterfaceComplementApplication {
      * making them available for $ref references throughout the API
      * specification.
      */
-    schemas: IComponentSchema[];
-  }
-
-  /**
-   * Component schema definition for OpenAPI specification.
-   * 
-   * Represents a single schema component in the OpenAPI document.
-   * Each component is a named schema that can be referenced throughout
-   * the API specification using $ref.
-   * 
-   * @example
-   * ```typescript
-   * {
-   *   key: "IUserProfile",
-   *   description: "User profile containing personal information",
-   *   value: {
-   *     type: "object",
-   *     properties: {
-   *       id: { type: "string", format: "uuid" },
-   *       displayName: { type: "string" }
-   *     },
-   *     required: ["id", "displayName"]
-   *   }
-   * }
-   * ```
-   */
-  export interface IComponentSchema {
-    /**
-     * Schema name used for referencing.
-     * 
-     * This key will be used in $ref paths throughout the OpenAPI document.
-     * Convention: Use PascalCase with 'I' prefix (e.g., "IUserProfile", "IAddress")
-     */
-    key: string;
-    
-    /**
-     * Human-readable description of the schema.
-     * 
-     * Should provide context about the schema's purpose and usage,
-     * especially for complementary types that support main entities.
-     */
-    description: string;
-    
-    /**
-     * JSON Schema definition.
-     * 
-     * The actual schema structure following JSON Schema Draft 7 specification,
-     * which defines the shape and validation rules for this component.
-     */
-    value: AutoBeOpenApi.IJsonSchema;
+    schemas: AutoBeOpenApi.IComponentSchema[];
   }
 }

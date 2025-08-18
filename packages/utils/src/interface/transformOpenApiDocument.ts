@@ -1,6 +1,8 @@
 import { AutoBeOpenApi } from "@autobe/interface";
 import { OpenApi, OpenApiV3_1 } from "@samchon/openapi";
 
+import { transformOpenApiSchema } from "./transformOpenApiSchema";
+
 export function transformOpenApiDocument(
   document: AutoBeOpenApi.IDocument,
 ): OpenApi.IDocument {
@@ -13,7 +15,7 @@ export function transformOpenApiDocument(
       parameters: op.parameters.map((p) => ({
         name: p.name,
         in: "path",
-        schema: p.schema,
+        schema: transformOpenApiSchema(p.schema),
         description: p.description,
         required: true,
       })),
@@ -46,9 +48,20 @@ export function transformOpenApiDocument(
         : undefined,
     };
   }
+  const components: OpenApi.IComponents = {
+    schemas: Object.fromEntries(
+      document.components.schemas.map((s) => [
+        s.key,
+        {
+          ...transformOpenApiSchema(s.value),
+          description: s.description,
+        },
+      ]),
+    ),
+  };
   return OpenApi.convert({
     openapi: "3.1.0",
     paths,
-    components: document.components,
+    components,
   } as OpenApiV3_1.IDocument);
 }

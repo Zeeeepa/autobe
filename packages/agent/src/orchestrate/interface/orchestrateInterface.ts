@@ -5,6 +5,7 @@ import {
   AutoBeInterfaceHistory,
   AutoBeOpenApi,
 } from "@autobe/interface";
+import { mergeOpenApiComponentSchemas } from "@autobe/utils";
 import { ILlmSchema } from "@samchon/openapi";
 import { v4 } from "uuid";
 
@@ -69,10 +70,10 @@ export const orchestrateInterface =
         schemas: await orchestrateInterfaceSchemas(ctx, operations),
       },
     };
-    document.components.schemas = await orchestrateInterfaceComplement(
-      ctx,
-      document,
-    );
+    document.components.schemas = mergeOpenApiComponentSchemas([
+      ...document.components.schemas,
+      ...(await orchestrateInterfaceComplement(ctx, document)),
+    ]);
 
     // DO COMPILE
     return ctx.dispatch({

@@ -120,32 +120,32 @@ const document: AutoBeOpenApi.IDocument = {
     },
   ],
   components: {
-    schemas: {
-      IShoppingCustomer: {
-        type: "object",
-        properties: {},
-        required: [],
-        ...{
-          description: "Information of shopping customer.",
+    schemas: [
+      {
+        key: "IShoppingCustomer",
+        value: {
+          type: "object",
+          properties: [],
         },
-      } satisfies AutoBeOpenApi.IJsonSchema.IObject as AutoBeOpenApi.IJsonSchemaDescriptive<AutoBeOpenApi.IJsonSchema.IObject>,
-      "IShoppingSale.ICreate": {
-        type: "object",
-        properties: {},
-        required: [],
-        ...{
-          description: "Create information of shopping sale.",
+        description: "Information of shopping customer.",
+      },
+      {
+        key: "IShoppingSale.ICreate",
+        value: {
+          type: "object",
+          properties: [],
         },
-      } satisfies AutoBeOpenApi.IJsonSchema.IObject as AutoBeOpenApi.IJsonSchemaDescriptive<AutoBeOpenApi.IJsonSchema.IObject>,
-      IShoppingSale: {
-        type: "object",
-        properties: {},
-        required: [],
-        ...{
-          description: "Information of shopping sale.",
+        description: "Create information of shopping sale.",
+      },
+      {
+        key: "IShoppingSale",
+        value: {
+          type: "object",
+          properties: [],
         },
-      } satisfies AutoBeOpenApi.IJsonSchema.IObject as AutoBeOpenApi.IJsonSchemaDescriptive<AutoBeOpenApi.IJsonSchema.IObject>,
-    },
+        description: "Information of shopping sale.",
+      },
+    ],
     authorization: [
       {
         name: "customer",

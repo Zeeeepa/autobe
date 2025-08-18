@@ -50,7 +50,7 @@ export interface AutoBeInterfaceComplementEvent
    * API specification are properly defined, enabling successful code generation
    * and maintaining type safety across the entire application.
    */
-  schemas: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive>;
+  schemas: AutoBeOpenApi.IComponentSchema[];
 
   /**
    * Iteration number of the requirements analysis this API complement was

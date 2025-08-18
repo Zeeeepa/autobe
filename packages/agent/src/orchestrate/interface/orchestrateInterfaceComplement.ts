@@ -1,10 +1,10 @@
 import { IAgenticaController } from "@agentica/core";
 import { AutoBeOpenApi } from "@autobe/interface";
 import {
-  ILlmApplication,
-  ILlmSchema,
-  OpenApiTypeChecker,
-} from "@samchon/openapi";
+  AutoBeOpenApiTypeChecker,
+  mergeOpenApiComponentSchemas,
+} from "@autobe/utils";
+import { ILlmApplication, ILlmSchema } from "@samchon/openapi";
 import { IPointer } from "tstl";
 import typia from "typia";
 
@@ -17,7 +17,7 @@ export function orchestrateInterfaceComplement<Model extends ILlmSchema.Model>(
   ctx: AutoBeContext<Model>,
   document: AutoBeOpenApi.IDocument,
   life: number = 8,
-): Promise<Record<string, AutoBeOpenApi.IJsonSchemaDescriptive>> {
+): Promise<AutoBeOpenApi.IComponentSchema[]> {
   return step(ctx, document, life);
 }
 
@@ -25,16 +25,13 @@ async function step<Model extends ILlmSchema.Model>(
   ctx: AutoBeContext<Model>,
   document: AutoBeOpenApi.IDocument,
   retry: number,
-): Promise<Record<string, AutoBeOpenApi.IJsonSchemaDescriptive>> {
+): Promise<AutoBeOpenApi.IComponentSchema[]> {
   const missed: string[] = getMissed(document);
   if (missed.length === 0 || retry <= 0) {
     return document.components.schemas;
   }
 
-  const pointer: IPointer<Record<
-    string,
-    AutoBeOpenApi.IJsonSchemaDescriptive
-  > | null> = {
+  const pointer: IPointer<AutoBeOpenApi.IComponentSchema[] | null> = {
     value: null,
   };
   const { tokenUsage } = await ctx.conversate({
@@ -47,18 +44,12 @@ async function step<Model extends ILlmSchema.Model>(
     controller: createController({
       model: ctx.model,
       build: (next) => {
-        pointer.value ??= {};
-        const content: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive> =
-          Object.fromEntries(
-            next.map((tuple) => [
-              tuple.key,
-              {
-                ...tuple.value,
-                description: tuple.description,
-              },
-            ]),
-          );
-        Object.assign(pointer.value, content);
+        if (pointer.value === null) pointer.value = next;
+        else
+          pointer.value = mergeOpenApiComponentSchemas([
+            ...pointer.value,
+            ...next,
+          ]);
       },
     }),
     enforceFunctionCall: true,
@@ -78,10 +69,11 @@ async function step<Model extends ILlmSchema.Model>(
     created_at: new Date().toISOString(),
   });
 
-  const newSchemas: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive> = {
-    ...pointer.value,
-    ...document.components.schemas,
-  };
+  const newSchemas: AutoBeOpenApi.IComponentSchema[] =
+    mergeOpenApiComponentSchemas([
+      ...pointer.value,
+      ...document.components.schemas,
+    ]);
   return step(
     ctx,
     {
@@ -98,18 +90,19 @@ async function step<Model extends ILlmSchema.Model>(
 const getMissed = (document: AutoBeOpenApi.IDocument): string[] => {
   const missed: Set<string> = new Set();
   const check = (name: string) => {
-    if (document.components.schemas[name] === undefined) missed.add(name);
+    if (document.components.schemas.find((t) => t.key === name) === undefined)
+      missed.add(name);
   };
   for (const op of document.operations) {
     if (op.requestBody !== null) check(op.requestBody.typeName);
     if (op.responseBody !== null) check(op.responseBody.typeName);
   }
-  for (const value of Object.values(document.components.schemas))
-    OpenApiTypeChecker.visit({
+  for (const it of document.components.schemas)
+    AutoBeOpenApiTypeChecker.visit({
       components: document.components,
-      schema: value,
+      schema: it.value,
       closure: (next) => {
-        if (OpenApiTypeChecker.isReference(next))
+        if (AutoBeOpenApiTypeChecker.isReference(next))
           check(next.$ref.split("/").pop()!);
       },
     });
@@ -118,9 +111,7 @@ const getMissed = (document: AutoBeOpenApi.IDocument): string[] => {
 
 function createController<Model extends ILlmSchema.Model>(props: {
   model: Model;
-  build: (
-    schemas: IAutoBeInterfaceComplementApplication.IComponentSchema[],
-  ) => void;
+  build: (schemas: AutoBeOpenApi.IComponentSchema[]) => void;
 }): IAgenticaController.IClass<Model> {
   assertSchemaModel(props.model);
   const application: ILlmApplication<Model> = collection[

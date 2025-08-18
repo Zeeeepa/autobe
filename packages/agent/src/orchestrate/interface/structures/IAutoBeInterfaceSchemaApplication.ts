@@ -113,55 +113,6 @@ export namespace IAutoBeInterfaceSchemaApplication {
      * ]
      * ```
      */
-    schemas: IComponentSchema[];
-  }
-
-  /**
-   * Component schema definition for OpenAPI specification.
-   * 
-   * Represents a single schema component in the OpenAPI document.
-   * Each component is a named schema that can be referenced throughout
-   * the API specification using $ref.
-   * 
-   * @example
-   * ```typescript
-   * {
-   *   key: "IUser",
-   *   description: "User entity representing system account holders",
-   *   value: {
-   *     type: "object",
-   *     properties: {
-   *       id: { type: "string", format: "uuid" },
-   *       email: { type: "string", format: "email" }
-   *     },
-   *     required: ["id", "email"]
-   *   }
-   * }
-   * ```
-   */
-  export interface IComponentSchema {
-    /**
-     * Schema name used for referencing.
-     * 
-     * This key will be used in $ref paths throughout the OpenAPI document.
-     * Convention: Use PascalCase with 'I' prefix (e.g., "IUser", "IUser.ICreate")
-     */
-    key: string;
-    
-    /**
-     * Human-readable description of the schema.
-     * 
-     * Should provide context about the schema's purpose and usage,
-     * often derived from or referencing the original Prisma model comments.
-     */
-    description: string;
-    
-    /**
-     * JSON Schema definition.
-     * 
-     * The actual schema structure following JSON Schema Draft 7 specification,
-     * which defines the shape and validation rules for this component.
-     */
-    value: AutoBeOpenApi.IJsonSchema;
+    schemas: AutoBeOpenApi.IComponentSchema[];
   }
 }

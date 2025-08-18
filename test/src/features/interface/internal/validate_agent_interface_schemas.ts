@@ -35,7 +35,7 @@ export const validate_agent_interface_schemas = async (
   });
 
   // GENERATE COMPONENTS
-  const schemas: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive> =
+  const schemas: AutoBeOpenApi.IComponentSchema[] =
     await orchestrateInterfaceSchemas(agent.getContext(), operations);
   typia.assert(schemas);
   await FileSystemIterator.save({

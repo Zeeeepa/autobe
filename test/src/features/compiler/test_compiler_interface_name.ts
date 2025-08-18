@@ -39,7 +39,7 @@ const DOCUMENT: AutoBeOpenApi.IDocument = {
     },
   ],
   components: {
-    schemas: {},
+    schemas: [],
     authorization: [],
   },
 };

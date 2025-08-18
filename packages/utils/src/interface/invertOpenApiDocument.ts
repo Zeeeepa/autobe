@@ -6,6 +6,8 @@ import {
   OpenApiTypeChecker,
 } from "@samchon/openapi";
 
+import { invertOpenApiSchema } from "./invertOpenApiSchema";
+
 export function invertOpenApiDocument(
   document: OpenApi.IDocument,
 ): AutoBeOpenApi.IDocument {
@@ -52,10 +54,16 @@ export function invertOpenApiDocument(
           }) satisfies AutoBeOpenApi.IOperation,
       ),
     components: {
-      schemas: (document.components?.schemas ?? {}) as Record<
-        string,
-        AutoBeOpenApi.IJsonSchemaDescriptive
-      >,
+      schemas: Object.entries(document.components?.schemas ?? {}).map(
+        ([k, v]) => ({
+          key: k,
+          description: v.description ?? empty("description"),
+          value: {
+            ...invertOpenApiSchema(v),
+            description: undefined,
+          },
+        }),
+      ),
       authorization: [],
     },
   };

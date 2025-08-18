@@ -4,8 +4,8 @@ import {
   AutoBeOpenApi,
   AutoBeProgressEventBase,
 } from "@autobe/interface";
+import { mergeOpenApiComponentSchemas } from "@autobe/utils";
 import { ILlmApplication, ILlmSchema } from "@samchon/openapi";
-import { OpenApiV3_1Emender } from "@samchon/openapi/lib/converters/OpenApiV3_1Emender";
 import { IPointer } from "tstl";
 import typia from "typia";
 
@@ -22,7 +22,7 @@ export async function orchestrateInterfaceSchemas<
   ctx: AutoBeContext<Model>,
   operations: AutoBeOpenApi.IOperation[],
   capacity: number = 12,
-): Promise<Record<string, AutoBeOpenApi.IJsonSchemaDescriptive>> {
+): Promise<AutoBeOpenApi.IComponentSchema[]> {
   const typeNames: Set<string> = new Set();
   for (const op of operations) {
     if (op.requestBody !== null) typeNames.add(op.requestBody.typeName);
@@ -40,24 +40,28 @@ export async function orchestrateInterfaceSchemas<
     total: matrix.length,
     completed: 0,
   };
-  const x: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive> = {};
-  for (const y of await Promise.all(
-    matrix.map(async (it) => {
-      const row: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive> =
-        await divideAndConquer(ctx, operations, it, 3, progress);
-      const newbie: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive> =
-        await orchestrateInterfaceSchemasReview(
+
+  const componentSchemas: AutoBeOpenApi.IComponentSchema[][] =
+    await Promise.all(
+      matrix.map(async (it) => {
+        const row: AutoBeOpenApi.IComponentSchema[] = await divideAndConquer(
           ctx,
           operations,
-          row,
-          reviewProgress,
+          it,
+          3,
+          progress,
         );
-      return { ...row, ...newbie };
-    }),
-  )) {
-    Object.assign(x, y);
-  }
-  return x;
+        const newbie: AutoBeOpenApi.IComponentSchema[] =
+          await orchestrateInterfaceSchemasReview(
+            ctx,
+            operations,
+            row,
+            reviewProgress,
+          );
+        return [...row, ...newbie];
+      }),
+    );
+  return mergeOpenApiComponentSchemas(componentSchemas.flat());
 }
 
 async function divideAndConquer<Model extends ILlmSchema.Model>(
@@ -66,16 +70,21 @@ async function divideAndConquer<Model extends ILlmSchema.Model>(
   typeNames: string[],
   retry: number,
   progress: AutoBeProgressEventBase,
-): Promise<Record<string, AutoBeOpenApi.IJsonSchemaDescriptive>> {
+): Promise<AutoBeOpenApi.IComponentSchema[]> {
   const remained: Set<string> = new Set(typeNames);
-  const schemas: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive> = {};
+  const schemas: AutoBeOpenApi.IComponentSchema[] = [];
   for (let i: number = 0; i < retry; ++i) {
     if (remained.size === 0) break;
-    const newbie: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive> =
-      await process(ctx, operations, schemas, remained, progress);
-    for (const key of Object.keys(newbie)) {
-      schemas[key] = newbie[key];
-      remained.delete(key);
+    const newbie: AutoBeOpenApi.IComponentSchema[] = await process(
+      ctx,
+      operations,
+      schemas,
+      remained,
+      progress,
+    );
+    for (const cs of newbie) {
+      schemas.push(cs);
+      remained.delete(cs.key);
     }
   }
   return schemas;
@@ -84,15 +93,12 @@ async function divideAndConquer<Model extends ILlmSchema.Model>(
 async function process<Model extends ILlmSchema.Model>(
   ctx: AutoBeContext<Model>,
   operations: AutoBeOpenApi.IOperation[],
-  oldbie: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive>,
+  oldbie: AutoBeOpenApi.IComponentSchema[],
   remained: Set<string>,
   progress: AutoBeProgressEventBase,
-): Promise<Record<string, AutoBeOpenApi.IJsonSchemaDescriptive>> {
+): Promise<AutoBeOpenApi.IComponentSchema[]> {
   const already: string[] = Object.keys(oldbie);
-  const pointer: IPointer<Record<
-    string,
-    AutoBeOpenApi.IJsonSchemaDescriptive
-  > | null> = {
+  const pointer: IPointer<AutoBeOpenApi.IComponentSchema[] | null> = {
     value: null,
   };
   const { tokenUsage } = await ctx.conversate({
@@ -101,18 +107,10 @@ async function process<Model extends ILlmSchema.Model>(
     controller: createController({
       model: ctx.model,
       build: async (next) => {
-        pointer.value ??= {};
-        const content: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive> =
-          Object.fromEntries(
-            next.map((tuple) => [
-              tuple.key,
-              {
-                ...tuple.value,
-                description: tuple.description,
-              },
-            ]),
-          );
-        Object.assign(pointer.value, content);
+        pointer.value =
+          pointer.value === null
+            ? next
+            : mergeOpenApiComponentSchemas([...pointer.value, ...next]);
       },
     }),
     enforceFunctionCall: true,
@@ -141,31 +139,27 @@ async function process<Model extends ILlmSchema.Model>(
     // return {};
   }
 
-  const schemas: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive> =
-    (
-      OpenApiV3_1Emender.convertComponents({
-        schemas: pointer.value,
-      }) as AutoBeOpenApi.IComponents
-    ).schemas ?? {};
+  // const schemas: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive> =
+  //   (
+  //     OpenApiV3_1Emender.convertComponents({
+  //       schemas: pointer.value,
+  //     }) as AutoBeOpenApi.IComponents
+  //   ).schemas ?? {};
   ctx.dispatch({
     type: "interfaceSchemas",
-    schemas,
+    schemas: pointer.value,
     tokenUsage,
-    completed: (progress.completed += Object.keys(schemas).filter(
-      (k) => oldbie[k] === undefined,
-    ).length),
+    completed: (progress.completed += pointer.value.length),
     total: progress.total,
     step: ctx.state().prisma?.step ?? 0,
     created_at: new Date().toISOString(),
   } satisfies AutoBeInterfaceSchemasEvent);
-  return schemas;
+  return pointer.value;
 }
 
 function createController<Model extends ILlmSchema.Model>(props: {
   model: Model;
-  build: (
-    next: IAutoBeInterfaceSchemaApplication.IComponentSchema[],
-  ) => Promise<void>;
+  build: (next: AutoBeOpenApi.IComponentSchema[]) => Promise<void>;
 }): IAgenticaController.IClass<Model> {
   assertSchemaModel(props.model);
 

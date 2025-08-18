@@ -1,8 +1,8 @@
 import { orchestrateInterfaceComplement } from "@autobe/agent/src/orchestrate/interface/orchestrateInterfaceComplement";
 import { FileSystemIterator } from "@autobe/filesystem";
 import { AutoBeOpenApi } from "@autobe/interface";
+import { AutoBeOpenApiTypeChecker } from "@autobe/utils";
 import { TestValidator } from "@nestia/e2e";
-import { OpenApiTypeChecker } from "@samchon/openapi";
 import fs from "fs";
 import typia from "typia";
 
@@ -36,7 +36,7 @@ export const validate_agent_interface_complement = async (
   typia.assert(components);
 
   // COMPLEMENT DOCUMENT
-  const complemented: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive> =
+  const complemented: AutoBeOpenApi.IComponentSchema[] =
     await orchestrateInterfaceComplement(agent.getContext(), {
       operations,
       components,
@@ -46,13 +46,14 @@ export const validate_agent_interface_complement = async (
   const prepraed: Set<string> = new Set(Object.keys(complemented));
   const missed: Set<string> = new Set();
   const visit = (schema: AutoBeOpenApi.IJsonSchema) =>
-    OpenApiTypeChecker.visit({
+    AutoBeOpenApiTypeChecker.visit({
       schema,
       components: {
+        authorization: [],
         schemas: complemented,
       },
       closure: (next) => {
-        if (OpenApiTypeChecker.isReference(next)) {
+        if (AutoBeOpenApiTypeChecker.isReference(next)) {
           const key: string = next.$ref.split("/").pop()!;
           if (prepraed.has(key) === false) missed.add(key);
         }

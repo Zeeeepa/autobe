@@ -3,7 +3,8 @@ import {
   AutoBeTestScenario,
   IAutoBeCompiler,
 } from "@autobe/interface";
-import { ILlmSchema, OpenApiTypeChecker } from "@samchon/openapi";
+import { AutoBeOpenApiTypeChecker } from "@autobe/utils";
+import { ILlmSchema } from "@samchon/openapi";
 
 import { AutoBeContext } from "../../../context/AutoBeContext";
 import { IAutoBeTestScenarioArtifacts } from "../structures/IAutoBeTestScenarioArtifacts";
@@ -53,16 +54,17 @@ function filterDocument(
   );
   const components: AutoBeOpenApi.IComponents = {
     authorization: document.components.authorization,
-    schemas: {},
+    schemas: [],
   };
   const visit = (typeName: string) => {
-    OpenApiTypeChecker.visit({
+    AutoBeOpenApiTypeChecker.visit({
       components: document.components,
       schema: { $ref: `#/components/schemas/${typeName}` },
       closure: (s) => {
-        if (OpenApiTypeChecker.isReference(s)) {
+        if (AutoBeOpenApiTypeChecker.isReference(s)) {
           const key: string = s.$ref.split("/").pop()!;
-          components.schemas[key] = document.components.schemas[key];
+          const found = document.components.schemas.find((n) => n.key === key);
+          if (found) components.schemas.push(found);
         }
       },
     });
