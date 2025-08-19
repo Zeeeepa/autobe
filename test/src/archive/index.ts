@@ -133,13 +133,16 @@ const main = async (): Promise<void> => {
   console.log("Start archiving...");
   console.log("");
   for (const tf of testFunctions) {
-    console.log(`- (${tf.project}, ${tf.step})`);
+    console.log(StringUtil.trim`
+      -----------------------------------------------------------
+        ${tf.project}, ${tf.step}
+      -----------------------------------------------------------
+    `);
     const start: Date = new Date();
     try {
-      factory;
       await tf.execute(factory);
       console.log(
-        `  - Success: ${(Date.now() - start.getTime()).toLocaleString()} ms`,
+        `- Success: ${(Date.now() - start.getTime()).toLocaleString()} ms`,
       );
     } catch (error) {
       console.log("  - Error");

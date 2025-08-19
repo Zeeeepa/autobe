@@ -4,7 +4,10 @@ import {
   AutoBeOpenApi,
   AutoBeProgressEventBase,
 } from "@autobe/interface";
-import { mergeOpenApiComponentSchemas } from "@autobe/utils";
+import {
+  emendOpenApiSchema,
+  mergeOpenApiComponentSchemas,
+} from "@autobe/utils";
 import { ILlmApplication, ILlmSchema } from "@samchon/openapi";
 import { IPointer } from "tstl";
 import typia from "typia";
@@ -138,13 +141,6 @@ async function process<Model extends ILlmSchema.Model>(
     throw new Error("Failed to create components.");
     // return {};
   }
-
-  // const schemas: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive> =
-  //   (
-  //     OpenApiV3_1Emender.convertComponents({
-  //       schemas: pointer.value,
-  //     }) as AutoBeOpenApi.IComponents
-  //   ).schemas ?? {};
   ctx.dispatch({
     type: "interfaceSchemas",
     schemas: pointer.value,
@@ -172,7 +168,12 @@ function createController<Model extends ILlmSchema.Model>(props: {
     application,
     execute: {
       makeComponents: async (next) => {
-        await props.build(next.schemas);
+        await props.build(
+          next.schemas.map((cs) => ({
+            ...cs,
+            value: emendOpenApiSchema(cs.value),
+          })),
+        );
       },
     } satisfies IAutoBeInterfaceSchemaApplication,
   };

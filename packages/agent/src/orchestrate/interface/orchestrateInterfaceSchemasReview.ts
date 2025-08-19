@@ -4,6 +4,7 @@ import {
   AutoBeOpenApi,
   AutoBeProgressEventBase,
 } from "@autobe/interface";
+import { emendOpenApiSchema } from "@autobe/utils";
 import { ILlmApplication, ILlmSchema } from "@samchon/openapi";
 import { IPointer } from "tstl";
 import typia from "typia";
@@ -81,7 +82,13 @@ function createController<Model extends ILlmSchema.Model>(props: {
     application,
     execute: {
       review: (input) => {
-        props.pointer.value = input;
+        props.pointer.value = {
+          ...input,
+          content: input.content.map((cs) => ({
+            ...cs,
+            value: emendOpenApiSchema(cs.value),
+          })),
+        };
       },
     } satisfies IAutoBeInterfaceSchemasReviewApplication,
   };

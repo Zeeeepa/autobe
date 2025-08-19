@@ -2,6 +2,7 @@ import { IAgenticaController } from "@agentica/core";
 import { AutoBeOpenApi } from "@autobe/interface";
 import {
   AutoBeOpenApiTypeChecker,
+  emendOpenApiSchema,
   mergeOpenApiComponentSchemas,
 } from "@autobe/utils";
 import { ILlmApplication, ILlmSchema } from "@samchon/openapi";
@@ -123,7 +124,12 @@ function createController<Model extends ILlmSchema.Model>(props: {
     application,
     execute: {
       complementComponents: (next) => {
-        props.build(next.schemas);
+        props.build(
+          next.schemas.map((cs) => ({
+            ...cs,
+            value: emendOpenApiSchema(cs.value),
+          })),
+        );
       },
     } satisfies IAutoBeInterfaceComplementApplication,
   };
