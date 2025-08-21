@@ -205,6 +205,83 @@ function createController<Model extends ILlmSchema.Model>(props: {
         });
       });
     });
+
+    // validate authentication dependencies
+    scenarioGroups.forEach((group, i) => {
+      const targetOperation = props.dict.get(group.endpoint);
+      if (targetOperation && targetOperation.authorizationRole) {
+        group.scenarios.forEach((scenario, j) => {
+          // Check if scenario includes "join" operation for the required role
+          const hasJoinDependency = scenario.dependencies.some((dep) => {
+            const depOperation = props.dict.get(dep.endpoint);
+            return (
+              depOperation &&
+              depOperation.authorizationType === "join" &&
+              depOperation.authorizationRole === targetOperation.authorizationRole
+            );
+          });
+
+          if (!hasJoinDependency) {
+            errors.push({
+              value: scenario,
+              path: `$input.scenarioGroups[${i}].scenarios[${j}]`,
+              expected: "Scenario with authentication dependency",
+              description: [
+                `Missing required authentication dependency for role "${targetOperation.authorizationRole}".`,
+                ``,
+                `The target operation requires "${targetOperation.authorizationRole}" role but the scenario`,
+                `does not include a "join" operation for this role in its dependencies.`,
+                ``,
+                `Please add a dependency on the appropriate join operation for the "${targetOperation.authorizationRole}" role.`,
+                ``,
+                `Example: { endpoint: { method: "post", path: "/auth/${targetOperation.authorizationRole}/join" }, purpose: "Register as ${targetOperation.authorizationRole} to access this operation" }`
+              ].join("\n"),
+            });
+          }
+
+          // Check for multiple roles in dependencies (indicating user switching)
+          const rolesInDependencies = new Set<string>();
+          scenario.dependencies.forEach((dep) => {
+            const depOperation = props.dict.get(dep.endpoint);
+            if (depOperation && depOperation.authorizationRole) {
+              rolesInDependencies.add(depOperation.authorizationRole);
+            }
+          });
+
+          // If there are multiple roles involved, check for login operations
+          if (rolesInDependencies.size > 1) {
+            rolesInDependencies.forEach((role) => {
+              const hasLoginDependency = scenario.dependencies.some((dep) => {
+                const depOperation = props.dict.get(dep.endpoint);
+                return (
+                  depOperation &&
+                  depOperation.authorizationType === "login" &&
+                  depOperation.authorizationRole === role
+                );
+              });
+
+              if (!hasLoginDependency) {
+                errors.push({
+                  value: scenario,
+                  path: `$input.scenarioGroups[${i}].scenarios[${j}]`,
+                  expected: "Scenario with login dependency for role switching",
+                  description: [
+                    `Missing login operation for multi-actor scenario involving role "${role}".`,
+                    ``,
+                    `This scenario involves multiple user roles (${Array.from(rolesInDependencies).join(", ")}),`,
+                    `which requires proper login operations for user role switching.`,
+                    ``,
+                    `Please add a login dependency for the "${role}" role.`,
+                    ``,
+                    `Example: { endpoint: { method: "post", path: "/auth/${role}/login" }, purpose: "Login as ${role} for role switching in this scenario" }`
+                  ].join("\n"),
+                });
+              }
+            });
+          }
+        });
+      }
+    });
     return errors.length === 0
       ? {
           success: true,
