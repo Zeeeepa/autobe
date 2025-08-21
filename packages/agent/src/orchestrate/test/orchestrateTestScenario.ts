@@ -120,6 +120,7 @@ const divideAndConquer = async <Model extends ILlmSchema.Model>(
       model: ctx.model,
       endpointNotFound,
       dict,
+      operations: entire,
       build: (next) => {
         pointer.value ??= [];
         pointer.value.push(...next.scenarioGroups);
@@ -157,6 +158,7 @@ function createController<Model extends ILlmSchema.Model>(props: {
   model: Model;
   endpointNotFound: string;
   dict: HashMap<AutoBeOpenApi.IEndpoint, AutoBeOpenApi.IOperation>;
+  operations: AutoBeOpenApi.IOperation[];
   build: (next: IAutoBeTestScenarioApplication.IProps) => void;
 }): IAgenticaController.IClass<Model> {
   assertSchemaModel(props.model);
@@ -206,11 +208,11 @@ function createController<Model extends ILlmSchema.Model>(props: {
       });
     });
 
-    // validate authentication dependencies
-    scenarioGroups.forEach((group, i) => {
+    // automatically fill authentication dependencies
+    scenarioGroups.forEach((group) => {
       const targetOperation = props.dict.get(group.endpoint);
       if (targetOperation && targetOperation.authorizationRole) {
-        group.scenarios.forEach((scenario, j) => {
+        group.scenarios.forEach((scenario) => {
           // Check if scenario includes "join" operation for the required role
           const hasJoinDependency = scenario.dependencies.some((dep) => {
             const depOperation = props.dict.get(dep.endpoint);
@@ -221,22 +223,24 @@ function createController<Model extends ILlmSchema.Model>(props: {
             );
           });
 
+          // Automatically add missing join dependency
           if (!hasJoinDependency) {
-            errors.push({
-              value: scenario,
-              path: `$input.scenarioGroups[${i}].scenarios[${j}]`,
-              expected: "Scenario with authentication dependency",
-              description: [
-                `Missing required authentication dependency for role "${targetOperation.authorizationRole}".`,
-                ``,
-                `The target operation requires "${targetOperation.authorizationRole}" role but the scenario`,
-                `does not include a "join" operation for this role in its dependencies.`,
-                ``,
-                `Please add a dependency on the appropriate join operation for the "${targetOperation.authorizationRole}" role.`,
-                ``,
-                `Example: { endpoint: { method: "post", path: "/auth/${targetOperation.authorizationRole}/join" }, purpose: "Register as ${targetOperation.authorizationRole} to access this operation" }`
-              ].join("\n"),
-            });
+            // Find the appropriate join operation for this role
+            const joinOperation = props.operations.find(
+              (op: AutoBeOpenApi.IOperation) =>
+                op.authorizationType === "join" &&
+                op.authorizationRole === targetOperation.authorizationRole,
+            );
+            
+            if (joinOperation) {
+              scenario.dependencies.unshift({
+                endpoint: {
+                  method: joinOperation.method as any,
+                  path: joinOperation.path,
+                },
+                purpose: `Register as ${targetOperation.authorizationRole} to access this operation`,
+              });
+            }
           }
 
           // Check for multiple roles in dependencies (indicating user switching)
@@ -248,7 +252,12 @@ function createController<Model extends ILlmSchema.Model>(props: {
             }
           });
 
-          // If there are multiple roles involved, check for login operations
+          // Add target operation role to the set as well
+          if (targetOperation.authorizationRole) {
+            rolesInDependencies.add(targetOperation.authorizationRole);
+          }
+
+          // If there are multiple roles involved, automatically add login operations
           if (rolesInDependencies.size > 1) {
             rolesInDependencies.forEach((role) => {
               const hasLoginDependency = scenario.dependencies.some((dep) => {
@@ -260,22 +269,38 @@ function createController<Model extends ILlmSchema.Model>(props: {
                 );
               });
 
+              // Automatically add missing login dependency
               if (!hasLoginDependency) {
-                errors.push({
-                  value: scenario,
-                  path: `$input.scenarioGroups[${i}].scenarios[${j}]`,
-                  expected: "Scenario with login dependency for role switching",
-                  description: [
-                    `Missing login operation for multi-actor scenario involving role "${role}".`,
-                    ``,
-                    `This scenario involves multiple user roles (${Array.from(rolesInDependencies).join(", ")}),`,
-                    `which requires proper login operations for user role switching.`,
-                    ``,
-                    `Please add a login dependency for the "${role}" role.`,
-                    ``,
-                    `Example: { endpoint: { method: "post", path: "/auth/${role}/login" }, purpose: "Login as ${role} for role switching in this scenario" }`
-                  ].join("\n"),
-                });
+                const loginOperation = props.operations.find(
+                  (op: AutoBeOpenApi.IOperation) =>
+                    op.authorizationType === "login" &&
+                    op.authorizationRole === role,
+                );
+                
+                if (loginOperation) {
+                  // Find the position to insert login after join for the same role
+                  let insertIndex = scenario.dependencies.length;
+                  for (let i = 0; i < scenario.dependencies.length; i++) {
+                    const dep = scenario.dependencies[i];
+                    const depOperation = props.dict.get(dep.endpoint);
+                    if (
+                      depOperation &&
+                      depOperation.authorizationType === "join" &&
+                      depOperation.authorizationRole === role
+                    ) {
+                      insertIndex = i + 1;
+                      break;
+                    }
+                  }
+                  
+                  scenario.dependencies.splice(insertIndex, 0, {
+                    endpoint: {
+                      method: loginOperation.method as any,
+                      path: loginOperation.path,
+                    },
+                    purpose: `Login as ${role} for role switching in this scenario`,
+                  });
+                }
               }
             });
           }
