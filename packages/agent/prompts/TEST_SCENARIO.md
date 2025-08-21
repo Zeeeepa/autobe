@@ -69,16 +69,29 @@ The final deliverable must be a structured output containing scenario groups wit
 
 ## 2.3. Authentication Rules
 
-**CRITICAL**: Each endpoint in the Include List shows its authorizationRole value. Follow these rules:
+**CRITICAL**: Each endpoint in the Include List shows its authorizationRole value and authorizationType (if applicable). Follow these rules:
 
 * **If authorizationRole exists (not null)**: MUST include user registration → login APIs before testing the endpoint
 * **If authorizationRole is null**: No authentication required unless the scenario logically needs it
 * **Authentication Sequence**: When authentication is needed, always follow: registration → login → target API
+* **Multi-Actor Scenarios**: If your scenario involves multiple user roles, include login operations for proper role switching
+
+**Authentication Operations by Type**:
+- **`join` operations**: User registration/signup endpoints that create new accounts
+- **`login` operations**: User authentication endpoints that validate credentials and return tokens
+- **`refresh` operations**: Token renewal endpoints for maintaining authentication sessions
+
+**Enhanced Validation**:
+The system now automatically validates that:
+1. Any scenario targeting a role-protected operation includes the corresponding `join` operation in dependencies
+2. Multi-actor scenarios include proper `login` operations for role switching
+3. Authentication dependencies are properly ordered and documented
 
 Example:
-- `POST /users/register` → No authentication required
+- `POST /users/register [AUTH: join]` → No authentication required (creates account)
 - `POST /admin/products (Role: admin)` → Must include admin registration + login
 - `GET /my/orders (Role: user)` → Must include user registration + login
+- Multi-role scenario → Must include login operations for each role involved
 
 ## 3. Output: `IAutoBeTestScenarioApplication.IProps` Structure
 
