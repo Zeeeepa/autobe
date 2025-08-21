@@ -1,6 +1,8 @@
 import {
   AgenticaAssistantMessageHistory,
+  AgenticaResponseEvent,
   IAgenticaController,
+  MicroAgenticaHistory,
 } from "@agentica/core";
 import {
   AutoBeAnalyzeScenarioEvent,
@@ -25,29 +27,47 @@ export const orchestrateAnalyzeScenario = async <
   const pointer: IPointer<IAutoBeAnalyzeScenarioApplication.IProps | null> = {
     value: null,
   };
-  const { histories, tokenUsage } = await ctx.conversate({
-    source: "analyzeScenario",
-    controller: createController<Model>({
-      model: ctx.model,
-      pointer,
-    }),
-    histories: transformAnalyzeSceHistories(ctx),
-    enforceFunctionCall: false,
-    message: [
-      `Design a complete list of documents and user roles for this project.`,
-      `Define user roles that can authenticate via API and create appropriate documentation files.`,
-      `You must respect the number of documents specified by the user.`,
-      `Note that the user's locale is in ${ctx.locale}.`,
-    ].join("\n"),
-  });
-  if (histories.at(-1)?.type === "assistantMessage")
+  const responses: AgenticaResponseEvent[] = [];
+  const { histories, tokenUsage } = await ctx.conversate(
+    {
+      source: "analyzeScenario",
+      controller: createController<Model>({
+        model: ctx.model,
+        pointer,
+      }),
+      histories: transformAnalyzeSceHistories(ctx),
+      enforceFunctionCall: false,
+      message: [
+        `Design a complete list of documents and user roles for this project.`,
+        `Define user roles that can authenticate via API and create appropriate documentation files.`,
+        `You must respect the number of documents specified by the user.`,
+        `Note that the user's locale is in ${ctx.locale}.`,
+      ].join("\n"),
+    },
+    (a) =>
+      a.on("response", (e) => {
+        responses.push(e);
+      }),
+  );
+  const last: MicroAgenticaHistory<Model> | undefined = histories.at(-1);
+  if (last?.type === "assistantMessage") {
+    console.log(
+      "assistantMessage",
+      last?.text,
+      JSON.stringify(histories, null, 2),
+      JSON.stringify(
+        await Promise.all(responses.map((r) => r.join())),
+        null,
+        2,
+      ),
+    );
     return {
       ...(histories.at(-1)! as AgenticaAssistantMessageHistory),
       created_at: start.toISOString(),
       completed_at: new Date().toISOString(),
       id: v4(),
     } satisfies AutoBeAssistantMessageHistory;
-  else if (pointer.value === null) {
+  } else if (pointer.value === null) {
     // unreachable
     throw new Error("Failed to extract files and tables.");
   }

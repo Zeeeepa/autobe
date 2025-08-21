@@ -1,4 +1,4 @@
-import { IAgenticaController } from "@agentica/core";
+import { AgenticaResponseEvent, IAgenticaController } from "@agentica/core";
 import {
   AutoBeAnalyzeScenarioEvent,
   AutoBeAnalyzeWriteEvent,
@@ -25,18 +25,33 @@ export const orchestrateAnalyzeWrite = async <Model extends ILlmSchema.Model>(
   const pointer: IPointer<IAutoBeAnalyzeWriteApplication.IProps | null> = {
     value: null,
   };
-  const { histories, tokenUsage } = await ctx.conversate({
-    source: "analyzeWrite",
-    controller: createController<Model>({
-      model: ctx.model,
-      pointer,
-    }),
-    histories: transformAnalyzeWriteHistories(scenario, file),
-    enforceFunctionCall: true,
-    message: "Write requirement analysis report.",
-  });
+  const responses: AgenticaResponseEvent[] = [];
+  const { histories, tokenUsage } = await ctx.conversate(
+    {
+      source: "analyzeWrite",
+      controller: createController<Model>({
+        model: ctx.model,
+        pointer,
+      }),
+      histories: transformAnalyzeWriteHistories(scenario, file),
+      enforceFunctionCall: true,
+      message: "Write requirement analysis report.",
+    },
+    (agentica) => {
+      agentica.on("response", (r) => {
+        responses.push(r);
+      });
+    },
+  );
   if (pointer.value === null) {
-    console.log(JSON.stringify(histories, null, 2));
+    console.log(
+      JSON.stringify(histories, null, 2),
+      JSON.stringify(
+        await Promise.all(responses.map((r) => r.join())),
+        null,
+        2,
+      ),
+    );
     throw new Error("The Analyze Agent failed to create the document.");
   }
 
