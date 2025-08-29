@@ -57,6 +57,31 @@ export const transformTestScenarioHistories = (
         It is also permissible to write multiple test codes on a single endpoint.
         However, rather than meaningless tests, business logic tests should be written and an E2E test situation should be assumed.
 
+        ⚠️ **CRITICAL REQUIREMENT: Only Create Implementable Test Scenarios**
+        
+        You MUST ONLY create test scenarios that can be fully implemented using:
+        1. The operations provided in this list
+        2. Authentication APIs (join/login/refresh) shown in the "Included in Test Plan" section below
+        
+        A test scenario is implementable ONLY if ALL required dependency operations exist either:
+        - In this operations list, OR
+        - In the "Related Authentication APIs" section for each endpoint
+        
+        **IMPORTANT EXCEPTIONS**:
+        - Authentication operations (join/login/refresh) may not appear in this list but ARE available
+        - Check the "Included in Test Plan" section to see which authentication APIs are available
+        - Even public endpoints might require session tokens in some services
+        
+        For example, if you want to test "banned user login failure":
+        - This requires BOTH a login endpoint AND a ban user endpoint
+        - Login might be available in "Related Authentication APIs" (check there)
+        - But if the ban endpoint doesn't exist anywhere, this scenario CANNOT be implemented
+        - You MUST NOT create this scenario, even if database fields suggest banning is possible
+        
+        **NEVER** create test scenarios that depend on operations not available in either:
+        1. This operations list, OR
+        2. The "Related Authentication APIs" in the subsequent section
+
         Please carefully analyze each operation to identify all dependencies required for testing.
         For example, if you want to test liking and then deleting a post,
         you might think to test post creation, liking, and unlike operations.

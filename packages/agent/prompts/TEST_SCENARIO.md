@@ -169,14 +169,16 @@ Each `scenario` contains a natural-language test description (`draft`), a clearl
             "Test product creation failure caused by attempting to create a product with a duplicate SKU. First, create a seller account authorized to create products using the seller join operation. Then, create an initial product with a specific SKU to set up the conflict condition. Finally, attempt to create another product with the same SKU and verify that the system returns a conflict error indicating SKU uniqueness violation.",
           dependencies: [
             {
+              order: 1,
               endpoint: { method: "post", path: "/shopping/sellers/auth/join" },
               purpose:
                 "Create a seller account with permission to create products. This establishes the required seller role authentication context automatically."
             },
             {
+              order: 2,
               endpoint: { method: "post", path: "/shopping/sellers/sales" },
               purpose:
-                "Create the first product with a specific SKU to establish the conflict condition. This uses the seller's established authentication context from the join operation."
+                "Create the first product with a specific SKU to establish the conflict condition. This uses the seller's established authentication context from step 1."
             }
           ]
         }
@@ -209,9 +211,9 @@ This example demonstrates the correct structure for grouping multiple test scena
 * **Prerequisite Identification**: Clearly identify all API calls that must precede the target operation (only when explicitly required)
 * **Data Setup Requirements**: Understand what data must exist before testing specific scenarios
 * **Authentication Context**: Include necessary authentication and authorization setup steps following the detailed authentication patterns
-* **Logical Ordering**: Ensure dependencies are listed in the correct execution order, especially for authentication sequences
+* **Sequential Execution Order**: Dependencies MUST be executed in the order specified by their `order` field
 
-> ⚠️ **Note**: The `dependencies` field in a scenario is not a sequential execution plan. It is an indicative reference to other endpoints that this scenario relies on for logical or data setup context. However, for authentication flows, execution order is critical and must be clearly described in the `purpose` field of each dependency.
+> ⚠️ **CRITICAL**: The `dependencies` field represents a **strict sequential execution plan**. Each dependency must be executed in the exact order specified by its `order` property (1, 2, 3...). Later dependencies can use data returned from earlier ones (e.g., user IDs, auth tokens, resource IDs). The test scenario is only implementable if ALL dependencies can be successfully executed in this sequence.
 
 ### 4.4. Realistic Scenario Principle
 
@@ -340,19 +342,22 @@ For complex endpoints, generate multiple scenarios covering:
 
 ## 6. Dependency Purpose Guidelines
 
-* **The `dependencies` array refers to relevant API calls this scenario logically depends on, whether or not they are in the include list.**
-* **The presence of a dependency does not imply that it must be executed immediately beforehand, except for authentication sequences where order is critical.**
-* **Execution order, especially for authentication flows, should be explicitly explained in the `purpose`.**
-* **Authentication dependencies must clearly indicate the role being established and the sequence requirement.**
+* **The `dependencies` array contains API calls that MUST be executed sequentially before the main test.**
+* **Each dependency has an `order` field that determines its execution sequence (1, 2, 3...).**
+* **Later dependencies can and should use data from earlier ones (IDs, tokens, etc.).**
+* **The entire test scenario fails if any dependency in the sequence cannot be executed.**
+* **The `purpose` field should explain what the dependency provides and how it relates to subsequent steps.**
 
 Example:
 
 ```yaml
 dependencies:
-  - endpoint: { method: "post", path: "/sellers/auth/join" }
-    purpose: "Create a seller account to establish seller role authentication context. This must be executed first before any seller operations."
-  - endpoint: { method: "post", path: "/posts" }
-    purpose: "Create a post using the seller's authentication context and extract postId for use in voting scenario. This must be done after seller authentication."
+  - order: 1
+    endpoint: { method: "post", path: "/sellers/auth/join" }
+    purpose: "Create a seller account to establish seller role authentication context. Returns seller ID and auth token for subsequent operations."
+  - order: 2
+    endpoint: { method: "post", path: "/posts" }
+    purpose: "Create a post using the seller's authentication context from step 1. Returns postId for use in the main voting scenario."
 ```
 
 ## 7. Error Scenario Guidelines
@@ -386,12 +391,14 @@ Test scenarios must cover not only successful business flows but also various er
   functionName: "test_api_product_creation_duplicate_sku_error",
   dependencies: [
     {
+      order: 1,
       endpoint: { method: "post", path: "/shopping/sellers/auth/join" },
-      purpose: "Create a seller account with permission to create products. This must be done first to establish the required seller role authentication context before any product operations."
+      purpose: "Create a seller account with permission to create products. Returns seller ID and auth token for subsequent operations."
     },
     {
+      order: 2,
       endpoint: { method: "post", path: "/shopping/sellers/sales" },
-      purpose: "Create the first product with a specific SKU to establish the conflict condition. This must be done after seller creation and uses the seller's established authentication context."
+      purpose: "Create the first product with a specific SKU to establish the conflict condition. Uses the seller's authentication context from step 1."
     }
   ]
 }

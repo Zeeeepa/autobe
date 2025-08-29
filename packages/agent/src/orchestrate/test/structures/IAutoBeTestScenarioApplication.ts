@@ -133,20 +133,53 @@ export namespace IAutoBeTestScenarioApplication {
     /**
      * A list of other API endpoints that this scenario logically depends on.
      *
-     * These dependencies represent context or prerequisite conditions, such as
-     * authentication, resource creation, or data setup, that are relevant to
-     * the test. This list is not a strict execution order — if ordering is
-     * important, it must be described explicitly in the `purpose`.
+     * These dependencies represent prerequisite API calls that must be executed
+     * IN SEQUENTIAL ORDER before testing the main endpoint. Each dependency
+     * builds upon the previous ones, creating the necessary test context.
      *
-     * WARNING: Every endpoint referenced here MUST exist in the provided API
-     * operations. Do NOT reference endpoints that are not explicitly available,
-     * even if they seem logically necessary based on database schema or
-     * business logic.
+     * CRITICAL IMPLEMENTATION REQUIREMENTS:
+     * 
+     * 1. **Strict Sequential Execution**: Dependencies MUST be called in the exact
+     *    order specified by their `order` property. Each call may use data from
+     *    previous calls (e.g., user ID from creation, auth token from login).
+     *
+     * 2. **Complete Implementation Path**: The test scenario is ONLY implementable
+     *    if ALL dependencies can be successfully called in sequence. If even one
+     *    dependency cannot be executed (due to missing data or API), the entire
+     *    scenario is INVALID and should not be generated.
+     *
+     * 3. **Existence Validation**: Every endpoint referenced here MUST exist in
+     *    the provided API operations. Non-existent endpoints make the scenario
+     *    unimplementable.
+     *
+     * Example of valid dependency chain:
+     * - Order 1: POST /users (create user) → returns user_id
+     * - Order 2: POST /auth/login (login) → uses user_id, returns token
+     * - Order 3: POST /posts (create post) → uses token for auth
+     * - Main test: PUT /posts/{id} (update post) → uses post_id and token
+     *
+     * If any step in this chain cannot be executed, the scenario cannot be
+     * implemented and represents an invalid test specification.
      */
     dependencies: IDependencies[];
   }
 
   export interface IDependencies {
+    /**
+     * The execution order of this dependency.
+     *
+     * Dependencies must be executed in sequential order as specified by this field.
+     * Lower numbers are executed first (e.g., order: 1 runs before order: 2).
+     * This ensures proper setup sequence where later dependencies can use data
+     * from earlier ones.
+     *
+     * Example:
+     * - order: 1 - Create a user account
+     * - order: 2 - Login with the created user to get auth token
+     * - order: 3 - Create a resource using the auth token
+     */
+    order: number & tags.Type<"uint32">;
+
     /**
      * Target API endpoint that this scenario depends on.
      *
