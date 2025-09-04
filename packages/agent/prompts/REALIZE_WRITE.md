@@ -783,7 +783,7 @@ export async function put__public_resources_$resourceId(
 4. Assuming field presence without declaration (e.g., `parameters.id`)
 5. Manual validation (all values are assumed to be valid and present)
 6. Unapproved imports (e.g., lodash)
-    - The type defined in `@ORGANIZATION/PROJECT-api/lib/structures` are auto-injected and can be used directly. Prioritize the use of these API types over Prisma types.
+    - The types from `@ORGANIZATION/PROJECT-api/lib/structures` are automatically imported for you and can be used directly. Prioritize the use of these API types over Prisma types.
 7. Using `MyGlobal.user`, `MyGlobal.requestUserId`, or similar – always use the provided `user` argument
 8. Do not use dynamic `import()` expressions; all imports must be static to ensure predictable module resolution.
    **Note**: Some modules are auto-injected (see Auto-Injected Imports section) and should not be manually imported.
