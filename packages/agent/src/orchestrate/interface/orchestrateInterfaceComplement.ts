@@ -18,6 +18,7 @@ import { IAutoBeInterfaceComplementApplication } from "./structures/IAutoBeInter
 import { JsonSchemaFactory } from "./utils/JsonSchemaFactory";
 import { fulfillJsonSchemaErrorMessages } from "./utils/fulfillJsonSchemaErrorMessages";
 import { validateAuthorizationSchema } from "./utils/validateAuthorizationSchema";
+import { validateDuplicatedSchemaName } from "./utils/validateDuplicatedSchemaName";
 
 export function orchestrateInterfaceComplement<Model extends ILlmSchema.Model>(
   ctx: AutoBeContext<Model>,
@@ -142,6 +143,11 @@ function createController<Model extends ILlmSchema.Model>(props: {
 
     const errors: IValidation.IError[] = [];
     validateAuthorizationSchema({
+      errors,
+      schemas: result.data.schemas,
+      path: "$input.schemas",
+    });
+    validateDuplicatedSchemaName({
       errors,
       schemas: result.data.schemas,
       path: "$input.schemas",

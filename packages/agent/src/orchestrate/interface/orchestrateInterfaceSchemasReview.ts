@@ -19,6 +19,7 @@ import { IAutoBeInterfaceSchemasReviewApplication } from "./structures/IAutobeIn
 import { JsonSchemaFactory } from "./utils/JsonSchemaFactory";
 import { fulfillJsonSchemaErrorMessages } from "./utils/fulfillJsonSchemaErrorMessages";
 import { validateAuthorizationSchema } from "./utils/validateAuthorizationSchema";
+import { validateDuplicatedSchemaName } from "./utils/validateDuplicatedSchemaName";
 
 export async function orchestrateInterfaceSchemasReview<
   Model extends ILlmSchema.Model,
@@ -148,6 +149,11 @@ function createController<Model extends ILlmSchema.Model>(props: {
 
     const errors: IValidation.IError[] = [];
     validateAuthorizationSchema({
+      errors,
+      schemas: result.data.content,
+      path: "$input.content",
+    });
+    validateDuplicatedSchemaName({
       errors,
       schemas: result.data.content,
       path: "$input.content",

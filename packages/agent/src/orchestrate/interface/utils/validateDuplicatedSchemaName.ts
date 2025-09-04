@@ -1,3 +1,4 @@
+import { AutoBeOpenApi } from "@autobe/interface";
 import { IValidation } from "typia";
 
 /**
@@ -12,7 +13,7 @@ import { IValidation } from "typia";
  */
 export const validateDuplicatedSchemaName = (props: {
   errors: IValidation.IError[];
-  keys: string[];
+  schemas: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive>;
   path: string;
 }) => {
   // First, determine canonical forms for base namespaces
@@ -20,7 +21,7 @@ export const validateDuplicatedSchemaName = (props: {
   const namespaceCounts = new Map<string, Map<string, number>>();
 
   // Count namespace occurrences
-  for (const key of props.keys) {
+  for (const key of Object.keys(props.schemas)) {
     const parts = key.split(".");
     const namespace = parts[0];
     const lowerNamespace = namespace.toLowerCase();
@@ -54,7 +55,7 @@ export const validateDuplicatedSchemaName = (props: {
   // Now check for duplicates and normalize using canonical namespaces
   const normalizedGroups = new Map<string, Set<string>>();
 
-  for (const key of props.keys) {
+  for (const key of Object.keys(props.schemas)) {
     const parts = key.split(".");
     const namespace = parts[0];
     const lowerNamespace = namespace.toLowerCase();
