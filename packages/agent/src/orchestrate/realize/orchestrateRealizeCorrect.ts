@@ -37,11 +37,7 @@ export async function orchestrateRealizeCorrect<Model extends ILlmSchema.Model>(
   else if (--life <= 0) return event;
 
   void diagnose(functions, failures, event);
-  const failedFilePaths: string[] = getFailedFilePaths(
-    functions,
-    failures,
-    event,
-  );
+  const failedFilePaths: string[] = getFailedFilePaths(event);
 
   progress.total += Object.keys(failedFilePaths).length;
 
@@ -82,11 +78,7 @@ export async function orchestrateRealizeCorrect<Model extends ILlmSchema.Model>(
   );
 }
 
-function getFailedFilePaths(
-  functions: AutoBeRealizeFunction[],
-  failures: IAutoBeRealizeFunctionFailure[],
-  event: AutoBeRealizeValidateEvent,
-): string[] {
+function getFailedFilePaths(event: AutoBeRealizeValidateEvent): string[] {
   const failedFilePaths: string[] = [];
 
   if (event.result.type === "failure") {
