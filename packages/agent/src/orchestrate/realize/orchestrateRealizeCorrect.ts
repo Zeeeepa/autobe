@@ -28,7 +28,7 @@ export async function orchestrateRealizeCorrect<Model extends ILlmSchema.Model>(
   authorizations: AutoBeRealizeAuthorization[],
   functions: AutoBeRealizeFunction[],
   failures: IAutoBeRealizeFunctionFailure[],
-  progress: IProgress,
+  progress: AutoBeProgressEventBase,
   life: number = 5,
 ): Promise<AutoBeRealizeValidateEvent> {
   const event = await compileRealizeFiles(ctx, { authorizations, functions });
@@ -204,8 +204,3 @@ const collection = {
   deepseek: claude,
   "3.1": claude,
 };
-
-interface IProgress {
-  total: number;
-  completed: number;
-}
