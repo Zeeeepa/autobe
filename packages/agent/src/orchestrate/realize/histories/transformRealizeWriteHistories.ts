@@ -7,7 +7,6 @@ import { AutoBeSystemPromptConstant } from "../../../constants/AutoBeSystemPromp
 import { AutoBeState } from "../../../context/AutoBeState";
 import { IAutoBeRealizeScenarioResult } from "../structures/IAutoBeRealizeScenarioResult";
 import { getRealizeWriteCodeTemplate } from "../utils/getRealizeWriteCodeTemplate";
-import { getRealizeWriteInputType } from "../utils/getRealizeWriteInputType";
 import { transformRealizeWriteAuthorizationsHistories } from "./transformRealizeWriteAuthorizationsHistories";
 
 export const transformRealizeWriteHistories = (props: {
@@ -113,15 +112,25 @@ export const transformRealizeWriteHistories = (props: {
       id: v7(),
       created_at: new Date().toISOString(),
       type: "systemMessage",
-      text: AutoBeSystemPromptConstant.REALIZE_WRITE_ARTIFACT.replaceAll(
-        `{prisma_schemas}`,
-        JSON.stringify(props.state.prisma.schemas),
-      )
-        .replaceAll(
-          `{input}`,
-          getRealizeWriteInputType(operation, props.authorization),
-        )
-        .replaceAll(`{artifacts_dto}`, JSON.stringify(props.dto)),
+      text: StringUtil.trim`
+        ## Prisma Schemas Context
+
+        Here are the actual Prisma schemas from your schema.prisma file:
+
+        \`\`\`json
+        ${JSON.stringify(props.state.prisma.schemas, null, 2)}
+        \`\`\`
+
+        ## Available DTO Types Reference
+
+        The following DTO types are already imported and available in your function:
+
+        \`\`\`json
+        ${JSON.stringify(props.dto, null, 2)}
+        \`\`\`
+
+        All imports are handled automatically. Just use these types directly in your code.
+      `,
     },
     {
       id: v7(),

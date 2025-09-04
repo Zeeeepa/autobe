@@ -49,7 +49,7 @@ export function transformRealizeCorrectHistories(props: {
 
       ## Compile Errors
 
-      Fix the comilation error in the provided code.
+      Fix the compilation error in the provided code.
 
       \`\`\`typescript
       ${JSON.stringify(f.diagnostics)}
