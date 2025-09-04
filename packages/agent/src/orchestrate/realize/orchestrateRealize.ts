@@ -17,9 +17,9 @@ import { executeCachedBatch } from "../../utils/executeCachedBatch";
 import { predicateStateMessage } from "../../utils/predicateStateMessage";
 import { orchestrateRealizeAuthorization } from "./orchestrateRealizeAuthorization";
 import { orchestrateRealizeCorrect } from "./orchestrateRealizeCorrect";
-import { orchestrateRealizeScenario } from "./orchestrateRealizeScenario";
 import { orchestrateRealizeWrite } from "./orchestrateRealizeWrite";
 import { IAutoBeRealizeScenarioResult } from "./structures/IAutoBeRealizeScenarioResult";
+import { generateRealizeScenario } from "./utils/generateRealizeScenario";
 
 export const orchestrateRealize =
   <Model extends ILlmSchema.Model>(ctx: AutoBeContext<Model>) =>
@@ -59,12 +59,8 @@ export const orchestrateRealize =
 
     // SCENARIOS
     const scenarios: IAutoBeRealizeScenarioResult[] = operations.map(
-      (operation) => {
-        const authorization = authorizations.find(
-          (el) => el.role.name === operation.authorizationRole,
-        );
-
-        return orchestrateRealizeScenario(ctx, operation, authorization);
+      (op: AutoBeOpenApi.IOperation) => {
+        return generateRealizeScenario(ctx, op, authorizations);
       },
     );
 
@@ -102,7 +98,7 @@ export const orchestrateRealize =
       };
     });
 
-    const reviewProgress = {
+    const reviewProgress: AutoBeProgressEventBase = {
       total: writeEvents.length,
       completed: writeEvents.length,
     };
