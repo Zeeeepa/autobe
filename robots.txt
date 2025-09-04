@@ -3,7 +3,7 @@ User-agent: *
 Allow: /
 
 # Host
-Host: https://wrtnlabs.io/autobe
+Host: https://autobe.dev
 
 # Sitemaps
-Sitemap: https://wrtnlabs.io/autobe/sitemap.xml
+Sitemap: https://autobe.dev/sitemap.xml
