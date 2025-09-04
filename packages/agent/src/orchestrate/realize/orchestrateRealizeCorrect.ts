@@ -33,11 +33,8 @@ export async function orchestrateRealizeCorrect<Model extends ILlmSchema.Model>(
 ): Promise<AutoBeRealizeValidateEvent> {
   const event = await compileRealizeFiles(ctx, { authorizations, functions });
   if (event.result.type === "failure") ctx.dispatch(event);
-
-  if (event.result.type === "success") {
-    console.debug("compilation success!");
-    return event;
-  } else if (--life <= 0) return event;
+  if (event.result.type === "success") return event;
+  else if (--life <= 0) return event;
 
   const locations: string[] =
     (event.result.type === "failure"
@@ -47,30 +44,7 @@ export async function orchestrateRealizeCorrect<Model extends ILlmSchema.Model>(
 
   progress.total += Object.keys(locations).length;
 
-  const diagnostics =
-    event.result.type === "failure" ? event.result.diagnostics : [];
-
-  const diagnosticsByFile = diagnostics.reduce<
-    Record<string, typeof diagnostics>
-  >((acc, diagnostic) => {
-    const location = diagnostic.file!;
-    if (!acc[location]) {
-      acc[location] = [];
-    }
-    acc[location].push(diagnostic);
-    return acc;
-  }, {});
-
-  for (const [location, diagnostics] of Object.entries(diagnosticsByFile)) {
-    const func = functions.find((el) => el.location === location);
-
-    if (func) {
-      failures.push({
-        function: func,
-        diagnostics,
-      });
-    }
-  }
+  void diagnose(functions, failures, event);
 
   await executeCachedBatch(
     locations.map((location) => async (): Promise<AutoBeRealizeFunction> => {
@@ -107,7 +81,38 @@ export async function orchestrateRealizeCorrect<Model extends ILlmSchema.Model>(
   );
 }
 
-export async function correct<Model extends ILlmSchema.Model>(
+function diagnose(
+  functions: AutoBeRealizeFunction[],
+  failures: IAutoBeRealizeFunctionFailure[],
+  event: AutoBeRealizeValidateEvent,
+): void {
+  const diagnostics =
+    event.result.type === "failure" ? event.result.diagnostics : [];
+
+  const diagnosticsByFile = diagnostics.reduce<
+    Record<string, typeof diagnostics>
+  >((acc, diagnostic) => {
+    const location = diagnostic.file!;
+    if (!acc[location]) {
+      acc[location] = [];
+    }
+    acc[location].push(diagnostic);
+    return acc;
+  }, {});
+
+  for (const [location, diagnostics] of Object.entries(diagnosticsByFile)) {
+    const func = functions.find((el) => el.location === location);
+
+    if (func) {
+      failures.push({
+        function: func,
+        diagnostics,
+      });
+    }
+  }
+}
+
+async function correct<Model extends ILlmSchema.Model>(
   ctx: AutoBeContext<Model>,
   props: {
     authorization: AutoBeRealizeAuthorization | null;
