@@ -36,38 +36,39 @@ export async function orchestrateRealizeCorrect<Model extends ILlmSchema.Model>(
   if (event.result.type === "success") return event;
   else if (--life <= 0) return event;
 
-  const locations: string[] =
-    (event.result.type === "failure"
-      ? Array.from(new Set(event.result.diagnostics.map((d) => d.file)))
-      : null
-    )?.filter((el) => el !== null) ?? [];
-
-  progress.total += Object.keys(locations).length;
-
   void diagnose(functions, failures, event);
+  const failedFilePaths: string[] = getFailedFilePaths(
+    functions,
+    failures,
+    event,
+  );
+
+  progress.total += Object.keys(failedFilePaths).length;
 
   await executeCachedBatch(
-    locations.map((location) => async (): Promise<AutoBeRealizeFunction> => {
-      const scenario = scenarios.find((el) => el.location === location);
-      const func = functions.find((el) => el.location === location)!;
-      const ReailzeFunctionFailures: IAutoBeRealizeFunctionFailure[] =
-        failures.filter((f) => f.function.location === location);
+    failedFilePaths.map(
+      (location) => async (): Promise<AutoBeRealizeFunction> => {
+        const scenario = scenarios.find((el) => el.location === location);
+        const func = functions.find((el) => el.location === location)!;
+        const ReailzeFunctionFailures: IAutoBeRealizeFunctionFailure[] =
+          failures.filter((f) => f.function.location === location);
 
-      if (ReailzeFunctionFailures.length && scenario) {
-        const correctEvent = await correct(ctx, {
-          totalAuthorizations: authorizations,
-          authorization: scenario.decoratorEvent ?? null,
-          scenario,
-          function: func,
-          failures: ReailzeFunctionFailures,
-          progress: progress,
-        });
+        if (ReailzeFunctionFailures.length && scenario) {
+          const correctEvent = await correct(ctx, {
+            totalAuthorizations: authorizations,
+            authorization: scenario.decoratorEvent ?? null,
+            scenario,
+            function: func,
+            failures: ReailzeFunctionFailures,
+            progress: progress,
+          });
 
-        func.content = correctEvent.content;
-      }
+          func.content = correctEvent.content;
+        }
 
-      return func;
-    }),
+        return func;
+      },
+    ),
   );
 
   return orchestrateRealizeCorrect(
@@ -79,6 +80,25 @@ export async function orchestrateRealizeCorrect<Model extends ILlmSchema.Model>(
     progress,
     life,
   );
+}
+
+function getFailedFilePaths(
+  functions: AutoBeRealizeFunction[],
+  failures: IAutoBeRealizeFunctionFailure[],
+  event: AutoBeRealizeValidateEvent,
+): string[] {
+  const failedFilePaths: string[] = [];
+
+  if (event.result.type === "failure") {
+    for (const diagnostic of event.result.diagnostics) {
+      const location = diagnostic.file!;
+      if (!failedFilePaths.includes(location)) {
+        failedFilePaths.push(location);
+      }
+    }
+  }
+
+  return failedFilePaths;
 }
 
 function diagnose(
