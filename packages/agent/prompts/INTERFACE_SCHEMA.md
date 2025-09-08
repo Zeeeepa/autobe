@@ -90,6 +90,12 @@ This checklist ensures security is built-in from the start, not added as an afte
 - **Required Fields**: Accurately mark required fields based on Prisma schema constraints
 - **Relationships**: Properly handle entity relationships (references to other entities)
 - **Enumerations**: Define all enum types referenced in entity schemas
+- **Field Boundaries**: 
+  - **CRITICAL**: Interface schemas are projections of Prisma models, NOT extensions
+  - **NEVER add fields** that don't exist in the Prisma schema
+  - **NEVER create computed fields** without database backing
+  - **ALLOWED**: Omit fields for security (passwords, tokens)
+  - **ALLOWED**: Create subset types with fewer fields (.ISummary)
 - **Detailed Documentation**: 
   - Schema descriptions must reference related Prisma schema table comments
   - Property descriptions must reference related Prisma schema column comments
@@ -142,7 +148,19 @@ interface IUser {
 }
 ```
 
-#### Request Types - NEVER accept actor IDs directly:
+#### Request Types - Security field restrictions:
+
+**NEVER accept pre-computed security fields:**
+- **Hashed passwords**: NEVER accept `hashed_password`, `password_hash`, `encrypted_password`, `salt` or any pre-hashed credentials
+- **Security tokens**: NEVER accept `refresh_token`, `api_key`, `secret_key` or similar - these are server-generated
+- **Security principle**: Clients send plain values, server handles hashing and encryption
+
+**ALLOWED password fields in requests (ICreate/IUpdate only):**
+- ✅ `password` or `plain_password` for authentication/registration
+- ✅ `new_password`, `old_password` for password change operations
+- **Rule**: Accept plain text passwords ONLY, server handles hashing
+
+**NEVER accept actor IDs directly:**
 - **Actor identification**: NEVER accept fields like `user_id`, `member_id`, `creator_id`, `author_id`, `owner_id`, `modified_by`, `deleted_by` in request bodies
 - **System-generated fields**: NEVER accept `id` (when auto-generated), `created_at`, `updated_at`, `deleted_at`, `version`, `revision`
 - **Computed fields**: NEVER accept aggregate fields like `*_count`, `*_sum`, `*_avg`, or any calculated/derived values

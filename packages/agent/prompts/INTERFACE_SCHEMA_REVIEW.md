@@ -113,6 +113,15 @@ Before submitting:
 
 ## 5. Comprehensive Validation Rules
 
+### 5.0. Pre-Execution Security Checklist
+
+Before validating schemas, check:
+- [ ] ALL authentication fields identified (user_id, author_id, creator_id, owner_id, member_id)
+- [ ] ALL sensitive fields marked for exclusion (password, hashed_password, salt, tokens, secrets)
+- [ ] ALL system-generated fields identified (id, created_at, updated_at, deleted_at, version, *_count fields)
+- [ ] Ownership relationships documented to prevent unauthorized modifications
+- [ ] Security filtering planned for each entity type
+
 ### 5.1. Naming Convention Rules
 
 **Main Entity Types (MUST use singular form):**
@@ -161,9 +170,16 @@ Before submitting:
 - Internal fields: `password_reset_token`, `email_verification_code`, `two_factor_secret`
 
 **Request Types - FORBIDDEN fields:**
+- Hashed passwords: `hashed_password`, `password_hash`, `encrypted_password`, `salt`
+- Security tokens: `refresh_token`, `api_key`, `secret_key` (server-generated only)
 - Actor IDs: `user_id`, `author_id`, `creator_id`, `owner_id`, `modified_by`, `deleted_by`
 - System fields: `id` (when auto-generated), `created_at`, `updated_at`, `deleted_at`
 - Computed fields: `*_count`, `*_sum`, `*_avg`
+
+**Request Types - ALLOWED password fields:**
+- ✅ `password` or `plain_password` for registration/login
+- ✅ `new_password`, `old_password` for password changes
+- **Principle**: Accept plain text only, server handles hashing
 
 ### 5.4. IPage Type Structure
 
@@ -202,12 +218,21 @@ Before submitting:
 - For paginated data: `data: IEntity.ISummary[]` NOT `data: any[]`
 - All types must be explicitly defined
 
-### 5.6. Completeness Requirements
+### 5.6. Completeness and Boundary Requirements
 
 **Entity Coverage:**
 - EVERY entity in Prisma schema MUST have corresponding schema definition
 - ALL properties from Prisma MUST be included (with security filtering)
 - ALL necessary variant types MUST be defined
+
+**Field Boundary Rules - CRITICAL:**
+- Interface schemas MUST NOT contain fields that don't exist in Prisma models
+- ❌ FORBIDDEN: Adding computed fields not backed by database columns
+- ❌ FORBIDDEN: Creating virtual properties without Prisma field support
+- ❌ FORBIDDEN: Inventing new fields beyond what Prisma schema defines
+- ✅ ALLOWED: Omitting sensitive fields for security (passwords, tokens)
+- ✅ ALLOWED: Creating subset types (.ISummary with fewer fields)
+- **Principle**: Interface is a projection of Prisma schema, never an extension
 
 **Variant Type Requirements:**
 - `.ICreate`: Required fields from Prisma (excluding auto-generated)
@@ -235,13 +260,18 @@ Before submitting:
 
 ### 6.1. Content Field Return Rules
 
+**IMPORTANT**: Only return schemas that needed modification - DO NOT return unchanged schemas
+- Return ONLY the corrected/fixed schemas that had violations
+- If all schemas are compliant, return an empty object {}
+- NEVER recreate all schemas from scratch - only fix what's broken
+
 **FORBIDDEN:**
-- ❌ NEVER return empty object {} in content (unless all schemas are compliant)
 - ❌ NEVER write excuses in schema descriptions
 - ❌ NEVER leave broken schemas unfixed
+- ❌ NEVER say "this needs regeneration" in a description field
 
 **REQUIRED:**
-- ✅ ALWAYS return complete, valid schemas
+- ✅ ALWAYS return complete, valid schemas for modified items only
 - ✅ CREATE missing variants when main entity exists
 - ✅ Write proper business descriptions
 
