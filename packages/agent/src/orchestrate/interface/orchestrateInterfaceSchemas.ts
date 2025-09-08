@@ -2,6 +2,7 @@ import { IAgenticaController } from "@agentica/core";
 import {
   AutoBeInterfaceSchemasEvent,
   AutoBeOpenApi,
+  AutoBePrisma,
   AutoBeProgressEventBase,
 } from "@autobe/interface";
 import { StringUtil } from "@autobe/utils";
@@ -112,11 +113,16 @@ async function process<Model extends ILlmSchema.Model>(
   > | null> = {
     value: null,
   };
+
+  const prismaModels: AutoBePrisma.IModel[] =
+    ctx.state().prisma?.result.data.files.flatMap((file) => file.models) ?? [];
+
   const { tokenUsage } = await ctx.conversate({
     source: "interfaceSchemas",
     histories: transformInterfaceSchemaHistories(ctx.state(), operations),
     controller: createController({
       model: ctx.model,
+      prismaModels: prismaModels,
       build: async (next) => {
         pointer.value ??= {};
         Object.assign(pointer.value, next);
@@ -172,6 +178,7 @@ async function process<Model extends ILlmSchema.Model>(
 
 function createController<Model extends ILlmSchema.Model>(props: {
   model: Model;
+  prismaModels: AutoBePrisma.IModel[];
   build: (
     next: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive>,
   ) => Promise<void>;
@@ -199,8 +206,10 @@ function createController<Model extends ILlmSchema.Model>(props: {
     JsonSchemaValidator.validate({
       errors,
       schemas: result.data.schemas,
+      prismaModels: props.prismaModels,
       path: "$input.schemas",
     });
+
     if (errors.length !== 0)
       return {
         success: false,

@@ -1,5 +1,5 @@
 import { IAgenticaController } from "@agentica/core";
-import { AutoBeOpenApi } from "@autobe/interface";
+import { AutoBeOpenApi, AutoBePrisma } from "@autobe/interface";
 import {
   ILlmApplication,
   ILlmSchema,
@@ -43,6 +43,10 @@ async function step<Model extends ILlmSchema.Model>(
   > | null> = {
     value: null,
   };
+
+  const prismaModels: AutoBePrisma.IModel[] =
+    ctx.state().prisma?.result.data.files.flatMap((file) => file.models) ?? [];
+
   const { tokenUsage } = await ctx.conversate({
     source: "interfaceComplement",
     histories: transformInterfaceComplementHistories(
@@ -52,6 +56,7 @@ async function step<Model extends ILlmSchema.Model>(
     ),
     controller: createController({
       model: ctx.model,
+      prismaModels: prismaModels,
       build: (next) => {
         pointer.value ??= {};
         Object.assign(
@@ -124,6 +129,7 @@ const getMissed = (document: AutoBeOpenApi.IDocument): string[] => {
 
 function createController<Model extends ILlmSchema.Model>(props: {
   model: Model;
+  prismaModels: AutoBePrisma.IModel[];
   build: (
     schemas: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive>,
   ) => void;
@@ -146,6 +152,7 @@ function createController<Model extends ILlmSchema.Model>(props: {
     JsonSchemaValidator.validate({
       errors,
       schemas: result.data.schemas,
+      prismaModels: props.prismaModels,
       path: "$input.schemas",
     });
     if (errors.length !== 0)
