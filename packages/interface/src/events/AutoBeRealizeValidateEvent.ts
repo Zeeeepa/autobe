@@ -1,4 +1,5 @@
 import { IAutoBeTypeScriptCompileResult } from "../compiler/IAutoBeTypeScriptCompileResult";
+import { AutoBeRealizeFunction } from "../histories";
 import { AutoBeEventBase } from "./AutoBeEventBase";
 
 /**
@@ -22,20 +23,20 @@ import { AutoBeEventBase } from "./AutoBeEventBase";
 export interface AutoBeRealizeValidateEvent
   extends AutoBeEventBase<"realizeValidate"> {
   /**
-   * Implementation files that failed compilation validation as key-value pairs.
+   * Implementation function that failed compilation validation.
    *
-   * Contains the TypeScript implementation files that were generated but failed
-   * to pass compilation validation. Each key represents the file path and each
-   * value contains the implementation code that contains compilation errors or
-   * integration issues. These files provide context for understanding what was
-   * attempted and where the problems occurred.
+   * Contains the TypeScript implementation function that was generated but failed
+   * to pass compilation validation. This includes the function's endpoint
+   * specification, file location, function name, and the implementation code
+   * that contains compilation errors or integration issues.
    *
-   * Having access to the failing implementation files enables detailed analysis
-   * of the compilation issues and helps in formulating precise corrections that
-   * address specific problems while maintaining integration with the
-   * established API and database architecture.
+   * Having access to the failing function provides context for understanding
+   * what was attempted and where the problems occurred, enabling detailed
+   * analysis of the compilation issues and helping to formulate precise
+   * corrections that address specific problems while maintaining integration
+   * with the established API and database architecture.
    */
-  files: Record<string, string>;
+  function: AutoBeRealizeFunction;
 
   /**
    * Compilation failure or exception details describing what errors were

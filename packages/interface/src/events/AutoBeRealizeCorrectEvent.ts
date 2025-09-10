@@ -1,5 +1,4 @@
 import { AutoBeEventBase } from "./AutoBeEventBase";
-import { AutoBeProgressEventBase } from "./AutoBeProgressEventBase";
 import { AutoBeTokenUsageEventBase } from "./AutoBeTokenUsageEventBase";
 
 /**
@@ -19,7 +18,6 @@ import { AutoBeTokenUsageEventBase } from "./AutoBeTokenUsageEventBase";
  */
 export interface AutoBeRealizeCorrectEvent
   extends AutoBeEventBase<"realizeCorrect">,
-    AutoBeProgressEventBase,
     AutoBeTokenUsageEventBase {
   /**
    * Name of the implementation file that has been corrected and finalized.
