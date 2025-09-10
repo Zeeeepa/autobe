@@ -6,7 +6,7 @@ import {
 } from "@autobe/interface";
 import { StringUtil } from "@autobe/utils";
 import { ILlmApplication, ILlmController, ILlmSchema } from "@samchon/openapi";
-import { IPointer, Mutex } from "tstl";
+import { IPointer } from "tstl";
 import typia from "typia";
 import { v7 } from "uuid";
 
@@ -28,23 +28,17 @@ export async function orchestrateRealizeCorrect<Model extends ILlmSchema.Model>(
   authorizations: AutoBeRealizeAuthorization[],
   functions: AutoBeRealizeFunction[],
 ): Promise<AutoBeRealizeValidateEvent[]> {
-  const mutex: Mutex = new Mutex();
   const result = await executeCachedBatch(
     functions.map((f) => async (promptCacheKey) => {
       try {
         const compile = async (script: string) => {
-          await mutex.lock();
-          try {
-            return await compileRealizeFiles(ctx, {
-              authorizations,
-              function: {
-                ...f,
-                content: script,
-              },
-            });
-          } finally {
-            await mutex.unlock();
-          }
+          return await compileRealizeFiles(ctx, {
+            authorizations,
+            function: {
+              ...f,
+              content: script,
+            },
+          });
         };
 
         const scenario = scenarios.find((el) => el.location === f.location);
