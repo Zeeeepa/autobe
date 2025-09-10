@@ -24,6 +24,7 @@ import {
   IAutoBeTokenUsageJson,
 } from "@autobe/interface";
 import { ILlmSchema } from "@samchon/openapi";
+import { Mutex } from "tstl";
 import typia from "typia";
 import { v7 } from "uuid";
 
@@ -36,6 +37,7 @@ import { IAutoBeApplication } from "../context/IAutoBeApplication";
 import { IAutoBeConfig } from "../structures/IAutoBeConfig";
 import { IAutoBeVendor } from "../structures/IAutoBeVendor";
 import { consentFunctionCall } from "./consentFunctionCall";
+import { createMutexedCompiler } from "./createMutexedCompiler";
 
 export const createAutoBeContext = <Model extends ILlmSchema.Model>(props: {
   model: Model;
@@ -52,13 +54,17 @@ export const createAutoBeContext = <Model extends ILlmSchema.Model>(props: {
   const retry: number =
     props.config?.retry ?? AutoBeConfigConstant.DEFAULT_RETRY;
   const locale: string = props.config.locale ?? "en-US";
+  const mutex: Mutex = new Mutex();
   return {
     model: props.model,
     vendor: props.vendor,
     retry,
     locale,
     compilerListener: props.compilerListener,
-    compiler: props.compiler,
+    compiler: async () => {
+      const compiler: IAutoBeCompiler = await props.compiler();
+      return createMutexedCompiler(mutex, compiler);
+    },
     files: props.files,
     histories: props.histories,
     state: props.state,
