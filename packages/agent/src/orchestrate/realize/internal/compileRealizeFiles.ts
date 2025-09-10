@@ -14,7 +14,7 @@ export async function compileRealizeFiles<Model extends ILlmSchema.Model>(
   ctx: AutoBeContext<Model>,
   props: {
     authorizations: AutoBeRealizeAuthorization[];
-    functions: AutoBeRealizeFunction[];
+    function: AutoBeRealizeFunction;
   },
 ): Promise<AutoBeRealizeValidateEvent> {
   const prisma = ctx.state().prisma?.compiled;
@@ -27,8 +27,20 @@ export async function compileRealizeFiles<Model extends ILlmSchema.Model>(
   const nodeModules: Record<string, string> =
     prisma?.type === "success" ? prisma.nodeModules : {};
 
-  const filterTsFiles = (location: string) =>
-    location.startsWith("src/") && location.endsWith(".ts");
+  // src/api/structures
+  // src/providers -> only one file
+  // src/ -> 1st depth files
+  const filterTsFiles = (location: string) => {
+    if (!location.endsWith(".ts")) return false;
+    
+    // src/api/structures 폴더의 파일들
+    if (location.startsWith("src/api/structures/")) return true;
+    
+    // src/ 바로 아래의 .ts 파일들 (하위 폴더 제외)
+    if (location.startsWith("src/") && !location.slice(4).includes("/")) return true;
+    
+    return false;
+  };
 
   const files: Record<string, string> = {
     ...nodeModules,
@@ -41,9 +53,8 @@ export async function compileRealizeFiles<Model extends ILlmSchema.Model>(
     ...Object.fromEntries(
       Object.entries(templateFiles).filter(([key]) => filterTsFiles(key)),
     ),
-    ...Object.fromEntries(
-      props.functions.map((el) => [el.location, el.content]),
-    ),
+
+    [props.function.location]: props.function.content,
   };
 
   const compiled: IAutoBeTypeScriptCompileResult =
@@ -54,7 +65,7 @@ export async function compileRealizeFiles<Model extends ILlmSchema.Model>(
   const event: AutoBeRealizeValidateEvent = {
     type: "realizeValidate",
     id: v7(),
-    files: files,
+    function: props.function,
     result: compiled,
     step: ctx.state().analyze?.step ?? 0,
     created_at: new Date().toISOString(),

@@ -102,18 +102,11 @@ export const orchestrateRealize =
       };
     });
 
-    const reviewProgress = {
-      total: writeEvents.length,
-      completed: writeEvents.length,
-    };
-
     const result = await orchestrateRealizeCorrect(
       ctx,
       scenarios,
       authorizations,
       functions,
-      [],
-      reviewProgress,
     );
 
     const compiler: IAutoBeCompiler = await ctx.compiler();
@@ -131,7 +124,7 @@ export const orchestrateRealize =
       functions,
       authorizations,
       controllers,
-      compiled: result.result,
+      compiled: result[result.length - 1].result, // TODO: fix me
       step: ctx.state().analyze?.step ?? 0,
       elapsed: new Date().getTime() - start.getTime(),
     });

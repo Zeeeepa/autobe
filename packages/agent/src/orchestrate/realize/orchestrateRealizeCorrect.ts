@@ -1,5 +1,4 @@
 import {
-  AutoBeProgressEventBase,
   AutoBeRealizeAuthorization,
   AutoBeRealizeCorrectEvent,
   AutoBeRealizeFunction,
@@ -14,6 +13,7 @@ import { v7 } from "uuid";
 import { AutoBeContext } from "../../context/AutoBeContext";
 import { assertSchemaModel } from "../../context/assertSchemaModel";
 import { executeCachedBatch } from "../../utils/executeCachedBatch";
+import { orchestrateCommonCorrectCasting } from "../common/orchestrateCommonCorrectCasting";
 import { transformRealizeCorrectHistories } from "./histories/transformRealizeCorrectHistories";
 import { compileRealizeFiles } from "./internal/compileRealizeFiles";
 import { IAutoBeRealizeCorrectApplication } from "./structures/IAutoBeRealizeCorrectApplication";
@@ -27,87 +27,106 @@ export async function orchestrateRealizeCorrect<Model extends ILlmSchema.Model>(
   scenarios: IAutoBeRealizeScenarioResult[],
   authorizations: AutoBeRealizeAuthorization[],
   functions: AutoBeRealizeFunction[],
-  failures: IAutoBeRealizeFunctionFailure[],
-  progress: IProgress,
-  life: number = ctx.retry,
-): Promise<AutoBeRealizeValidateEvent> {
-  const event = await compileRealizeFiles(ctx, { authorizations, functions });
-  if (event.result.type === "failure") ctx.dispatch(event);
+): Promise<AutoBeRealizeValidateEvent[]> {
+  const result = await executeCachedBatch(
+    functions.map((f) => async (promptCacheKey) => {
+      try {
+        const compile = async (script: string) => {
+          return compileRealizeFiles(ctx, {
+            authorizations,
+            function: {
+              ...f,
+              content: script,
+            },
+          });
+        };
 
-  if (event.result.type === "success") {
-    console.debug("compilation success!");
-    return event;
-  } else if (life < 0) return event;
+        const scenario = scenarios.find((el) => el.location === f.location);
+        if (scenario === undefined) return null;
 
-  const locations: string[] =
-    (event.result.type === "failure"
-      ? Array.from(new Set(event.result.diagnostics.map((d) => d.file)))
-      : null
-    )?.filter((el) => el !== null) ?? [];
+        const x: AutoBeRealizeValidateEvent =
+          await orchestrateCommonCorrectCasting(
+            ctx,
+            {
+              source: "realizeCorrect",
+              validate: compile,
+              correct: (next) => ({
+                id: v7(),
+                type: "realizeCorrect",
+                created_at: new Date().toISOString(),
+                location: f.location,
+                content: next.final ?? next.draft,
+                step: ctx.state().analyze?.step ?? 0,
+                tokenUsage: next.tokenUsage,
+              }),
+              script: (event) => event.function.content,
+            },
+            f.content,
+          );
 
-  progress.total += Object.keys(locations).length;
-
-  const diagnostics =
-    event.result.type === "failure" ? event.result.diagnostics : [];
-
-  const diagnosticsByFile = diagnostics.reduce<
-    Record<string, typeof diagnostics>
-  >((acc, diagnostic) => {
-    const location = diagnostic.file!;
-    if (!acc[location]) {
-      acc[location] = [];
-    }
-    acc[location].push(diagnostic);
-    return acc;
-  }, {});
-
-  for (const [location, diagnostics] of Object.entries(diagnosticsByFile)) {
-    const func = functions.find((el) => el.location === location);
-
-    if (func) {
-      failures.push({
-        function: func,
-        diagnostics,
-      });
-    }
-  }
-
-  await executeCachedBatch(
-    locations.map((location) => async (): Promise<AutoBeRealizeFunction> => {
-      const scenario = scenarios.find((el) => el.location === location);
-      const func = functions.find((el) => el.location === location)!;
-      const ReailzeFunctionFailures: IAutoBeRealizeFunctionFailure[] =
-        failures.filter((f) => f.function.location === location);
-
-      if (ReailzeFunctionFailures.length && scenario) {
-        const correctEvent = await correct(ctx, {
-          totalAuthorizations: authorizations,
-          authorization: scenario.decoratorEvent ?? null,
+        f.content = x.function.content;
+        return predicate(
+          ctx,
           scenario,
-          function: func,
-          failures: ReailzeFunctionFailures,
-          progress: progress,
-        });
-
-        func.content = correctEvent.content;
+          authorizations,
+          f,
+          [],
+          promptCacheKey,
+          ctx.retry,
+        );
+      } catch (err) {
+        console.debug(
+          "failed to correct provider code, no function calling happened.",
+          f.location,
+        );
+        return null;
       }
-
-      return func;
     }),
   );
 
-  return orchestrateRealizeCorrect(
-    ctx,
-    scenarios,
-    authorizations,
-    functions,
-    failures,
-    progress,
-    life - 1,
-  );
+  return result.filter((r) => r !== null);
 }
 
-export async function correct<Model extends ILlmSchema.Model>(
+async function predicate<Model extends ILlmSchema.Model>(
+  ctx: AutoBeContext<Model>,
+  scenario: IAutoBeRealizeScenarioResult,
+  authorizations: AutoBeRealizeAuthorization[],
+  func: AutoBeRealizeFunction,
+  failures: IAutoBeRealizeFunctionFailure[],
+  promptCacheKey: string,
+  life: number,
+): Promise<AutoBeRealizeValidateEvent | null> {
+  if (life < 0) return null;
+  const event = await compileRealizeFiles(ctx, {
+    authorizations,
+    function: func,
+  });
+
+  if (event.result.type === "failure") ctx.dispatch(event);
+
+  return event.result.type === "failure"
+    ? await correct(
+        ctx,
+        {
+          totalAuthorizations: authorizations,
+          authorization: null,
+          scenario: scenario,
+          function: func,
+          failures: [
+            ...failures,
+            {
+              function: func,
+              diagnostics: event.result.diagnostics,
+            },
+          ],
+          promptCacheKey,
+        },
+        life - 1,
+      )
+    : event;
+}
+
+async function correct<Model extends ILlmSchema.Model>(
   ctx: AutoBeContext<Model>,
   props: {
     authorization: AutoBeRealizeAuthorization | null;
@@ -115,9 +134,10 @@ export async function correct<Model extends ILlmSchema.Model>(
     scenario: IAutoBeRealizeScenarioResult;
     function: AutoBeRealizeFunction;
     failures: IAutoBeRealizeFunctionFailure[];
-    progress: AutoBeProgressEventBase;
+    promptCacheKey: string;
   },
-): Promise<AutoBeRealizeCorrectEvent> {
+  life: number,
+): Promise<AutoBeRealizeValidateEvent | null> {
   const pointer: IPointer<IAutoBeRealizeCorrectApplication.IProps | null> = {
     value: null,
   };
@@ -146,6 +166,7 @@ export async function correct<Model extends ILlmSchema.Model>(
     message: StringUtil.trim`
       Correct the TypeScript code implementation.
     `,
+    promptCacheKey: props.promptCacheKey,
   });
 
   if (pointer.value === null)
@@ -163,13 +184,20 @@ export async function correct<Model extends ILlmSchema.Model>(
     location: props.scenario.location,
     content: pointer.value.revise.implementationCode,
     tokenUsage,
-    completed: ++props.progress.completed,
-    total: props.progress.total,
     step: ctx.state().analyze?.step ?? 0,
     created_at: new Date().toISOString(),
   };
   ctx.dispatch(event);
-  return event;
+
+  return predicate(
+    ctx,
+    props.scenario,
+    props.totalAuthorizations,
+    props.function,
+    props.failures,
+    props.promptCacheKey,
+    life - 1,
+  );
 }
 
 function createController<Model extends ILlmSchema.Model>(props: {
@@ -204,8 +232,3 @@ const collection = {
   deepseek: claude,
   "3.1": claude,
 };
-
-interface IProgress {
-  total: number;
-  completed: number;
-}
