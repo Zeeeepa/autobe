@@ -308,7 +308,11 @@ export const AutoBeChatUploadBox = (props: AutoBeChatUploadBox.IProps) => {
           }
           value={text}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
+            if (
+              e.key === "Enter" &&
+              !e.shiftKey &&
+              e.nativeEvent.isComposing === false
+            ) {
               e.preventDefault();
               if (enabled) void conversate();
             }

@@ -1,35 +1,40 @@
 import {
   IAutoBeHackathon,
-  IAutobeHackathonParticipant,
+  IAutoBeHackathonModerator,
+  IAutoBeHackathonParticipant,
 } from "@autobe/interface";
 import { ForbiddenException } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
-import { v7 } from "uuid";
 
-import { AutoBeHackathonGlobal } from "../AutoBeHackathonGlobal";
-import { BcryptUtil } from "../utils/BcryptUtil";
-import { JwtTokenManager } from "../utils/JwtTokenManager";
+import { AutoBeHackathonGlobal } from "../../AutoBeHackathonGlobal";
+import { BcryptUtil } from "../../utils/BcryptUtil";
+import { JwtTokenManager } from "../../utils/JwtTokenManager";
 
-export namespace AutoBeHackathonParticipantProvider {
+export namespace AutoBeHackathonModeratorProvider {
   export namespace json {
     export const transform = (
-      input: Prisma.autobe_hackathon_participantsGetPayload<
+      input: Prisma.autobe_hackathon_moderatorsGetPayload<
         ReturnType<typeof select>
       >,
-    ): IAutobeHackathonParticipant => ({
+    ): IAutoBeHackathonModerator => ({
+      type: "moderator",
       id: input.id,
-      email: input.email,
-      name: input.name,
+      email: input.participant.email,
+      name: input.participant.name,
       created_at: input.created_at.toISOString(),
     });
     export const select = () =>
-      ({}) satisfies Prisma.autobe_hackathon_participantsFindManyArgs;
+      ({
+        include: {
+          participant: true,
+        },
+      }) satisfies Prisma.autobe_hackathon_moderatorsFindManyArgs;
   }
 
   export const authorize = async (props: {
     hackathon: IAutoBeHackathon;
     accessToken: string | null | undefined;
-  }): Promise<IAutobeHackathonParticipant> => {
+  }): Promise<IAutoBeHackathonModerator> => {
     if (!props.accessToken?.length)
       throw new ForbiddenException("Access token is required.");
     else if (props.accessToken.startsWith(BEARER_PREFIX) === false)
@@ -42,39 +47,39 @@ export namespace AutoBeHackathonParticipantProvider {
       throw new ForbiddenException("Invalid access token.");
 
     const record =
-      await AutoBeHackathonGlobal.prisma.autobe_hackathon_participants.findFirst(
-        {
-          where: {
+      await AutoBeHackathonGlobal.prisma.autobe_hackathon_moderators.findFirst({
+        where: {
+          id: decoded.id,
+          participant: {
             autobe_hackathon_id: props.hackathon.id,
-            id: decoded.id,
           },
-          ...json.select(),
         },
-      );
-    if (record === null) throw new ForbiddenException("Participant not found.");
+        ...json.select(),
+      });
+    if (record === null) throw new ForbiddenException("Moderator not found.");
     return json.transform(record);
   };
 
   export const login = async (props: {
     hackathon: IAutoBeHackathon;
-    body: IAutobeHackathonParticipant.ILogin;
-  }): Promise<IAutobeHackathonParticipant.IAuthorized> => {
+    body: IAutoBeHackathonModerator.ILogin;
+  }): Promise<IAutoBeHackathonModerator.IAuthorized> => {
     const record =
-      await AutoBeHackathonGlobal.prisma.autobe_hackathon_participants.findFirst(
-        {
-          where: {
+      await AutoBeHackathonGlobal.prisma.autobe_hackathon_moderators.findFirst({
+        where: {
+          participant: {
             autobe_hackathon_id: props.hackathon.id,
             email: props.body.email,
           },
-          ...json.select(),
         },
-      );
+        ...json.select(),
+      });
     if (record === null) throw new ForbiddenException("Email not registered.");
     else if (
       false ===
       (await BcryptUtil.equals({
         input: props.body.password,
-        hashed: record.password,
+        hashed: record.participant.password,
       }))
     )
       throw new ForbiddenException("Invalid password.");
@@ -83,53 +88,48 @@ export namespace AutoBeHackathonParticipantProvider {
 
   export const refresh = async (props: {
     hackathon: IAutoBeHackathon;
-    body: IAutobeHackathonParticipant.IRefresh;
-  }): Promise<IAutobeHackathonParticipant.IAuthorized> => {
+    body: IAutoBeHackathonModerator.IRefresh;
+  }): Promise<IAutoBeHackathonModerator.IAuthorized> => {
     const decoded: JwtTokenManager.IAsset = await JwtTokenManager.verify(
       "refresh",
     )(props.body.value);
     if (decoded.table !== TABLE_NAME)
       throw new ForbiddenException("Invalid token.");
     const record =
-      await AutoBeHackathonGlobal.prisma.autobe_hackathon_participants.findFirst(
-        {
-          where: {
+      await AutoBeHackathonGlobal.prisma.autobe_hackathon_moderators.findFirst({
+        where: {
+          id: decoded.id,
+          participant: {
             autobe_hackathon_id: props.hackathon.id,
-            id: decoded.id,
           },
-          ...json.select(),
         },
-      );
-    if (record === null) throw new ForbiddenException("Participant not found.");
+        ...json.select(),
+      });
+    if (record === null) throw new ForbiddenException("Moderator not found.");
     return await tokenize(json.transform(record));
   };
 
   export const join = async (props: {
     hackathon: IAutoBeHackathon;
-    body: IAutobeHackathonParticipant.IJoin;
-  }): Promise<IAutobeHackathonParticipant.IAuthorized> => {
+    participant: IAutoBeHackathonParticipant;
+  }): Promise<IAutoBeHackathonModerator.IAuthorized> => {
     const existing =
-      await AutoBeHackathonGlobal.prisma.autobe_hackathon_participants.findFirst(
-        {
-          where: {
-            autobe_hackathon_id: props.hackathon.id,
-            email: props.body.email,
-          },
-          select: { id: true },
+      await AutoBeHackathonGlobal.prisma.autobe_hackathon_moderators.findFirst({
+        where: {
+          id: props.participant.id,
         },
-      );
+        select: { id: true },
+      });
     if (existing !== null)
       throw new ForbiddenException("Email already registered.");
 
     const record =
-      await AutoBeHackathonGlobal.prisma.autobe_hackathon_participants.create({
+      await AutoBeHackathonGlobal.prisma.autobe_hackathon_moderators.create({
         data: {
-          id: v7(),
-          autobe_hackathon_id: props.hackathon.id,
-          email: props.body.email,
-          name: props.body.name,
-          password: await BcryptUtil.hash(props.body.password),
+          id: props.participant.id,
           created_at: new Date(),
+          updated_at: new Date(),
+          deleted_at: null,
         },
         ...json.select(),
       });
@@ -137,15 +137,15 @@ export namespace AutoBeHackathonParticipantProvider {
   };
 
   const tokenize = async (
-    participant: IAutobeHackathonParticipant,
-  ): Promise<IAutobeHackathonParticipant.IAuthorized> => {
+    moderator: IAutoBeHackathonModerator,
+  ): Promise<IAutoBeHackathonModerator.IAuthorized> => {
     const token: JwtTokenManager.IOutput = await JwtTokenManager.generate({
       table: TABLE_NAME,
-      id: participant.id,
+      id: moderator.id,
       readonly: false,
     });
     return {
-      ...participant,
+      ...moderator,
       token: {
         access: token.access,
         refresh: token.refresh,
@@ -159,5 +159,5 @@ export namespace AutoBeHackathonParticipantProvider {
   };
 }
 
-const TABLE_NAME = "autobe_hackathon_participants";
+const TABLE_NAME = "autobe_hackathon_moderators";
 const BEARER_PREFIX: string = "Bearer ";

@@ -1,4 +1,4 @@
-import { functional } from "@autobe/hackathon-api";
+import { HttpError, functional } from "@autobe/hackathon-api";
 import {
   ActionButtonGroup,
   CompactSessionList,
@@ -8,6 +8,7 @@ import {
   useSearchParams,
 } from "@autobe/ui";
 import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 
 import { HACKATHON_CODE } from "../constant";
 import { useAuthorizationToken } from "../hooks/useAuthorizationToken";
@@ -78,8 +79,6 @@ export const AutoBeChatSidebar = (props: IAutoBeChatSidebarProps) => {
       <div
         style={{
           padding: props.isCollapsed ? "1rem 0.75rem" : "1.5rem 1.25rem 1rem",
-          borderBottom: "1px solid #f3f4f6",
-          backgroundColor: "#fafafa",
           transition: "padding 0.3s ease",
         }}
       >
@@ -150,6 +149,48 @@ export const AutoBeChatSidebar = (props: IAutoBeChatSidebarProps) => {
         </div>
       </div>
 
+      {/* New Conversation Button */}
+      {!props.isCollapsed && (
+        <div
+          style={{
+            padding: "0 1.25rem 1rem",
+          }}
+        >
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              window.location.href = "/index.html";
+            }}
+            style={{
+              background: "transparent",
+              border: "none",
+              borderRadius: "0.375rem",
+              padding: "0.5rem 0.75rem",
+              fontSize: "0.875rem",
+              fontWeight: "500",
+              color: "#9ca3af",
+              cursor: "pointer",
+              transition: "all 0.2s ease",
+              width: "auto",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "flex-start",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "#f3f4f6";
+              e.currentTarget.style.color = "#1f2937";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "transparent";
+              e.currentTarget.style.color = "#9ca3af";
+            }}
+            title="Start new conversation"
+          >
+            + New Conversation
+          </button>
+        </div>
+      )}
+
       {/* Conversations list */}
       <div
         style={{
@@ -210,7 +251,7 @@ export const AutoBeChatSidebar = (props: IAutoBeChatSidebarProps) => {
                   onSelect={handleOnSessionSelect}
                   onDelete={async () => {
                     await props.onDeleteSession?.(session.id);
-                    refreshSessionList();
+                    await refreshSessionList();
                     if (session.id === currentSessionId) {
                       setSearchParams((sp) => {
                         const newSp = new URLSearchParams(sp);
@@ -230,19 +271,26 @@ export const AutoBeChatSidebar = (props: IAutoBeChatSidebarProps) => {
                   onSubmitReview={async (sessionId, link) => {
                     const { getToken } = useAuthorizationToken();
                     const token = getToken();
-                    await functional.autobe.hackathon.participants.sessions.review(
-                      {
-                        host: import.meta.env.VITE_API_BASE_URL,
-                        headers: {
-                          Authorization: `Bearer ${token.token.access}`,
+                    await functional.autobe.hackathon.participants.sessions
+                      .review(
+                        {
+                          host: import.meta.env.VITE_API_BASE_URL,
+                          headers: {
+                            Authorization: `Bearer ${token.token.access}`,
+                          },
                         },
-                      },
-                      HACKATHON_CODE,
-                      sessionId,
-                      {
-                        review_article_url: link,
-                      },
-                    );
+                        HACKATHON_CODE,
+                        sessionId,
+                        {
+                          review_article_url: link,
+                        },
+                      )
+                      .catch((e) => {
+                        if (e instanceof HttpError && e.status === 400) {
+                          toast.error("Invalid review article URL");
+                        }
+                        throw e;
+                      });
                     refreshSessionList();
                   }}
                 />
@@ -316,14 +364,17 @@ const STYLES = {
     flex: 1,
   },
   completedBadge: {
-    marginLeft: "0.5rem",
+    position: "absolute" as const,
+    bottom: "0.5rem",
+    right: "0.5rem",
     padding: "0.125rem 0.375rem",
     backgroundColor: "#10b981",
     color: "white",
     fontSize: "0.625rem",
     borderRadius: "9999px",
     fontWeight: "500",
-    flexShrink: 0,
+    boxShadow: "0 1px 2px rgba(0, 0, 0, 0.1)",
+    zIndex: 1,
   },
   reviewButton: {
     background: "rgba(255, 255, 255, 0.9)",
@@ -444,27 +495,7 @@ export const SessionListItem = (props: IConversationListItemProps) => {
               onClick={(e) => e.stopPropagation()}
             />
           ) : (
-            <>
-              <span style={STYLES.titleText}>
-                {session.title ?? "Untitled"}
-              </span>
-              {/* Completed badge */}
-              {session.completedAt && (
-                <span
-                  style={STYLES.completedBadge}
-                  title={`Completed: ${new Date(
-                    session.completedAt,
-                  ).toLocaleString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}`}
-                >
-                  Completed
-                </span>
-              )}
-            </>
+            <span style={STYLES.titleText}>{session.title ?? "Untitled"}</span>
           )}
         </div>
 
@@ -624,6 +655,24 @@ export const SessionListItem = (props: IConversationListItemProps) => {
             </button>
           </div>
         </div>
+      )}
+
+      {/* Completed badge - positioned at bottom right */}
+      {session.completedAt && (
+        <span
+          style={STYLES.completedBadge}
+          title={`Completed: ${new Date(session.completedAt).toLocaleString(
+            "en-US",
+            {
+              month: "short",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            },
+          )}`}
+        >
+          Completed
+        </span>
       )}
     </div>
   );

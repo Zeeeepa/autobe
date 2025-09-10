@@ -102,6 +102,13 @@ export const AutoBeChatMain = (props: IAutoBeChatMainProps) => {
       const config = getCurrentConfig();
       const serviceData = await getAutoBeService(config);
       if (messages.length !== 0) {
+        await new Promise((resolve) => {
+          serviceData.listener.onEnable(async (value) => {
+            if (value === true) {
+              resolve(void 0);
+            }
+          });
+        });
         await serviceData.service.conversate(messages);
       }
       if (eventGroups.length === 0) {

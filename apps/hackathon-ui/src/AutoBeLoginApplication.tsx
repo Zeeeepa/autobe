@@ -1,5 +1,6 @@
 import hApi from "@autobe/hackathon-api";
 import { useState } from "react";
+import { Toaster, toast } from "sonner";
 
 import { HACKATHON_CODE } from "./constant";
 import { useAuthorizationToken } from "./hooks/useAuthorizationToken";
@@ -48,6 +49,8 @@ export function AutoBeLoginApplication() {
         );
       setToken(JSON.stringify(result));
       window.location.href = "/";
+    } catch (e) {
+      toast.error("Invalid credentials");
     } finally {
       setIsLoading(false);
     }
@@ -125,6 +128,7 @@ export function AutoBeLoginApplication() {
     <div style={containerStyle}>
       <form style={formStyle} onSubmit={handleSubmit}>
         <h1 style={titleStyle}>Login</h1>
+        <Toaster position="top-center" richColors />
 
         <div>
           <input

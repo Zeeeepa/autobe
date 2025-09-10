@@ -6,8 +6,8 @@
   "main": "./lib/index.mjs",
   "typings": "./lib/index.d.ts",
   "scripts": {
-    "build": "vite build",
-    "dev": "vite",
+    "build": "vite build --mode qa",
+    "dev": "vite --host --mode qa",
     "prepack": "pnpm run build"
   },
   "keywords": [],
@@ -39,6 +39,7 @@
     "@samchon/openapi": "catalog:samchon",
     "react": "catalog:ui",
     "react-dom": "catalog:ui",
+    "sonner": "^2.0.7",
     "typia": "catalog:samchon",
     "uuid": "^11.1.0"
   },
