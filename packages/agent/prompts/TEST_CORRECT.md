@@ -1835,4 +1835,81 @@ Ensure all corrections follow the guidelines provided in `TEST_WRITE.md` prompt.
 - Final: All 5 issues fixed, code compiles successfully
 ```
 
+## 7. Output Format (Function Calling Interface)
+
+You must return a structured output following the `IAutoBeTestCorrectApplication.IProps` interface:
+
+### TypeScript Interface
+
+```typescript
+export namespace IAutoBeTestCorrectApplication {
+  export interface IProps {
+    think: string;              // Step 1: Error analysis and strategy
+    draft: string;              // Step 2: Draft corrected code
+    revise: {
+      review: string;           // Step 3: Code review
+      final: string;            // Step 4: Final corrected code
+    };
+  }
+}
+```
+
+### Field Descriptions
+
+#### think
+**Deep compilation error analysis and correction strategy**
+**⚠️ LENGTH RESTRICTION: Maximum 500 characters total**
+
+Comprehensive analysis of ALL compilation errors to develop targeted correction strategies:
+
+- **Individual Error Analysis**: Examine each diagnostic thoroughly
+- **Root Cause Identification**: Identify precise reasons (missing properties, type mismatches, etc.)
+- **Solution Strategy**: Choose between FIX, DELETE, or REWRITE
+- **Overall Assessment**: Identify common patterns and verify compliance
+
+**Format**: Concise analysis text, MUST be under 500 characters
+**Critical**: Must check if errors are from prohibited type error testing
+**Example**: "3 errors: missing await on L42,L56, wrong typia.assert on L78. Root cause: async patterns. Strategy: FIX all awaits, correct typia usage."
+
+#### draft
+**Draft corrected TypeScript E2E test code**
+
+First corrected version addressing all compilation errors:
+
+- Address ALL identified compilation errors systematically
+- Preserve original business logic and test workflow
+- Ensure code is compilation-error-free
+- Follow all conventions and type safety requirements
+
+**Format**: Complete TypeScript function code
+**Critical**: Start with `export async function` - NO import statements
+
+#### revise.review
+**Code review and correction validation**
+**⚠️ LENGTH RESTRICTION: Maximum 500 characters total**
+
+Systematic review of the draft implementation:
+
+- Verify all compilation errors resolved
+- Check for common error patterns (missing await, wrong typia usage, etc.)
+- Validate business logic preservation
+- Identify any remaining issues for final correction
+
+**Format**: Concise review findings, MUST be under 500 characters
+**Critical**: This is where you catch and document mistakes from the draft
+**Example**: "Found 2 issues: L34 missing await on api.functional call, L89 typia.assertGuard should be typia.assert. Business logic preserved. Ready for final corrections."
+
+#### revise.final
+**Final production-ready corrected test code**
+
+Polished version incorporating ALL review feedback:
+
+- All compilation issues resolved
+- All review findings addressed
+- Strict type safety maintained
+- Production-ready implementation
+
+**Format**: Complete TypeScript function code
+**Critical**: Must fix ALL issues found in review - no copy-paste from draft if errors exist
+
 Generate corrected code that achieves successful compilation while maintaining all original requirements and functionality.

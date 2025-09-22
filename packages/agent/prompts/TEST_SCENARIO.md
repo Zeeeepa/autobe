@@ -121,22 +121,125 @@ Before finalizing dependencies for any scenario, apply this verification process
 
 You must generate scenarios using the `IAutoBeTestScenarioApplication.IProps` interface structure:
 
-### Scenario Group Structure:
+### ⚠️ CRITICAL: Dependencies Field is MANDATORY
+
+**EVERY scenario MUST have a `dependencies` array - even if empty:**
+- ✅ `dependencies: []` - Valid for scenarios with no dependencies
+- ❌ `dependencies: undefined` - FORBIDDEN - will cause validation errors
+- ❌ Missing `dependencies` field - FORBIDDEN - will fail validation
+
+### TypeScript Interface Structure:
+```typescript
+export namespace IAutoBeTestScenarioApplication {
+  export interface IProps {
+    scenarioGroups: IScenarioGroup[];
+  }
+  
+  export interface IScenarioGroup {
+    endpoint: {                                    // Target endpoint to test
+      method: "get" | "post" | "put" | "delete" | "patch";  // ⚠️ LOWERCASE only!
+      path: string;                                // e.g., "/users/{userId}"
+    };
+    scenarios: IScenario[];  // Must have at least 1 scenario
+  }
+  
+  export interface IScenario {
+    functionName: string;
+    draft: string;
+    dependencies: IDependencies[];  // ⚠️ REQUIRED FIELD - Never undefined, use [] for empty
+  }
+  
+  export interface IDependencies {
+    endpoint: {                                    // ⚠️ REQUIRED OBJECT - Never undefined
+      method: "get" | "post" | "put" | "delete" | "patch";  // ⚠️ STRING VALUE - lowercase only!
+      path: string;                                // ⚠️ STRING VALUE - e.g., "/auth/user/join"
+    };
+    purpose: string;                               // ⚠️ REQUIRED STRING - Never undefined
+  }
+}
+
+⚠️ CRITICAL: The endpoint field must be an OBJECT with method and path properties.
+Do NOT assign the entire object to just the method field!
+```
+
+### 📋 Endpoint Structure Rules:
+
+**Method Format Requirements:**
+- ⚠️ **MUST be lowercase**: `"get"`, `"post"`, `"put"`, `"delete"`, `"patch"`
+- ❌ **NEVER uppercase**: `"GET"`, `"POST"` are WRONG
+- ❌ **NEVER mixed case**: `"Get"`, `"Post"` are WRONG
+
+**Path Format Requirements:**
+- ✅ Must start with forward slash: `/`
+- ✅ Parameters in curly braces: `{userId}`, `{articleId}`
+- ✅ Resource names in camelCase: `/attachmentFiles`, `/userProfiles`
+- ✅ Nested resources: `/articles/{articleId}/comments`
+- ❌ NO quotes: `"/users"` is wrong (don't wrap in quotes)
+- ❌ NO spaces: `/user profile` is wrong
+- ❌ NO square brackets: `/users/[userId]` is wrong
+- ❌ NO prefixes: `/admin/users`, `/api/v1/users` are wrong
+
+**Valid Endpoint Examples:**
+```typescript
+// ✅ CORRECT
+{ method: "get", path: "/users" }
+{ method: "post", path: "/users" }
+{ method: "put", path: "/users/{userId}" }
+{ method: "delete", path: "/articles/{articleId}/comments/{commentId}" }
+{ method: "patch", path: "/products/{productId}" }
+
+// ❌ WRONG
+{ method: "GET", path: "/users" }           // Uppercase method
+{ method: "Post", path: "/users" }          // Mixed case method
+{ method: "post", path: "'/users'" }        // Quoted path
+{ method: "post", path: "/user profile" }   // Space in path
+{ method: "post", path: "/api/v1/users" }   // API prefix
+```
+
+### 🚨 Dependencies Field Structure:
+
+**EVERY dependency object MUST have BOTH fields:**
 ```typescript
 {
-  endpoint: { method: "post", path: "/articles" },
-  scenarios: [
+  endpoint: {                    // ❌ NEVER leave undefined or missing
+    method: "post",              // Must be lowercase
+    path: "/auth/user/join"      // Must be valid path
+  },
+  purpose: string                // ❌ NEVER leave undefined or missing
+}
+```
+
+**Common Dependency Patterns:**
+- **Authentication**: `{ method: "post", path: "/auth/user/join" }` - Create user account
+- **Resource Creation**: `{ method: "post", path: "/categories" }` - Create required resource
+- **Data Setup**: `{ method: "post", path: "/products" }` - Prepare test data
+- **Context Building**: `{ method: "get", path: "/users/{userId}" }` - Fetch existing data
+
+### Complete Valid Example:
+```typescript
+{
+  scenarioGroups: [
     {
-      functionName: "test_api_article_creation_with_category",
-      draft: "Comprehensive test scenario description covering the complete user workflow...",
-      dependencies: [
+      endpoint: { method: "post", path: "/articles" },  // Target endpoint to test
+      scenarios: [
         {
-          endpoint: { method: "post", path: "/auth/admin/join" },
-          purpose: "Create and authenticate as admin user with article creation permissions"
+          functionName: "test_api_article_creation_with_category",
+          draft: "Comprehensive test scenario description...",
+          dependencies: [  // ✅ ALWAYS include this array field
+            {
+              endpoint: { method: "post", path: "/auth/admin/join" },  // ✅ Complete endpoint object
+              purpose: "Create and authenticate as admin user"         // ✅ Clear purpose string
+            },
+            {
+              endpoint: { method: "post", path: "/categories" },       // ✅ Complete endpoint object
+              purpose: "Create category for the article"               // ✅ Clear purpose string
+            }
+          ]
         },
         {
-          endpoint: { method: "post", path: "/categories" },
-          purpose: "Create a category that the new article will be assigned to"
+          functionName: "test_api_article_creation_simple",
+          draft: "Simple article creation without dependencies...",
+          dependencies: []  // ✅ Empty array is valid if no dependencies needed
         }
       ]
     }
@@ -144,29 +247,203 @@ You must generate scenarios using the `IAutoBeTestScenarioApplication.IProps` in
 }
 ```
 
-### Function Naming Rules:
-- **Format**: Use snake_case format only
-- **Prefix**: Start with `test_api_` prefix (mandatory requirement)
-- **Pattern**: `test_api_[core_feature]_[specific_scenario]`
-- **Business Focus**: Start with business feature, not action verbs
-- **Reserved Words**: Avoid TypeScript/JavaScript reserved words (delete, for, if, class, etc.)
-- **Clarity**: Use descriptive names that clearly indicate the test purpose
+### ❌ COMMON ERRORS TO AVOID:
 
-**Valid Examples:**
-- `test_api_article_creation_with_category`
-- `test_api_user_authentication_failure`
-- `test_api_order_cancellation_by_customer`
-- `test_api_product_review_moderation_approval`
+**1. Missing or Undefined Fields:**
+```typescript
+// ❌ WRONG - Missing dependencies field entirely
+{
+  functionName: "test_api_user_login",
+  draft: "Test user login..."
+  // ERROR: dependencies field is missing!
+}
 
-### Draft Requirements:
-Your draft descriptions must be comprehensive and include:
+// ❌ WRONG - Dependencies set to undefined
+{
+  functionName: "test_api_user_login",
+  draft: "Test user login...",
+  dependencies: undefined  // ERROR: Must be an array!
+}
 
-1. **Scenario Overview**: What business functionality is being tested
+// ❌ WRONG - Missing endpoint in dependency
+{
+  dependencies: [
+    {
+      purpose: "Create user"  // ERROR: endpoint field missing!
+    }
+  ]
+}
+
+// ❌ WRONG - Undefined endpoint or purpose
+{
+  dependencies: [
+    {
+      endpoint: undefined,     // ERROR: Must be an object!
+      purpose: undefined      // ERROR: Must be a string!
+    }
+  ]
+}
+```
+
+**2. Invalid Method Format:**
+```typescript
+// ❌ WRONG - Uppercase method
+{ method: "POST", path: "/users" }
+
+// ❌ WRONG - Mixed case
+{ method: "Post", path: "/users" }
+
+// ✅ CORRECT - Lowercase only
+{ method: "post", path: "/users" }
+```
+
+**3. Invalid Path Format:**
+```typescript
+// ❌ WRONG - Quoted path
+{ method: "post", path: "'/users'" }
+
+// ❌ WRONG - Missing leading slash
+{ method: "post", path: "users" }
+
+// ❌ WRONG - Space in path
+{ method: "post", path: "/user profile" }
+
+// ✅ CORRECT - Proper path format
+{ method: "post", path: "/users/{userId}" }
+```
+
+**✅ CORRECT - Complete valid scenario:**
+```typescript
+{
+  functionName: "test_api_user_profile_update",
+  draft: "Test updating user profile with valid data...",
+  dependencies: [
+    {
+      endpoint: { method: "post", path: "/auth/user/join" },
+      purpose: "Create test user account"
+    },
+    {
+      endpoint: { method: "post", path: "/auth/user/login" },
+      purpose: "Authenticate to get access token"
+    }
+  ]
+}
+```
+
+## Field Descriptions (Function Calling Interface)
+
+### scenarioGroups
+**Array of test scenario groups**
+
+Each group represents a collection of test scenarios for a single endpoint. Groups are organized by the target endpoint being tested.
+
+- **Structure**: Array of `IScenarioGroup` objects
+- **Uniqueness**: Each endpoint (method + path combination) should appear only once across all groups
+- **Purpose**: Logical grouping of related test scenarios
+
+### endpoint (in IScenarioGroup)
+**Target API endpoint to test**
+
+The specific API operation that this group of scenarios will test.
+
+- **Unique per group**: Each scenario group must target a different endpoint
+- **Identification**: Endpoint is identified by its method and path combination
+- **Multiple scenarios**: One endpoint can have many different test scenarios
+
+### scenarios (in IScenarioGroup)
+**Test scenarios for this endpoint**
+
+Array of different test cases for the same endpoint, each testing different aspects or conditions.
+
+- **Minimum**: At least one scenario required per group (MinItems<1>)
+- **Implementability**: Each scenario must be implementable with available APIs only
+- **Critical rule**: If ANY required dependency API is missing, the scenario CANNOT be generated
+- **Example**: "test banned user login" requires BOTH login API AND ban user API to exist
+
+### draft (in IScenario)
+**Test scenario description in natural language**
+
+Comprehensive description of how the API endpoint should be tested.
+
+**Must include**:
+1. **Scenario Overview**: Business functionality being tested
 2. **Step-by-Step Workflow**: Complete user journey from start to finish
-3. **Validation Points**: What should be verified at each step
-4. **Business Logic**: Key business rules and constraints being tested
+3. **Validation Points**: What to verify at each step
+4. **Business Logic**: Key business rules and constraints
 5. **Success Criteria**: Expected outcomes and behaviors
-6. **Error Handling**: Potential failure cases and expected responses
+6. **Error Handling**: Failure cases and expected responses
+
+**Purpose**: Subsequent agents use this draft to generate concrete test code
+
+### functionName (in IScenario)  
+**Test function name**
+
+Technical identifier for the test scenario following strict naming conventions.
+
+**Naming Convention Rules:**
+- **Format**: snake_case only
+- **Prefix**: MUST start with `test_api_` (mandatory)
+- **Pattern**: `test_api_[core_feature]_[specific_scenario]`
+  - `core_feature`: Main business feature/entity (customer, seller, cart, push_message)
+  - `specific_scenario`: Specific operation context (login_success, join_verification_not_found)
+- **Business First**: ALWAYS start with business feature, NOT action verbs
+- **Action Verbs**: Embed within scenario description, not at beginning
+- **Reserved Words**: Avoid TypeScript/JavaScript reserved words (delete, for, if, class, etc.)
+
+**Clarity Guidelines:**
+- Prioritize clarity over brevity
+- Avoid technical jargon or implementation terms
+- Use terminology reflecting user perspective
+- Ensure name alone conveys user's intent
+- Make it understandable to non-technical stakeholders
+- Keep consistent with scenario description
+
+**Single Endpoint Alignment:**
+Function names must reflect scenarios that:
+- Accomplish user goals through this single endpoint only
+- Don't imply dependency on other API operations
+- Represent complete user interactions
+
+**Business Feature-Based Examples:**
+- `test_api_customer_join_verification_not_found` - Customer join when verification code not found
+- `test_api_seller_login` - Seller login operation
+- `test_api_cart_discountable_ticket_duplicated` - Cart with duplicate discount ticket
+- `test_api_push_message_csv` - Push message with CSV format
+- `test_api_product_review_update` - Product review update operation
+
+### dependencies (in IScenario)
+**Required API endpoints for test setup**
+
+List of other API endpoints that this scenario depends on for context or prerequisites.
+
+**Key Points:**
+- **REQUIRED FIELD**: Must always be an array (empty array `[]` is valid if no dependencies)
+- **Existence Check**: Every endpoint MUST exist in available API operations
+- **No Speculation**: NEVER reference endpoints not explicitly provided
+- **Purpose**: Setup, authentication, resource creation, data preparation
+- **Not Execution Order**: This is logical dependency, not strict execution sequence
+
+**WARNING**: Non-existent endpoints will cause test implementation failures
+
+### endpoint (in IDependencies)
+**Dependency endpoint**
+
+The specific API operation required for test setup.
+
+- **REQUIRED**: Never undefined or missing
+- **Must Exist**: Must be in available API operations list
+- **Format**: Same as main endpoint (method + path)
+
+### purpose (in IDependencies)
+**Why this dependency is needed**
+
+Concise explanation of the dependency's role in test setup.
+
+**Examples:**
+- "Creates a category so product can be linked to it during creation"
+- "Authenticates user to get access token for protected endpoints"
+- "Creates test data required for validation"
+- "Establishes prerequisite state for main test"
 
 ### Dependencies Requirements:
 - **Completeness**: Include ALL operations needed for successful test execution

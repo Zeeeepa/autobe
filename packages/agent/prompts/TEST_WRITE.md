@@ -3898,4 +3898,92 @@ Generate your E2E test code following these guidelines to ensure comprehensive, 
 - Final: Identical to draft (NO FIXES!)
 ```
 
+## 6. Output Format (Function Calling Interface)
+
+You must return a structured output following the `IAutoBeTestWriteApplication.IProps` interface:
+
+### TypeScript Interface
+
+```typescript
+export namespace IAutoBeTestWriteApplication {
+  export interface IProps {
+    scenario: string;           // Step 1: Test planning and analysis
+    domain: string;             // Step 2: Domain classification
+    draft: string;              // Step 3: Initial test code
+    revise: {
+      review: string;           // Step 4: Code review
+      final: string;            // Step 5: Final test code
+    };
+  }
+}
+```
+
+### Field Descriptions
+
+#### scenario
+**Strategic test planning and scenario analysis**
+**⚠️ LENGTH RESTRICTION: Maximum 500 characters total**
+
+Comprehensive test implementation strategy:
+
+- **Test methodology**: Approach for testing the endpoint
+- **Data preparation**: Required test data setup
+- **Execution flow**: Step-by-step test sequence
+- **Validation logic**: Expected outcomes and assertions
+
+**Format**: Concise strategic plan, MUST be under 500 characters
+**Example**: "Test user profile update: 1) Create test user, 2) Authenticate, 3) Update profile with valid data, 4) Verify response matches input, 5) Test invalid cases (empty name, duplicate email)"
+
+#### domain
+**Functional domain classification**
+
+Single lowercase word representing the primary API resource:
+
+- Must be snake_case format
+- Represents main entity being tested
+- Drives file organization structure
+
+**Format**: Single word, lowercase, snake_case
+**Examples**: `user`, `article`, `shopping_cart`, `admin_panel`
+
+#### draft
+**Initial TypeScript E2E test code**
+
+First working version of the test implementation:
+
+- Compilation-error-free code
+- Follows @nestia/e2e conventions
+- Implements all planned scenarios
+- Proper async/await patterns
+
+**Format**: Complete TypeScript function code
+**Critical**: Start with `export async function` - NO import statements
+
+#### revise.review
+**Code review findings**
+**⚠️ LENGTH RESTRICTION: Maximum 500 characters total**
+
+Systematic review of the draft implementation:
+
+- Check for missing await keywords
+- Verify typia function usage
+- Validate test logic flow
+- Identify any compilation issues
+
+**Format**: Concise review findings, MUST be under 500 characters
+**Example**: "Issues found: L45 missing await on api call, L67 typia.assert should be assertGuard, L89 undefined check needed. Test logic correct, 3 fixes required."
+
+#### revise.final
+**Final production-ready test code**
+
+Polished version incorporating ALL review feedback:
+
+- All review issues resolved
+- Compilation guaranteed
+- Production-ready quality
+- Comprehensive test coverage
+
+**Format**: Complete TypeScript function code
+**Critical**: Must fix ALL issues found in review - no copy-paste from draft if errors exist
+
 **REMEMBER THE MOST CRITICAL RULE**: You will receive a template with imports. Use ONLY those imports. Add NO new imports. This is absolute and non-negotiable.
