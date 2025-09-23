@@ -221,6 +221,77 @@ You MUST call the `makeOperations()` function with your results.
 - Return ONLY operations that represent legitimate user actions
 - The operations array can be smaller than the endpoints list - this is expected and correct
 
+### 🔴 CRITICAL: JSON Structure Requirements
+
+**The `operations` array MUST contain ONLY complete operation objects. Each operation MUST be a single, complete JavaScript object with ALL required fields.**
+
+#### ✅ CORRECT Structure - Each Operation is a Complete Object:
+```javascript
+makeOperations({
+  operations: [
+    {  // First COMPLETE operation object
+      path: "/users/{userId}",
+      method: "get",
+      specification: "This operation retrieves...",
+      description: "Detailed description...",
+      summary: "Retrieve user by ID",
+      parameters: [{name: "userId", ...}],
+      requestBody: null,
+      responseBody: {typeName: "IUser", ...},
+      authorizationRoles: ["user"],
+      name: "at"
+    },
+    {  // Second COMPLETE operation object
+      path: "/users",
+      method: "post",
+      specification: "This operation creates...",
+      description: "Detailed description...",
+      summary: "Create new user",
+      parameters: [],
+      requestBody: {typeName: "IUser.ICreate", ...},
+      responseBody: {typeName: "IUser", ...},
+      authorizationRoles: [],
+      name: "create"
+    }
+  ]
+})
+```
+
+#### ❌ INCORRECT Structure - NEVER Do This:
+```javascript
+// ABSOLUTELY WRONG - Never separate object fields into array elements!
+makeOperations({
+  operations: [
+    { /* some operation */ },
+    "specification",        // ❌ WRONG: String as array element
+    "some text",           // ❌ WRONG: String as array element  
+    "description",         // ❌ WRONG: String as array element
+    "more text",          // ❌ WRONG: String as array element
+    "parameters",         // ❌ WRONG: String as array element
+    [],                   // ❌ WRONG: Array as separate element
+    null,                 // ❌ WRONG: null as separate element
+  ]
+})
+
+// ALSO WRONG - Never use key-value pairs as separate array elements!
+makeOperations({
+  operations: [
+    "key1", "value1",     // ❌ WRONG: Separated key-value
+    "key2", "value2",     // ❌ WRONG: Separated key-value
+  ]
+})
+
+// ALSO WRONG - Never mix objects with other types!
+makeOperations({
+  operations: [
+    { /* operation 1 */ },
+    "random string",      // ❌ WRONG: Non-object in array
+    42,                   // ❌ WRONG: Number in array
+    ["array"],           // ❌ WRONG: Array in array
+  ]
+})
+```
+
 ### CRITICAL CHECKLIST - EVERY OPERATION MUST HAVE ALL THESE FIELDS
 
 **MANDATORY FIELDS - NEVER LEAVE UNDEFINED:**
@@ -234,16 +305,17 @@ You MUST call the `makeOperations()` function with your results.
 
 **FAILURE TO INCLUDE ANY OF THESE FIELDS WILL CAUSE VALIDATION ERRORS**
 
+### Complete Working Example:
 ```typescript
 makeOperations({
   operations: [
     {
       // ALL FIELDS BELOW ARE MANDATORY - DO NOT SKIP ANY
-      specification: "This operation retrieves a list of resources...", // REQUIRED
       path: "/resources",                                               // REQUIRED
       method: "get",                                                   // REQUIRED  
-      summary: "Retrieve list of resources",                           // REQUIRED
+      specification: "This operation retrieves a list of resources...", // REQUIRED
       description: "Detailed multi-paragraph description...\n\n...",   // REQUIRED
+      summary: "Retrieve list of resources",                           // REQUIRED
       parameters: [],                                                  // Can be empty
       requestBody: null,                                              // Can be null
       responseBody: {                                                 // Can have value or null
@@ -258,6 +330,8 @@ makeOperations({
   ],
 });
 ```
+
+**⚠️ REMEMBER: The `operations` array accepts ONLY operation objects. Nothing else!**
 
 ## 5. Operation Design Principles
 

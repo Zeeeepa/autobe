@@ -85,12 +85,48 @@ This checklist ensures security is built-in from the start, not added as an afte
 
 ### 3.2. Schema Definition Requirements
 
+#### 🔴 CRITICAL: Mandatory Schema Fields
+
+**EVERY object schema MUST have ALL these fields:**
+1. **`type`**: Always `"object"` for object schemas (REQUIRED)
+2. **`properties`**: Object containing all properties (REQUIRED)
+3. **`required`**: Array of required property names (REQUIRED - even if empty!)
+4. **`description`**: Detailed description of the schema (REQUIRED)
+5. **`additionalProperties`**: Always set to `false` for strict validation (OPTIONAL but recommended)
+
+**Example of CORRECT schema structure:**
+```json
+{
+  "type": "object",
+  "properties": {
+    "id": { "type": "string" },
+    "name": { "type": "string" }
+  },
+  "required": ["id", "name"],  // MUST include this even if empty: []
+  "description": "Detailed description here",  // MUST include this
+  "additionalProperties": false  // Optional but recommended
+}
+```
+
+**❌ WRONG - Missing required fields:**
+```json
+{
+  "type": "object",
+  "properties": { ... }
+  // Missing: required array and description
+}
+```
+
 - **Completeness**: Include ALL properties from the Prisma schema for each entity
 - **Type Accuracy**: Map Prisma types to appropriate OpenAPI types and formats
-- **Required Fields**: Accurately mark required fields based on Prisma schema constraints
+- **Required Fields**: 
+  - The `required` array MUST list ALL non-optional fields from Prisma schema
+  - Even if no fields are required, include an empty array: `"required": []`
+  - NEVER omit the `required` field
 - **Relationships**: Properly handle entity relationships (references to other entities)
 - **Enumerations**: Define all enum types referenced in entity schemas
 - **Detailed Documentation**: 
+  - **EVERY schema MUST have a `description` field** - NO EXCEPTIONS
   - Schema descriptions must reference related Prisma schema table comments
   - Property descriptions must reference related Prisma schema column comments
   - All descriptions must be organized in multiple paragraphs for better readability
@@ -630,6 +666,7 @@ Complete set of schema components for the OpenAPI specification. This is the cen
 Your output should include both the TypeScript draft and the complete `schemas` record:
 
 ```typescript
+// CORRECT Structure - schemas is a Record<string, schema>
 const schemas: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive> = {
   // Main entity types
   IEntityName: { 
@@ -642,8 +679,9 @@ const schemas: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive> = {
       // ...more properties
       // SECURITY: Never include password, hashed_password, salt, or other sensitive fields in response types
     },
-    required: [...],
-    description: "Extremely detailed explanation about IEntityName referencing Prisma schema table comments.\n\nMultiple paragraphs focusing on different aspects of the entity.",
+    required: ["propertyName"],  // MUST include - list all required properties
+    description: "Extremely detailed explanation about IEntityName referencing Prisma schema table comments.\n\nMultiple paragraphs focusing on different aspects of the entity.",  // MUST include
+    additionalProperties: false  // OPTIONAL but recommended for each schema
   },
   
   // IPage format follows the fixed structure:
@@ -666,17 +704,37 @@ const schemas: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive> = {
     required: ["pagination", "data"],
     description: "Paginated collection of entity records"
   },
-  // Variant types
+  // Variant types - ALL must have required and description fields
   "IEntityName.ICreate": { 
-    // SECURITY: Never include author_id, creator_id, user_id - these come from authentication context
-    ... 
+    type: "object",
+    properties: {
+      // SECURITY: Never include author_id, creator_id, user_id - these come from authentication context
+      // ... properties here
+    },
+    required: [],  // MUST include even if empty
+    description: "Creation request for EntityName"  // MUST include
   },
   "IEntityName.IUpdate": { 
-    // SECURITY: Never allow updating ownership fields like author_id or creator_id
-    ... 
+    type: "object",
+    properties: {
+      // SECURITY: Never allow updating ownership fields like author_id or creator_id
+      // ... properties here
+    },
+    required: [],  // MUST include even if empty
+    description: "Update request for EntityName"  // MUST include
   },
-  "IEntityName.ISummary": { ... },
-  "IEntityName.IRequest": { ... },
+  "IEntityName.ISummary": { 
+    type: "object",
+    properties: { /* ... */ },
+    required: ["id", "name"],  // MUST include
+    description: "Summary view of EntityName"  // MUST include
+  },
+  "IEntityName.IRequest": { 
+    type: "object",
+    properties: { /* ... */ },
+    required: [],  // MUST include even if empty
+    description: "Search/filter request for EntityName"  // MUST include
+  },
   
   // Repeat for ALL entities
   
@@ -697,6 +755,21 @@ const schemas: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive> = {
 - **Process ALL Entities**: EVERY entity defined in the Prisma schema MUST have corresponding schema definitions.
 - **Complete Property Coverage**: ALL properties of each entity MUST be included in schema definitions.
 - **Variant Type Comprehensiveness**: ALL necessary variant types MUST be defined based on API operations.
+
+### 9.2. ⚠️ CRITICAL VALIDATION CHECKLIST
+
+**EVERY schema object in the output MUST have:**
+- [ ] `type: "object"` field
+- [ ] `properties: { ... }` field with all properties defined
+- [ ] `required: [...]` array field (NEVER omit - use empty array if no required fields)
+- [ ] `description: "..."` string field (NEVER omit - must be detailed)
+- [ ] `additionalProperties: false` (optional but recommended)
+
+**Common Mistakes to AVOID:**
+- ❌ Omitting the `required` array - ALWAYS include it
+- ❌ Omitting the `description` field - ALWAYS include it
+- ❌ Putting `additionalProperties` at wrong level (should be in each schema, not at root)
+- ❌ Using `additionalProperties` as a schema type instead of boolean `false`
 - **No Simplification**: Complex entities or relationships MUST be faithfully represented without simplification.
 - **Verification of Completeness**: Before final output, verify that ALL entities and properties have been defined.
 

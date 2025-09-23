@@ -1892,6 +1892,73 @@ where: {
 
 **Rule**: When in doubt, test the operation on both PostgreSQL and SQLite environments before implementation.
 
+### 🔍 findUnique vs findFirst - CRITICAL DISTINCTION
+
+**🚨 MOST COMMON PRISMA ERROR: Using findUnique on non-unique fields!**
+
+`findUnique()` can ONLY be used on fields that are:
+1. The `@id` primary key
+2. Fields marked with `@unique` in the Prisma schema
+3. Composite unique constraints defined with `@@unique([field1, field2])`
+
+**NEVER assume a field is unique based on business logic!**
+
+```typescript
+// ❌ WRONG: Using findUnique on non-unique field (even if business logic says it's unique)
+const existing = await MyGlobal.prisma.discussion_board_guests.findUnique({
+  where: { email: body.email }  // ERROR if email doesn't have @unique in schema!
+});
+
+// ✅ CORRECT: Use findFirst for non-unique fields
+const existing = await MyGlobal.prisma.discussion_board_guests.findFirst({
+  where: { email: body.email }  // Works even if email is not @unique
+});
+```
+
+**Common Misconceptions:**
+- ❌ "Email should be unique" → Business logic doesn't matter, check the schema!
+- ❌ "Username is always unique" → Only if marked with `@unique` in schema
+- ❌ "There's only one admin" → Use `findFirst`, not `findUnique`
+
+**How to Check if Field is Unique:**
+```prisma
+// Look for these patterns in schema.prisma:
+
+model User {
+  id    String @id @default(uuid())        // ✅ Can use findUnique with id
+  email String @unique                     // ✅ Can use findUnique with email
+  name  String                             // ❌ CANNOT use findUnique with name
+  slug  String                             // ❌ CANNOT use findUnique with slug
+  
+  @@unique([slug, tenant_id])              // ✅ Can use findUnique with {slug, tenant_id} combination
+}
+```
+
+**Safe Pattern for Duplicate Checks:**
+```typescript
+// ALWAYS use findFirst for duplicate checks unless field has @unique
+const existingEmail = await MyGlobal.prisma.users.findFirst({
+  where: { email: body.email }
+});
+
+if (existingEmail) {
+  throw new HttpException("Email already exists", 409);
+}
+```
+
+**findUniqueOrThrow Usage:**
+```typescript
+// ✅ ONLY use with actual unique fields (id, @unique fields)
+const user = await MyGlobal.prisma.users.findUniqueOrThrow({
+  where: { id: parameters.userId }  // id is always unique
+});
+
+// ❌ NEVER use with non-unique fields
+const user = await MyGlobal.prisma.users.findUniqueOrThrow({
+  where: { role: "admin" }  // WILL FAIL: role is not @unique
+});
+```
+
 When working with Prisma, follow these critical rules to ensure consistency and correctness:
 
 1. **`null` vs `undefined` - Critical Distinction**

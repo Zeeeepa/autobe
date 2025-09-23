@@ -204,6 +204,13 @@ const correct = async <Model extends ILlmSchema.Model>(
     return converted.map((c) => c.func);
   }
 
+  if (
+    event.result.diagnostics.every((d) => !d.file?.startsWith("src/providers"))
+  ) {
+    // No diagnostics related to provider functions, stop correcting
+    return functions;
+  }
+
   const newLocations: string[] = diagnose(newValidate);
 
   // Separate successful, failed, and ignored corrections
