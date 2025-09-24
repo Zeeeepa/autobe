@@ -270,7 +270,70 @@ result: dbValue === null
      ```
    - This is CRITICAL: API DTOs may use `T | null | undefined` but Prisma required fields cannot accept null
 
-6. **NEVER use fields that don't exist in API DTOs**
+6. **🚨 CRITICAL: Foreign Key (FK) Fields - Special NULL Handling Rules**
+   
+   **FUNDAMENTAL RULE**: For Foreign Key fields, `null` means "break the relationship", not "skip update"!
+   
+   **Non-Nullable FK Fields (Most Common)**:
+   ```typescript
+   // Prisma Schema:
+   // discussion_board_member_id String @db.Uuid  // NOT nullable
+   // discussion_board_post_id String @db.Uuid    // NOT nullable
+   
+   // ❌ WRONG: Setting null on non-nullable FK causes constraint violation!
+   data: {
+     discussion_board_post_id: 
+       body.discussion_board_post_id === null 
+         ? null  // ERROR: Cannot set non-nullable FK to null!
+         : (body.discussion_board_post_id ?? undefined),
+   }
+   
+   // ✅ CORRECT: Use undefined to skip update for non-nullable FK
+   data: {
+     discussion_board_post_id: 
+       body.discussion_board_post_id === null 
+         ? undefined  // Skip update when API sends null
+         : body.discussion_board_post_id,  // Update only when value provided
+   }
+   ```
+   
+   **Nullable FK Fields (Rare)**:
+   ```typescript
+   // Prisma Schema:
+   // parent_comment_id String? @db.Uuid  // Nullable FK
+   
+   // ✅ CORRECT: Can set null on nullable FK (breaks relationship)
+   data: {
+     parent_comment_id: body.parent_comment_id ?? undefined,
+     // null → breaks relationship (removes parent)
+     // undefined → skips update (keeps current parent)
+   }
+   ```
+   
+   **Decision Tree for FK Fields**:
+   ```typescript
+   // Step 1: Check if FK field is nullable in Prisma schema
+   // Step 2: Apply correct pattern
+   
+   // For NON-NULLABLE FK (field String):
+   fk_field: body.fk_field === null ? undefined : body.fk_field
+   
+   // For NULLABLE FK (field String?):
+   fk_field: body.fk_field ?? undefined  // null allowed
+   ```
+   
+   **Why This Matters**:
+   - Setting `null` on FK = "Remove this relationship"
+   - Non-nullable FK cannot have relationship removed → constraint violation
+   - `undefined` = "Don't change this relationship"
+   
+   **Common FK Fields to Watch**:
+   - `user_id`, `member_id`, `author_id` - Usually NOT nullable
+   - `parent_id`, `reply_to_id` - Often nullable (for hierarchical structures)
+   - `category_id`, `board_id` - Usually NOT nullable
+   - Always verify nullability in Prisma schema!
+
+7. **NEVER use fields that don't exist in API DTOs**
    - ❌ FORBIDDEN: Using `body.file_uri` when IRequest doesn't have this field
    - ❌ FORBIDDEN: Making up field names without verifying against the actual interface
    - ✅ REQUIRED: ALWAYS verify field existence in the imported interface type

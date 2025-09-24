@@ -21,6 +21,12 @@ export const transformCommonCorrectCastingHistories = (
     type: "systemMessage",
     text: AutoBeSystemPromptConstant.COMMON_CORRECT_CASTING,
   },
+  {
+    id: v7(),
+    created_at: new Date().toISOString(),
+    type: "systemMessage",
+    text: StringUtil.trim``,
+  },
   ...failures.map(
     (f, i, array) =>
       ({

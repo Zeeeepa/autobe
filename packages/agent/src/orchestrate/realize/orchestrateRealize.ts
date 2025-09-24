@@ -113,7 +113,6 @@ export const orchestrateRealize =
       completed: writeEvents.length,
     };
 
-    console.log("casting", reviewProgress);
     const totalCorrected: AutoBeRealizeFunction[] =
       await orchestrateRealizeCorrectCasting(
         ctx,
@@ -121,14 +120,12 @@ export const orchestrateRealize =
         functions,
         reviewProgress,
       ).then(async (res) => {
-        console.log("date", reviewProgress);
         return orchestrateRealizeCorrectDate(
           ctx,
           authorizations,
           res,
           reviewProgress,
         ).then(async (res) => {
-          console.log("correct", reviewProgress);
           return orchestrateRealizeCorrect(
             ctx,
             scenarios,
@@ -157,7 +154,7 @@ export const orchestrateRealize =
       type: "realizeComplete",
       id: v7(),
       created_at: new Date().toISOString(),
-      functions,
+      functions: totalCorrected,
       authorizations,
       controllers,
       compiled: result,

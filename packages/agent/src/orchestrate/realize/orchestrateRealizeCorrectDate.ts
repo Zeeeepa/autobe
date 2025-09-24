@@ -137,37 +137,29 @@ const correct = async <Model extends ILlmSchema.Model>(
         }),
         enforceFunctionCall: true,
         message: StringUtil.trim`
-          Fix ALL Date type problems in this code following these ABSOLUTE RULES:
+          Fix Date type problems in TypeScript code.
 
-          🔴 CRITICAL DATE TYPE RULES:
-          1. NEVER declare variables with ': Date' type
-          2. NEVER use 'Date' as return type or parameter type
-          3. ALWAYS use 'string & tags.Format<"date-time">' for date type declarations
-          4. Use toISOStringSafe() to convert Date or string to ISO format
-          5. toISOStringSafe() REQUIRES a parameter - it's NOT optional
-
-          📅 toISOStringSafe FUNCTION SIGNATURE:
-          function toISOStringSafe(
-            value: Date | (string & tags.Format<"date-time">)
-          ): string & tags.Format<"date-time">
+          CRITICAL RULES:
+          1. When Prisma returns Date type, convert to string for API response
+          2. Use toISOStringSafe() OR .toISOString() to convert Date to string
+          3. Handle nullable dates: date ? date.toISOString() : null
+          4. For return types, match the API interface exactly
           
-          Note: This function CANNOT accept null or undefined!
-
-          📅 CORRECT PATTERNS:
-          - Creating timestamps: toISOStringSafe(new Date())
-          - Converting nullable dates: value ? toISOStringSafe(value) : null
-          - Converting strings: toISOStringSafe(dateString)
-          - Type declarations: string & tags.Format<'date-time'>
-          - Never store Date in variables: const now = new Date() is FORBIDDEN
-
-          🚨 COMMON ERRORS TO FIX:
-          - Type 'Date' is not assignable → Use toISOStringSafe()
-          - Direct Date assignment → Wrap with toISOStringSafe()
-          - Date type in function signature → Change to string & tags.Format<'date-time'>
-          - For nullable values → Check null BEFORE calling toISOStringSafe()
-
-          Fix these Date type issues immediately. If you cannot fix them, reject the task.
-          Do not explain, just fix the code or give up.
+          COMMON PATTERNS:
+          // Prisma returns Date, API expects string
+          return {
+            created_at: result.created_at.toISOString(),
+            updated_at: result.updated_at.toISOString(),
+            deleted_at: result.deleted_at ? result.deleted_at.toISOString() : null
+          };
+          
+          // For nullable fields in return
+          expires_at: data.expires_at ? data.expires_at.toISOString() : null
+          
+          // Cast when needed
+          created_at: result.created_at.toISOString() as string & tags.Format<"date-time">
+          
+          Fix Date to string conversion issues. Do not explain, just fix the code.
         `,
       });
       ++progress.completed;
@@ -200,15 +192,19 @@ const correct = async <Model extends ILlmSchema.Model>(
     { authorizations, functions: converted.map((c) => c.func) },
   );
 
-  if (newValidate.result.type === "success") {
+  const newResult: IAutoBeTypeScriptCompileResult = newValidate.result;
+  if (newResult.type === "success") {
     return converted.map((c) => c.func);
+  } else if (newResult.type === "exception") {
+    // Compilation exception, return current functions. because retrying won't help.
+    return functions;
   }
 
   if (
-    event.result.diagnostics.every((d) => !d.file?.startsWith("src/providers"))
+    newResult.diagnostics.every((d) => !d.file?.startsWith("src/providers"))
   ) {
     // No diagnostics related to provider functions, stop correcting
-    return functions;
+    return converted.map((c) => c.func);
   }
 
   const newLocations: string[] = diagnose(newValidate);

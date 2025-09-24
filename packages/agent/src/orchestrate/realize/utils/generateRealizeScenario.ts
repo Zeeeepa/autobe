@@ -78,7 +78,7 @@ function transformFunctionName(operation: AutoBeOpenApi.IOperation): string {
   const functionName = `${operation.method}${operation.path
     .split("/")
     .filter(Boolean)
-    .map((segment, index) => {
+    .map((segment) => {
       if (segment.startsWith("{") && segment.endsWith("}")) {
         // {userId} → UserId
         const paramName = segment.slice(1, -1);
@@ -87,14 +87,11 @@ function transformFunctionName(operation: AutoBeOpenApi.IOperation): string {
           .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
           .join("");
       }
-      // api → Api, v1 → V1
+      // api → Api, v1 → V1, users → Users
       const words = segment.split("-");
       return words
         .map((word) => {
-          if (index === 0 && words.length === 1) {
-            // First segment without hyphens stays lowercase for first word
-            return word;
-          }
+          // Always capitalize first letter of each word
           return word.charAt(0).toUpperCase() + word.slice(1);
         })
         .join("");
