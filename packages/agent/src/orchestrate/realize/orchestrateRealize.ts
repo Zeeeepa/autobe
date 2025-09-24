@@ -19,7 +19,6 @@ import { compileRealizeFiles } from "./internal/compileRealizeFiles";
 import { orchestrateRealizeCorrectCasting } from "./orchestRateRealizeCorrectCasting";
 import { orchestrateRealizeAuthorization } from "./orchestrateRealizeAuthorization";
 import { orchestrateRealizeCorrect } from "./orchestrateRealizeCorrect";
-import { orchestrateRealizeCorrectDate } from "./orchestrateRealizeCorrectDate";
 import { orchestrateRealizeWrite } from "./orchestrateRealizeWrite";
 import { IAutoBeRealizeScenarioResult } from "./structures/IAutoBeRealizeScenarioResult";
 import { generateRealizeScenario } from "./utils/generateRealizeScenario";
@@ -120,21 +119,14 @@ export const orchestrateRealize =
         functions,
         reviewProgress,
       ).then(async (res) => {
-        return orchestrateRealizeCorrectDate(
+        return orchestrateRealizeCorrect(
           ctx,
+          scenarios,
           authorizations,
           res,
+          [],
           reviewProgress,
-        ).then(async (res) => {
-          return orchestrateRealizeCorrect(
-            ctx,
-            scenarios,
-            authorizations,
-            res,
-            [],
-            reviewProgress,
-          );
-        });
+        );
       });
 
     const compiler: IAutoBeCompiler = await ctx.compiler();

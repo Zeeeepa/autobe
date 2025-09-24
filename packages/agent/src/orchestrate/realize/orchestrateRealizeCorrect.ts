@@ -202,7 +202,29 @@ async function step<Model extends ILlmSchema.Model>(
     }),
     enforceFunctionCall: true,
     message: StringUtil.trim`
-      Correct the TypeScript code implementation.
+      Fix Date type problems in TypeScript code.
+
+      CRITICAL RULES:
+      1. When Prisma returns Date type, convert to string for API response
+      2. Use toISOStringSafe() OR .toISOString() to convert Date to string
+      3. Handle nullable dates: date ? date.toISOString() : null
+      4. For return types, match the API interface exactly
+      
+      COMMON PATTERNS:
+      // Prisma returns Date, API expects string
+      return {
+        created_at: result.created_at.toISOString(),
+        updated_at: result.updated_at.toISOString(),
+        deleted_at: result.deleted_at ? result.deleted_at.toISOString() : null
+      };
+      
+      // For nullable fields in return
+      expires_at: data.expires_at ? data.expires_at.toISOString() : null
+      
+      // Cast when needed
+      created_at: result.created_at.toISOString() as string & tags.Format<"date-time">
+      
+      Fix Date to string conversion issues. Do not explain, just fix the code.
     `,
   });
 
