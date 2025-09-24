@@ -550,7 +550,96 @@ const httpMethod: "GET" | "POST" | "PUT" | "DELETE" =
   typia.assert<"GET" | "POST" | "PUT" | "DELETE">(method);
 ```
 
-### 3.10. Optional Chaining with Array Methods Returns Union Types
+### 3.10. Number to Literal Union Type Assignment
+
+**Problem: Runtime checks don't narrow TypeScript types for literal unions**
+
+When you have a `number` type that needs to be assigned to a literal union type (e.g., `-1 | 0 | 1`), runtime checks alone don't narrow the type in TypeScript.
+
+**Error Pattern:**
+```
+Type 'number' is not assignable to type '0 | 1 | -1'
+```
+
+**Why it happens:**
+TypeScript's control flow analysis doesn't narrow types based on runtime validation logic like sequential if-checks that throw exceptions. The compiler still sees the original `number` type.
+
+**Solutions:**
+
+**Solution 1: Type Guard Function (RECOMMENDED for reusable logic)**
+```typescript
+// Define a type guard
+function isVoteState(value: number): value is -1 | 0 | 1 {
+  return value === -1 || value === 0 || value === 1;
+}
+
+// Use the type guard
+if (!isVoteState(body.vote_state)) {
+  throw new HttpException("Bad Request: invalid vote_state", 400);
+}
+// After the guard, TypeScript knows vote_state is -1 | 0 | 1
+const created = await MyGlobal.prisma.community_platform_post_votes.create({
+  data: {
+    vote_state: body.vote_state, // Now correctly typed
+  }
+});
+```
+
+**Solution 2: Type Assertion with Runtime Validation**
+```typescript
+// Validate at runtime
+if (body.vote_state !== -1 && body.vote_state !== 0 && body.vote_state !== 1) {
+  throw new HttpException("Bad Request: invalid vote_state", 400);
+}
+
+// Use type assertion after validation
+const created = await MyGlobal.prisma.community_platform_post_votes.create({
+  data: {
+    vote_state: body.vote_state as -1 | 0 | 1, // Safe after validation
+  }
+});
+```
+
+**Solution 3: Intermediate Variable with Explicit Type**
+```typescript
+// Validate
+if (body.vote_state !== -1 && body.vote_state !== 0 && body.vote_state !== 1) {
+  throw new HttpException("Bad Request: invalid vote_state", 400);
+}
+
+// Create typed variable
+const voteState: -1 | 0 | 1 = body.vote_state as -1 | 0 | 1;
+
+// Use the typed variable
+const created = await MyGlobal.prisma.community_platform_post_votes.create({
+  data: {
+    vote_state: voteState,
+  }
+});
+```
+
+**More Examples:**
+```typescript
+// Priority levels
+if (priority !== 1 && priority !== 2 && priority !== 3) {
+  throw new Error("Invalid priority");
+}
+const typedPriority = priority as 1 | 2 | 3;
+
+// Status codes
+if (![200, 201, 204, 400, 404, 500].includes(statusCode)) {
+  throw new Error("Invalid status code");
+}
+const typedStatus = statusCode as 200 | 201 | 204 | 400 | 404 | 500;
+```
+
+**Key Principle:**
+When runtime validation doesn't narrow types, use either:
+1. Type guard functions for reusable narrowing
+2. Type assertions (`as`) after validation
+3. Intermediate variables with explicit types
+
+### 3.11. Optional Chaining with Array Methods Returns Union Types
 
 **Problem: Optional chaining (`?.`) with array methods creates `T | undefined` types**
 
@@ -574,7 +663,7 @@ TestValidator.predicate(
 );
 ```
 
-### 3.11. TypeScript Type Narrowing Compilation Errors - "No Overlap" Fix
+### 3.12. TypeScript Type Narrowing Compilation Errors - "No Overlap" Fix
 
 **Error Pattern: "This comparison appears to be unintentional because the types 'X' and 'Y' have no overlap"**
 
