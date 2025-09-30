@@ -7,6 +7,7 @@ import { AutoBeSystemPromptConstant } from "../../../constants/AutoBeSystemPromp
 import { AutoBeState } from "../../../context/AutoBeState";
 import { IAutoBeRealizeFunctionFailure } from "../structures/IAutoBeRealizeFunctionFailure";
 import { IAutoBeRealizeScenarioResult } from "../structures/IAutoBeRealizeScenarioResult";
+import { printErrorHints } from "../utils/printErrorHints";
 import { transformRealizeWriteHistories } from "./transformRealizeWriteHistories";
 
 export function transformRealizeCorrectHistories(props: {
@@ -40,30 +41,18 @@ export function transformRealizeCorrectHistories(props: {
       `,
       created_at: new Date().toISOString(),
     },
-    ...props.failures.map(
-      (f) =>
-        ({
-          id: v7(),
-          type: "assistantMessage",
-          text: StringUtil.trim`
+    ...props.failures.map((f) => {
+      return {
+        id: v7(),
+        type: "assistantMessage",
+        text: StringUtil.trim`
+            This is a past code and an error with the code. Please refer to the annotation for the location of the error.
 
-      ## Generated Typescript Code
-
-      \`\`\`typescript
-      ${f.function.content}
-      \`\`\`
-
-      ## Compile Errors
-
-      Fix the comilation error in the provided code.
-
-      \`\`\`typescript
-      ${JSON.stringify(f.diagnostics)}
-      \`\`\`
-      `,
-          created_at: new Date().toISOString(),
-        }) satisfies IAgenticaHistoryJson.IAssistantMessage,
-    ),
+            ${printErrorHints(f.function.content, f.diagnostics)}
+          `,
+        created_at: new Date().toISOString(),
+      } satisfies IAgenticaHistoryJson.IAssistantMessage;
+    }),
     {
       id: v7(),
       type: "systemMessage",

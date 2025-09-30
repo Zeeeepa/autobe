@@ -73,11 +73,13 @@ When errors are complex or interconnected:
 
 ## Output Format (Chain of Thinking)
 
-You must return a structured output following the `IAutoBeRealizeCorrectApplication.IProps` interface. This interface contains all necessary fields for the correction process within a `revise` object. Each field in the `revise` object represents a phase in your error correction process:
+You must return a structured output following the `IAutoBeRealizeCorrectApplication.IProps` interface. This interface contains a three-phase correction process:
 
 ```typescript
 export namespace IAutoBeRealizeCorrectApplication {
   export interface IProps {
+    think: string;                      // Initial error analysis and strategy
+    draft: string;                      // First draft with initial fixes applied
     revise: {
       errorAnalysis?: string;           // Step 1: TypeScript compilation error analysis (OPTIONAL)
       plan?: string;                    // Step 2: Implementation plan (OPTIONAL)
@@ -89,14 +91,16 @@ export namespace IAutoBeRealizeCorrectApplication {
 }
 ```
 
-### 📝 FIELD REQUIREMENTS: OPTIONAL STEPS FOR EFFICIENCY
+### 📝 FIELD REQUIREMENTS: THREE-PHASE CORRECTION PROCESS
 
-**NEW APPROACH**: Most fields are now OPTIONAL to allow efficient correction when errors are obvious.
+**NEW APPROACH**: Three-phase process with think → draft → revise for systematic error correction.
 
-**REQUIRED FIELD:**
+**REQUIRED FIELDS:**
+- `think`: Initial analysis of the TypeScript compilation errors and resolution strategy
+- `draft`: First attempt at fixing the errors with initial corrections applied
 - `revise.final`: MUST contain complete, valid TypeScript function code
 
-**⚡ OPTIONAL FIELDS - Skip When Obvious:**
+**⚡ OPTIONAL FIELDS in revise - Skip When Obvious:**
 - `revise.errorAnalysis`: Skip if error is trivial (e.g., simple null handling)
 - `revise.plan`: Skip if fix is straightforward
 - `revise.prismaSchemas`: Skip if schema context is clear from error
@@ -122,6 +126,8 @@ export namespace IAutoBeRealizeCorrectApplication {
 ```typescript
 // For simple "Type 'string | null' is not assignable to type 'string'"
 {
+  think: "Simple null handling error - need to add default values",
+  draft: "// Initial fix with ?? operators added",
   revise: {
     final: `
       // ... fixed code with device_info: updated.device_info ?? "" ...
@@ -132,6 +138,26 @@ export namespace IAutoBeRealizeCorrectApplication {
 ```
 
 ### Field Descriptions
+
+#### 🧠 think (REQUIRED - Initial Analysis)
+
+**Initial Error Analysis and Strategy**
+
+This field contains your first assessment of the TypeScript compilation errors:
+- Identify error patterns (null handling, missing fields, type mismatches)
+- Determine correction approach (minimal fix vs refactoring)
+- Note if errors are simple or complex
+- Decide which optional fields in revise to use
+
+#### ✏️ draft (REQUIRED - First Attempt)
+
+**Draft Correction with Initial Fixes**
+
+The code after applying your first round of corrections:
+- Apply obvious fixes (null checks, type conversions)
+- Remove non-existent fields
+- Add missing required properties
+- This is your working draft before final refinement
 
 #### 📊 revise.errorAnalysis (Step 1 - OPTIONAL - CoT: Problem Identification)
 
@@ -213,12 +239,12 @@ Errors Found:
      // ❌ WRONG: ?? operator doesn't work for null checking with toISOStringSafe
      deleted_at: user.deleted_at ?? null  // This passes null to next expression, not what we want!
      
-     // ✅ CORRECT: Use ternary operator (? :) for null checking with toISOStringSafe
+     // ✅ CORRECT: Use ternary operator (? :) for nullable date fields
      deleted_at: user.deleted_at ? toISOStringSafe(user.deleted_at) : null
      
-     // ✅ CORRECT: General pattern for nullable date fields
-     created_at: user.created_at ? toISOStringSafe(user.created_at) : null
-     updated_at: user.updated_at ? toISOStringSafe(user.updated_at) : null
+     // ✅ CORRECT: Direct conversion for non-nullable date fields
+     created_at: toISOStringSafe(user.created_at)  // created_at is always non-null
+     updated_at: toISOStringSafe(user.updated_at)  // updated_at is always non-null
      ```
    
    **REMEMBER**: 
@@ -318,12 +344,57 @@ return typia.random<ReturnType>();
 - DO NOT use bcrypt, bcryptjs, or any hashing libraries
 - The missing function should already exist in the codebase
 
+### Common Logic Errors in Generated Code
+
+**1. Wrong Field for WHERE Conditions**
+```typescript
+// ❌ WRONG - Using 'id' when you need a different identifier
+if (!('id' in attachmentUpdate)) {
+  throw new HttpException("Attachment id is required", 400);
+}
+
+// ✅ CORRECT - Use the actual field that identifies the record
+const updated = await prisma.attachments.update({
+  where: { attachment_file_id: attachmentUpdate.attachment_file_id },
+  // Use the correct field based on your API design
+});
+```
+
+**2. Overcomplicated Null/Undefined Handling**
+```typescript
+// ❌ WRONG - Too complex for simple cases
+if (attachmentUpdate.uploaded_at !== undefined) {
+  if (attachmentUpdate.uploaded_at !== null) {
+    if (typeof attachmentUpdate.uploaded_at === 'string') {
+      updateData.uploaded_at = attachmentUpdate.uploaded_at;
+    } else {
+      updateData.uploaded_at = toISOStringSafe(attachmentUpdate.uploaded_at);
+    }
+  } else {
+    updateData.uploaded_at = null;
+  }
+}
+
+// ✅ CORRECT - Simplified based on actual field nullability
+// For non-nullable DateTime field:
+updateData.uploaded_at = attachmentUpdate.uploaded_at 
+  ? toISOStringSafe(attachmentUpdate.uploaded_at)
+  : toISOStringSafe(new Date()); // Provide default for non-nullable
+
+// For nullable DateTime? field:
+updateData.uploaded_at = attachmentUpdate.uploaded_at 
+  ? toISOStringSafe(attachmentUpdate.uploaded_at)
+  : null;
+```
+
 ### Type Assignment Patterns
 If you see the same type assignment error pattern:
 1. Identify the conversion needed (e.g., `string` → enum)
 2. Apply the SAME conversion pattern to ALL similar cases
 
-## 🚨🚨🚨 MOST VIOLATED RULE - NEVER USE hasOwnProperty 🚨🚨🚨
+## 🚨🚨🚨 MOST COMMON ERRORS IN GENERATED CODE 🚨🚨🚨
+
+### 1. NEVER USE hasOwnProperty - MOST VIOLATED RULE
 
 **ABSOLUTELY FORBIDDEN - AI KEEPS VIOLATING THIS:**
 ```typescript
@@ -344,7 +415,40 @@ if (body.field !== undefined && body.field !== null) { /* use it */ }
 field: body.field === null ? undefined : body.field
 ```
 
-**This is the MOST VIOLATED RULE - DO NOT USE hasOwnProperty EVER!**
+### 2. Non-Nullable Field Mishandling
+
+**Common mistake: Adding null checks for fields that CANNOT be null**
+```typescript
+// ❌ WRONG - Checking null for non-nullable DateTime field
+return {
+  created_at: updated.created_at ? toISOStringSafe(updated.created_at) : null,
+  // created_at is DateTime (not DateTime?), so it ALWAYS exists!
+};
+
+// ✅ CORRECT - Direct usage for non-nullable fields
+return {
+  created_at: toISOStringSafe(updated.created_at),  // Always exists
+  updated_at: toISOStringSafe(updated.updated_at),  // Always exists
+};
+```
+
+### 3. Wrong Identifier Fields in WHERE Clauses
+
+**Using wrong field to identify records for updates:**
+```typescript
+// ❌ WRONG - Checking for 'id' when it's not the identifier
+if (!('id' in attachmentUpdate)) {
+  throw new HttpException("id is required", 400);
+}
+
+// ✅ CORRECT - Use the actual identifying field from the API
+await prisma.attachments.update({
+  where: { 
+    attachment_file_id: attachmentUpdate.attachment_file_id  // Correct field
+  },
+  data: { /* updates */ }
+});
+```
 
 ## 🚨 CRITICAL ERROR PATTERNS BY ERROR CODE
 
@@ -452,6 +556,75 @@ Field doesn't exist error?
 │   ├── NO → DELETE the field from query
 │   └── YES → You typed wrong name, fix it
 └── Done! Error fixed!
+```
+
+**🚨 CRITICAL: Type Safety in Prisma Updates - Check Field Types First!**
+
+When you see type errors in Prisma updates, always check:
+1. Is the Prisma field nullable or non-nullable?
+2. What type does the API send (T | null | undefined)?
+3. Are you in an UPDATE context or RETURN context?
+
+**⚠️ CRITICAL: Non-nullable Field Handling**
+- If a Prisma field is non-nullable (e.g., `DateTime` not `DateTime?`), you CANNOT set it to null
+- For non-nullable DateTime fields, ALWAYS provide a value or skip the update
+- When returning non-nullable fields, no null checks needed - just use directly
+
+**Real Example - Community Platform Post Update:**
+```typescript
+// API Type: community_platform_sub_community_id?: string | null | undefined
+// Prisma Schema: community_platform_sub_community_id String (non-nullable!)
+
+// ❌ WRONG - The code that failed
+const updated = await prisma.community_platform_posts.update({
+  data: {
+    // Tried to handle null incorrectly
+    community_platform_sub_community_id:
+      body.community_platform_sub_community_id === null
+        ? null  // ❌ ERROR: Can't set non-nullable field to null!
+        : (body.community_platform_sub_community_id ?? undefined),
+  }
+});
+
+// ✅ CORRECT - Proper null handling for non-nullable field
+const updated = await prisma.community_platform_posts.update({
+  data: {
+    // Skip update if null or undefined
+    community_platform_sub_community_id:
+      body.community_platform_sub_community_id === null ||
+      body.community_platform_sub_community_id === undefined
+        ? undefined  // Skip the update
+        : body.community_platform_sub_community_id,
+  }
+});
+
+// ❌ WRONG - Overcomplicated return logic
+return {
+  community_platform_sub_community_id:
+    updated.community_platform_sub_community_id === null
+      ? null
+      : (updated.community_platform_sub_community_id ?? undefined),
+  // This is unnecessary - the field is non-nullable!
+};
+
+// ✅ CORRECT - Simple return for non-nullable field
+return {
+  community_platform_sub_community_id: updated.community_platform_sub_community_id,
+  // It's already a string, no conversion needed!
+};
+
+// ANOTHER EXAMPLE: Non-nullable DateTime field
+// ❌ WRONG - Unnecessary null check for non-nullable field
+return {
+  uploaded_at: updated.uploaded_at ? toISOStringSafe(updated.uploaded_at) : null
+  // uploaded_at is DateTime (non-nullable), so it ALWAYS has a value!
+};
+
+// ✅ CORRECT - Direct conversion for non-nullable DateTime
+return {
+  uploaded_at: toISOStringSafe(updated.uploaded_at)
+  // No null check needed - field is guaranteed to exist
+};
 ```
 
 **🚨 CRITICAL: Prisma WHERE Clause Non-Existent Field Handling**
@@ -608,30 +781,107 @@ const data = someValue ? { ...someValue } : {};
 
 When Prisma schema and API interface have different types, you must handle the mismatch appropriately:
 
-**Nullable to Required Conversion (Most Common)**
+**🚨 MOST CRITICAL: Understand the Context First!**
 ```typescript
-// ERROR: Type 'string | null' is not assignable to type 'string'
-// Prisma schema: ip_address: string | null
-// API interface: ip_address: string
-
-// WRONG: Trying to assign nullable directly
+// CONTEXT 1: Returning data from DB (Prisma → API)
+// When Prisma field is nullable but API expects non-nullable
 return {
-  ip_address: created.ip_address,  // ERROR: string | null not assignable to string
+  // ✅ CORRECT: Use default values for return statements
+  ip_address: created.ip_address ?? "",  // null → empty string
+  count: created.count ?? 0,              // null → 0
 };
 
-// CORRECT: Provide default value for null case
+// CONTEXT 2: Updating data in DB (API → Prisma)
+// When API sends nullable but Prisma field is non-nullable
+await prisma.update({
+  data: {
+    // ✅ CORRECT: Convert null to undefined for non-nullable fields
+    title: body.title === null ? undefined : body.title,  // null → undefined (skip)
+    // ❌ WRONG: Don't use ?? "" for updates!
+    title: body.title ?? "",  // This would update title to empty string!
+  }
+});
+
+// CONTEXT 3: When value is already safe (no null/undefined)
 return {
-  ip_address: created.ip_address ?? "",      // Converts null to empty string
-  device_info: created.device_info ?? "",    // Same pattern for all nullable fields
-  port_number: created.port_number ?? 0,     // Number fields use 0 as default
-  is_active: created.is_active ?? false,     // Boolean fields use false as default
+  // ✅ CORRECT: If DB value is non-nullable, just use directly
+  community_platform_sub_community_id: updated.community_platform_sub_community_id,
+  title: updated.title,  // No conversion needed - already string
 };
 ```
 
+**Type Narrowing Decision Tree:**
+```
+Is this for UPDATE or RETURN?
+├── UPDATE to Prisma:
+│   ├── Non-nullable field + null input → Convert to undefined
+│   ├── Nullable field → Pass as-is
+│   └── Already safe type → Use directly
+└── RETURN from function:
+    ├── Nullable DB + Required API → Use ?? default
+    ├── Non-nullable DB → Use directly
+    └── Optional API field → Pass as-is
+```
+
 **Resolution Priority:**
-1. **Use defaults when possible**: `?? ""` for strings, `?? 0` for numbers, `?? false` for booleans
-2. **Document if interface seems wrong**: Sometimes interface incorrectly requires non-nullable
-3. **Use typia.random only as last resort**: When field doesn't exist at all in schema
+1. **FOR RETURNS - Use defaults when possible**: `?? ""` for strings, `?? 0` for numbers, `?? false` for booleans
+2. **FOR UPDATES - Convert null to undefined**: `body.field === null ? undefined : body.field` for non-nullable fields
+3. **FOR SAFE VALUES - Use directly**: When value is already the correct type without null/undefined
+4. **Document if interface seems wrong**: Sometimes interface incorrectly requires non-nullable
+5. **Use typia.random only as last resort**: When field doesn't exist at all in schema
+
+**🔥 Common Patterns to Fix:**
+```typescript
+// PATTERN 1: Update with nullable input to non-nullable field
+// ❌ WRONG
+data: {
+  community_platform_sub_community_id: body.community_platform_sub_community_id ?? undefined,
+  // This might still pass null if body.community_platform_sub_community_id is null!
+}
+
+// ✅ CORRECT
+data: {
+  community_platform_sub_community_id: 
+    body.community_platform_sub_community_id === null 
+      ? undefined  // Skip update if null
+      : body.community_platform_sub_community_id,  // Use value if not null
+}
+
+// PATTERN 2: Return with non-nullable DB field
+// ❌ WRONG - Unnecessary conversion
+return {
+  community_platform_sub_community_id: 
+    updated.community_platform_sub_community_id === null 
+      ? null 
+      : updated.community_platform_sub_community_id,
+}
+
+// ✅ CORRECT - Just use directly
+return {
+  community_platform_sub_community_id: updated.community_platform_sub_community_id,
+  // It's already non-nullable string, no conversion needed!
+}
+
+// PATTERN 3: Date/Time fields from API
+// ❌ WRONG - Complex conditional for date fields
+data: {
+  start_at: body.start_at === undefined 
+    ? undefined 
+    : body.start_at === null 
+      ? null  // Setting to null is EXTREMELY RARE!
+      : toISOStringSafe(body.start_at),
+}
+
+// ✅ CORRECT - Simple pattern for 99% of cases
+data: {
+  // Standard pattern: null or undefined → skip update
+  start_at: body.start_at ? toISOStringSafe(body.start_at) : undefined,
+  end_at: body.end_at ? toISOStringSafe(body.end_at) : undefined,
+  
+  // Always update updated_at
+  updated_at: toISOStringSafe(new Date()),
+}
+```
 
 **MOST COMMON: Empty Array Type Mismatch**
 ```typescript
@@ -733,6 +983,54 @@ await prisma.moderator.findMany({
 ```
 
 **Rule**: Prisma parameters MUST be defined inline or use `as const` for proper type inference.
+
+### Using `satisfies` with Prisma Types
+
+**✅ ALLOWED: Using `satisfies` with Prisma generated types**
+
+When working with Prisma input types from `@prisma/client`, you can use `satisfies` for type checking:
+
+```typescript
+import { Prisma } from "@prisma/client";
+
+// ✅ GOOD: Use satisfies with Prisma update input types
+const updateData = {
+  updated_at: toISOStringSafe(new Date()),
+  ...(body.session_id === null
+    ? { session_id: null }
+    : body.session_id !== undefined
+      ? { session_id: body.session_id }
+      : {}),
+  ...(body.email === null
+    ? { email: null }
+    : body.email !== undefined
+      ? { email: body.email }
+      : {}),
+} satisfies Prisma.discussion_board_guestsUpdateInput;
+
+const updated = await MyGlobal.prisma.discussion_board_guests.update({
+  where: { id },
+  data: updateData,
+});
+
+// ✅ ALSO GOOD: Use satisfies for create operations
+const createData = {
+  id: v4() as string & tags.Format<'uuid'>,
+  name: body.name,
+  created_at: toISOStringSafe(new Date()),
+  updated_at: toISOStringSafe(new Date()),
+} satisfies Prisma.discussion_board_postsCreateInput;
+
+await MyGlobal.prisma.discussion_board_posts.create({
+  data: createData,
+});
+```
+
+**Benefits of using Prisma types with `satisfies`:**
+- Type-safe field names and types
+- Compile-time error detection
+- Better IDE support and autocomplete
+- Cleaner code structure for complex updates
 
 ### Error Code 2345: "Argument of type 'string' is not assignable to literal union"
 
@@ -1090,11 +1388,16 @@ Common Simple Fixes (skip CoT):
 
 ## 💡 Real Examples
 
-### Example 1: Simple Null Handling (Skip CoT)
+### Example 1: Simple Null Handling
 **Error**: `Type 'string | null' is not assignable to type 'string'`
 ```typescript
-// Just provide fixed code in final
 {
+  think: "Simple null handling errors on device_info and ip_address fields. Need to add default empty strings.",
+  draft: `// Fixed with ?? "" for null handling
+    return {
+      device_info: updated.device_info ?? "",
+      ip_address: updated.ip_address ?? ""
+    };`,
   revise: {
     final: `
       export async function updateUser(...) {
@@ -1114,6 +1417,8 @@ Common Simple Fixes (skip CoT):
 **Error**: Multiple interconnected type errors with missing relations
 ```typescript
 {
+  think: "Complex error pattern with missing relations and type mismatches. Multiple fields don't exist in schema. Need full analysis and refactoring.",
+  draft: "// Initial attempt to fix by removing non-existent fields and restructuring queries",
   revise: {
     errorAnalysis: "Multiple cascading errors due to missing relation...",
     plan: "Need to restructure queries to avoid nested operations...",
