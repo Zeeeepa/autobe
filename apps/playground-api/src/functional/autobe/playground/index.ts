@@ -15,6 +15,8 @@ import { WebSocketConnector } from "tgrid";
 import type { Driver } from "tgrid";
 
 export * as replay from "./replay/index";
+export * as models from "./models/index";
+export * as sessions from "./sessions/index";
 
 /**
  * @controller AutoBePlaygroundController.start

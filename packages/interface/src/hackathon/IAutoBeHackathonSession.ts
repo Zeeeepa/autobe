@@ -14,7 +14,7 @@ export interface IAutoBeHackathonSession
 }
 export namespace IAutoBeHackathonSession {
   export interface ISummary {
-    id: string;
+    id: string & tags.Format<"uuid">;
     participant: IAutoBeHackathonParticipant;
     title: string | null;
     model: AutoBeHackathonModel;
