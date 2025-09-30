@@ -5,15 +5,18 @@ playground-result/
 temporary/
 
 repositories/
-packages/*/README.md
-packages/*/LICENSE
+apps/**/README.md
+internals/**/README.md
+packages/**/README.md
 test/README.md
-test/LICENSE
 website/README.md
+apps/**/LICENSE
+internals/**/LICENSE
+packages/**/LICENSE
+test/LICENSE
 website/LICENSE
-internals/*/README.md
-internals/*/LICENSE
-!internals/template/README.md
+!internals/template/*/README.md
+!internals/template/*/LICENSE
 
 *.log
 .env
