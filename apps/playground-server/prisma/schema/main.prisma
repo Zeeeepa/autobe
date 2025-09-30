@@ -1,0 +1,440 @@
+datasource db {
+  provider   = "postgresql"
+  url        = env("HACKATHON_POSTGRES_URL")
+  extensions = [pg_trgm]
+}
+
+generator client {
+  provider        = "prisma-client-js"
+  engineType      = "client"
+  previewFeatures = ["postgresqlExtensions", "views"]
+}
+
+/// Table storing AI model configurations for AutoBE playground.
+/// 
+/// This table manages various AI model configurations that can be used
+/// in AutoBE sessions. It allows administrators to define multiple AI models
+/// with their specific credentials and endpoints.
+/// 
+/// Key features:
+/// - Support for multiple AI vendors (OpenAI, Anthropic, etc.)
+/// - Custom API endpoints for enterprise or self-hosted models
+/// - API key management for different models
+/// - Model lifecycle management with soft delete
+/// 
+/// @author Samchon
+model autobe_playground_models {
+  //----
+  // COLUMNS
+  //----
+  /// Model configuration unique identifier (UUID v7)
+  id String @id @db.VarChar(36)
+  
+  /// Model display title (nullable).
+  /// 
+  /// Human-readable name for the model configuration.
+  /// Used in UI for model selection.
+  /// 
+  /// Examples:
+  /// - "GPT-4 Turbo Production"
+  /// - "Claude 3 Opus Development"
+  /// - "Custom LLaMA Model"
+  title String? @db.VarChar(255)
+  
+  /// Model schema identifier for ILlmSchema<Model>.
+  /// 
+  /// Schema model name used for function calling and JSON schema capabilities.
+  /// Defines the model's structured output support.
+  /// 
+  /// Examples:
+  /// - "chatgpt"
+  /// - "claude"
+  /// - "gemini" (not possible due to lack of JSON schema support)
+  /// - "llama"
+  /// - "deepseek"
+  /// - "3.0"
+  /// - "3.1"
+  schema String @db.VarChar(255)
+  
+  /// AI vendor model name.
+  /// 
+  /// The actual model identifier used by the AI vendor.
+  /// 
+  /// Examples:
+  /// - "gpt-4.1"
+  /// - "openai/gpt-4.1-mini" (through OpenRouter)
+  /// - "qwen/qwen3-next-80b-a3b-instruct"
+  vendor String @db.VarChar(255)
+  
+  /// API key for model access.
+  /// 
+  /// Authentication credential for accessing the AI model.
+  /// Should be stored securely and never exposed in logs.
+  api_key String @db.VarChar(255)
+  
+  /// Base URL for API endpoint.
+  /// 
+  /// The root URL for AI model API calls.
+  /// Allows custom endpoints for enterprise or self-hosted models.
+  /// 
+  /// Examples:
+  /// - "https://api.openai.com/v1"
+  /// - "https://api.anthropic.com"
+  /// - "https://custom-llm.company.com/api"
+  base_url String @db.VarChar(255)
+  
+  /// Model configuration creation timestamp.
+  /// 
+  /// When this model configuration was first created
+  created_at DateTime
+  
+  /// Last modification timestamp.
+  /// 
+  /// When this model configuration was last updated
+  updated_at DateTime
+  
+  /// Model configuration deletion timestamp (nullable).
+  /// 
+  /// Field for implementing soft delete.
+  /// Non-null value indicates the model configuration is no longer active
+  deleted_at DateTime?
+
+  //----
+  // RELATIONS
+  //----
+  sessions autobe_playground_sessions[]
+  
+  @@index([title])
+  @@index([created_at, deleted_at])
+}
+
+/// Main table storing AutoBE playground session information.
+/// 
+/// AutoBE is an AI agent system that automatically generates backend applications
+/// through natural language conversations. This table contains basic information
+/// for each session where users interact with AutoBE to generate backends.
+/// 
+/// Key use cases:
+/// - Tracking hackathon participants' project generation processes
+/// - Managing metadata of generated backend applications
+/// - Tracking session lifecycle (creation, modification, completion, deletion)
+/// 
+/// @author Samchon
+model autobe_playground_sessions {
+  //----
+  // COLUMNS
+  //----
+  /// Session unique identifier (UUID v7)
+  id String @id @db.VarChar(36)
+  
+  /// Associated AI model configuration ID.
+  /// 
+  /// References the specific model configuration used for this session.
+  /// Allows tracking which AI model was used for each backend generation.
+  autobe_playground_model_id String @db.VarChar(36)
+  
+  /// User's language setting.
+  /// 
+  /// AutoBE supports multiple languages, and response language is determined 
+  /// by this setting.
+  /// 
+  /// Examples:
+  /// - "ko" (Korean)
+  /// - "en" (English)
+  /// - "ja" (Japanese)
+  locale String @db.VarChar(255)
+  
+  /// User's timezone setting.
+  /// 
+  /// Used for log timestamp display and scheduling-related features.
+  /// 
+  /// Examples:
+  /// - "Asia/Seoul"
+  /// - "America/New_York"
+  timezone String @db.VarChar(255)
+  
+  /// Session/project title.
+  /// 
+  /// Name or description of the backend application the user wants to generate.
+  /// 
+  /// Examples:
+  /// - "Online Shopping Mall"
+  /// - "Political Discussion Forum"
+  /// - "Todo Management App"
+  title String? @db.VarChar(1024)
+  
+  /// Session creation timestamp.
+  /// 
+  /// The time when the user started the conversation with AutoBE
+  created_at DateTime
+  
+  /// Last modification timestamp.
+  /// 
+  /// The time when the session content was last updated
+  updated_at DateTime
+  
+  /// Session completion timestamp (nullable).
+  /// 
+  /// The time when backend application generation was completed.
+  /// null value indicates the session is still in progress
+  completed_at DateTime?
+  
+  /// Session deletion timestamp (nullable).
+  /// 
+  /// Field for implementing soft delete.
+  /// Non-null value indicates the session is considered deleted
+  deleted_at DateTime?
+
+  //----
+  // RELATIONS
+  //----
+  model autobe_playground_models @relation(fields: [autobe_playground_model_id], references: [id], onDelete: Cascade)
+  
+  connections autobe_playground_session_connections[]
+  histories autobe_playground_session_histories[]
+  events autobe_playground_session_events[]
+  aggregate autobe_playground_session_aggregates?
+
+  @@index([autobe_playground_model_id])
+  @@index([title])
+  @@index([created_at])
+}
+
+/// WebSocket connection tracking table.
+/// 
+/// AutoBE Playground uses WebSocket for providing real-time interactive interface.
+/// This table tracks each user's connection sessions to manage connection 
+/// status and duration.
+/// 
+/// Main purposes:
+/// - Concurrent user statistics
+/// - Activity time measurement per session
+/// - Abnormal termination detection and recovery
+/// 
+/// @author Samchon
+model autobe_playground_session_connections {
+  //----
+  // COLUMNS
+  //----
+  /// Connection unique identifier (UUID v7)
+  id String @id @db.VarChar(36)
+  
+  /// Associated AutoBE session ID
+  autobe_playground_session_id String @db.VarChar(36)
+  
+  /// WebSocket connection start timestamp
+  connected_at DateTime
+  
+  /// WebSocket connection end timestamp (nullable).
+  /// 
+  /// null value indicates currently connected state
+  disconnected_at DateTime?
+
+  //----
+  // RELATIONS
+  //----
+  session autobe_playground_sessions @relation(fields: [autobe_playground_session_id], references: [id], onDelete: Cascade)
+  histories autobe_playground_session_histories[]
+  events autobe_playground_session_events[]
+  
+  @@index([autobe_playground_session_id, connected_at])
+}
+
+/// Table storing AutoBE conversation history and agent activities.
+/// 
+/// AutoBE's waterfall development model consists of 5 phases:
+/// 1. Analyze: Requirements analysis
+/// 2. Prisma: Database schema design
+/// 3. Interface: API interface design (OpenAPI)
+/// 4. Test: E2E test code generation
+/// 5. Realize: Actual implementation code generation
+/// 
+/// All activities in each phase and user-AI conversations are recorded in this table.
+/// 
+/// @author Samchon
+model autobe_playground_session_histories {
+  //----
+  // COLUMNS
+  //----
+  /// History unique identifier (UUID v7)
+  id String @id @db.VarChar(36)
+  
+  /// Associated AutoBE session ID
+  autobe_playground_session_id String @db.VarChar(36)
+  
+  /// Associated WebSocket connection ID
+  autobe_playground_session_connection_id String @db.VarChar(36)
+  
+  /// History type.
+  /// 
+  /// Possible values:
+  /// - "userMessage": Message entered by user
+  /// - "assistantMessage": AI assistant's response
+  /// - "analyze": Requirements analysis agent activity
+  /// - "prisma": Database schema design agent activity
+  /// - "interface": API design agent activity
+  /// - "test": Test code generation agent activity
+  /// - "realize": Implementation code generation agent activity
+  type String @db.VarChar(255)
+  
+  /// History data (JSON).
+  /// 
+  /// Structured data following IAutoBeHistoryJson interface.
+  /// Each type has different data structure
+  data String
+  
+  /// History creation timestamp
+  created_at DateTime
+
+  //----
+  // RELATIONS
+  //----
+  session autobe_playground_sessions @relation(fields: [autobe_playground_session_id], references: [id], onDelete: Cascade, map: "autobe_playground_session_histories_session_fkey")
+  connection autobe_playground_session_connections @relation(fields: [autobe_playground_session_connection_id], references: [id], onDelete: Cascade, map: "autobe_playground_session_histories_connection_fkey")
+
+  @@index([autobe_playground_session_id, created_at], map: "autobe_playground_session_histories_session_idx")
+  @@index([autobe_playground_session_connection_id, created_at], map: "autobe_playground_session_histories_connection_idx")
+}
+
+/// Table storing detailed AutoBE events.
+/// 
+/// Records more granular events than history.
+/// Mainly stores technical activities like compiler validation, 
+/// error fixes, file generation, etc.
+/// 
+/// This data is particularly used for:
+/// - Replay functionality: Reviewing the entire development process
+/// - Debugging: Detailed tracking when problems occur
+/// - Performance analysis: Measuring time and resource usage for each phase
+/// 
+/// @author Samchon
+model autobe_playground_session_events {
+  //----
+  // COLUMNS
+  //----
+  /// Event unique identifier (UUID v7)
+  id String @id @db.VarChar(36)
+  
+  /// Associated AutoBE session ID
+  autobe_playground_session_id String @db.VarChar(36)
+  
+  /// Associated WebSocket connection ID (nullable).
+  /// 
+  /// Some events may occur independently of specific connections
+  autobe_playground_session_connection_id String? @db.VarChar(36)
+  
+  /// Event type.
+  /// 
+  /// Values corresponding to `AutoBeEvent` types.
+  type String @db.VarChar(255)
+  
+  /// Event detail data (JSON).
+  /// 
+  /// Each event type has different data structure
+  data String
+  
+  /// Token usage information (JSON).
+  /// 
+  /// Follows IAutoBeTokenUsageJson structure, contains token information 
+  /// consumed during AI model calls.
+  /// 
+  /// Example:
+  /// ```json
+  /// {
+  ///   "completion_tokens": 150,
+  ///   "prompt_tokens": 500,
+  ///   "total_tokens": 650
+  /// }
+  /// ```
+  token_usage String
+  
+  /// Event occurrence timestamp
+  created_at DateTime
+
+  //----
+  // RELATIONS
+  //----
+  session autobe_playground_sessions @relation(fields: [autobe_playground_session_id], references: [id], onDelete: Cascade, map: "autobe_playground_session_events_session_fkey")
+  connection autobe_playground_session_connections? @relation(fields: [autobe_playground_session_connection_id], references: [id], onDelete: Cascade, map: "autobe_playground_session_events_connection_fkey")
+
+  @@index([autobe_playground_session_id, created_at], map: "autobe_playground_session_events_session_idx")
+  @@index([autobe_playground_session_connection_id, created_at], map: "autobe_playground_session_events_connection_idx")
+}
+
+/// Table storing AutoBE session aggregate information.
+/// 
+/// Manages overall status and statistical information of each session in one place.
+/// Updated in real-time and utilized in dashboard or admin screens.
+/// 
+/// Main purposes:
+/// - Hackathon evaluation: Monitoring participants' project progress
+/// - Cost management: Token usage-based billing
+/// - Performance optimization: Identifying bottlenecks
+/// 
+/// @author Samchon
+model autobe_playground_session_aggregates {
+  //----
+  // COLUMNS
+  //----
+  /// Aggregate unique identifier (UUID v7)
+  id String @id @db.VarChar(36)
+  
+  /// Associated AutoBE session ID (unique).
+  /// 
+  /// Only one aggregate information exists per session
+  autobe_playground_session_id String @db.VarChar(36)
+  
+  /// Current development phase in progress (nullable).
+  /// 
+  /// null value indicates not started yet or completed state.
+  /// 
+  /// Possible values:
+  /// - "analyze"
+  /// - "prisma"
+  /// - "interface"
+  /// - "test"
+  /// - "realize"
+  phase String? @db.VarChar(255)
+  
+  /// Session activation status.
+  /// 
+  /// false value indicates paused or deactivated session
+  enabled Boolean
+  
+  /// Total token usage aggregate (JSON).
+  /// 
+  /// Follows IAutoBeTokenUsageJson structure, contains cumulative 
+  /// token usage for entire session.
+  /// May include detailed usage by agent and model.
+  /// 
+  /// Example:
+  /// ```json
+  /// {
+  ///   "total": {
+  ///     "completion_tokens": 50000,
+  ///     "prompt_tokens": 100000,
+  ///     "total_tokens": 150000
+  ///   },
+  ///   "by_agent": {
+  ///     "analyze": {
+  ///       "completion_tokens": 5000,
+  ///       "prompt_tokens": 10000,
+  ///       "total_tokens": 15000
+  ///     },
+  ///     "prisma": {
+  ///       "completion_tokens": 8000,
+  ///       "prompt_tokens": 15000,
+  ///       "total_tokens": 23000
+  ///     }
+  ///   }
+  /// }
+  /// ```
+  token_usage String
+
+  //----
+  // RELATIONS
+  //----
+  session autobe_playground_sessions @relation(fields: [autobe_playground_session_id], references: [id], onDelete: Cascade)
+  
+  @@unique([autobe_playground_session_id])
+}

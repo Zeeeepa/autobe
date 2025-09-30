@@ -37,6 +37,7 @@
     "@autobe/agent": "workspace:^",
     "@autobe/compiler": "workspace:^",
     "@autobe/filesystem": "workspace:^",
+    "@autobe/hackathon-api": "workspace:^", 
     "@autobe/interface": "workspace:^",
     "@autobe/rpc": "workspace:^",
     "@nestia/core": "catalog:samchon",
@@ -61,7 +62,6 @@
     "uuid": "^11.1.0"
   },
   "devDependencies": {
-    "@autobe/hackathon-api": "workspace:^",
     "@types/express": "^5.0.3",
     "@types/inquirer": "8.2.5",
     "@types/jsonwebtoken": "^9.0.10",
