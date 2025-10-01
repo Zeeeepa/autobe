@@ -39,6 +39,18 @@ const main = async (): Promise<void> => {
           project,
           phase,
         );
+        const last: AutoBeHistory | undefined = histories.at(-1);
+        if (last === undefined) continue;
+        else if (last.type !== "test" && last.type !== "realize") continue;
+        else if (last.compiled.type !== "failure") continue;
+
+        console.log("=======================================================");
+        console.log(vendor, project, phase);
+        console.log("=======================================================");
+        console.log(last.compiled.diagnostics);
+        console.log("-------------------------------------------------------");
+        console.log("\n\n");
+
         const agent: AutoBeAgent<"chatgpt"> = new AutoBeAgent({
           model: "chatgpt",
           vendor: {
