@@ -95,8 +95,214 @@ result: dbValue === null
 - `field: Type | null` = Required nullable → use `null` when missing
 - NEVER mix these up!
 
+## 🚫 ABSOLUTE PROHIBITION: No Runtime Type Checking on API Parameters
+
+### ⛔ NEVER PERFORM RUNTIME TYPE VALIDATION ON PARAMETERS
+
+**This is an ABSOLUTE PROHIBITION that must be followed without exception.**
+
+#### Why This Rule Exists:
+
+1. **Already Validated at Controller Level**
+   - All parameters passed to API provider functions have ALREADY been validated by the NestJS controller layer
+   - The controller uses class-validator decorators and transformation pipes
+   - By the time parameters reach your function, they are GUARANTEED to match their declared types
+
+2. **TypeScript Type System is Sufficient**
+   - The TypeScript compiler ensures type safety at compile time
+   - The `props` parameter types are enforced by the function signature
+   - Additional runtime checks are redundant and violate the single responsibility principle
+
+3. **Framework Contract**
+   - NestJS + class-validator handle ALL input validation
+   - Your provider functions should trust the framework's validation pipeline
+   - Adding duplicate validation creates maintenance burden and potential inconsistencies
+
+4. **Business Logic vs Type Validation**
+   - Business logic validation (e.g., checking if a value exceeds a limit) is ALLOWED and EXPECTED
+   - Type validation (e.g., checking if a string is actually a string) is FORBIDDEN
+   - The distinction: If TypeScript already knows the type, don't check it at runtime
+
+#### ❌ ABSOLUTELY FORBIDDEN Patterns:
+
+```typescript
+// ❌ NEVER check parameter types at runtime
+export async function createPost(props: { title: string; content: string }) {
+  // ❌ FORBIDDEN - Type checking
+  if (typeof props.title !== 'string') {
+    throw new Error('Title must be a string');
+  }
+  
+  // ❌ FORBIDDEN - Type validation  
+  if (!props.content || typeof props.content !== 'string') {
+    throw new Error('Content is required');
+  }
+  
+  // ❌ FORBIDDEN - Instance checking
+  if (!(props.createdAt instanceof Date)) {
+    throw new Error('Invalid date');
+  }
+}
+
+// ❌ FORBIDDEN - Manual type guards
+if (typeof body.age === 'number' && body.age > 0) {
+  // Never validate types that are already declared
+}
+
+// ❌ FORBIDDEN - Array type checking
+if (!Array.isArray(body.tags)) {
+  throw new Error('Tags must be an array');
+}
+
+// ❌ FORBIDDEN - Checking parameter value types
+if (typeof body.title !== 'string' || body.title.trim() === '') {
+  throw new Error('Title must be a non-empty string');
+}
+
+// ❌ FORBIDDEN - Validating that a typed parameter matches its type
+if (body.price && typeof body.price !== 'number') {
+  throw new Error('Price must be a number');
+}
+```
+
+#### ✅ CORRECT Approach:
+
+```typescript
+// ✅ CORRECT - Trust the type system
+export async function createPost(props: { 
+  title: string; 
+  content: string;
+  tags: string[];
+}) {
+  // Use parameters directly - they are GUARANTEED to be the correct type
+  const post = await MyGlobal.prisma.post.create({
+    data: {
+      title: props.title,      // Already validated as string
+      content: props.content,  // Already validated as string  
+      tags: props.tags,        // Already validated as string[]
+    }
+  });
+}
+```
+
+#### Key Principles:
+
+1. **Trust the Framework**: Parameters have been validated before reaching your function
+2. **Trust TypeScript**: The compiler ensures type correctness
+3. **No Defensive Programming**: Don't write defensive checks for impossible scenarios
+4. **Focus on Business Logic**: Your job is implementation, not validation
+
+#### The ONLY Acceptable Checks:
+
+✅ **Business logic conditions** (NOT type validation):
+```typescript
+// ✅ OK - Business rule validation (checking VALUE, not TYPE)
+if (props.title.trim().length === 0) {
+  throw new HttpException('Title cannot be empty', 400);
+}
+
+// ✅ OK - Business constraint validation
+if (props.quantity > props.maxAllowed) {
+  throw new HttpException('Quantity exceeds maximum allowed', 400);
+}
+
+// ✅ OK - Checking for optional fields (existence, not type)
+if (body.email) {
+  // Email was provided (we already know it's a string if present)
+  await sendEmailTo(body.email);
+}
+
+// ✅ OK - Validating business rules on string content
+if (body.title.length > 100) {
+  throw new HttpException('Title must not exceed 100 characters', 400);
+}
+
+// ❌ BUT THIS IS FORBIDDEN - Don't validate the TYPE
+if (typeof body.title !== 'string') {
+  throw new Error('Title must be a string');
+}
+```
+
+### 🔴 Final Rule: ZERO TOLERANCE for Runtime Type Validation
+
+Any code that checks `typeof`, `instanceof`, or validates that a parameter matches its declared type is **STRICTLY FORBIDDEN**. This is not a guideline - it is an absolute rule with no exceptions.
+
 1. **NEVER create intermediate variables for ANY Prisma operation parameters**
    - ❌ FORBIDDEN: `const updateData = {...}; await prisma.update({data: updateData})`
+
+## 🔤 String Literal and Escape Sequence Handling
+
+### CRITICAL: Escape Sequences in Function Calling Context
+
+When writing code that will be generated through function calling (JSON), escape sequences require special handling:
+
+#### ❌ WRONG - Single Backslash (Will be consumed by JSON parsing)
+```typescript
+// This will become a newline character after JSON parsing!
+{
+  draft: `
+    const value = "Hello.\nNice to meet you.";
+    if (/[\r\n]/.test(title)) {
+      throw new HttpException("Title must not contain line breaks.", 400);
+    }
+  `
+}
+```
+
+#### ✅ CORRECT - Double Backslash for Escape Sequences
+```typescript
+{
+  draft: `
+    // Use double backslash to preserve the escape sequence
+    const value = "Hello.\\nNice to meet you.";
+    if (/[\\r\\n]/.test(title)) {
+      throw new HttpException("Title must not contain line breaks.", 400);
+    }
+    
+    // For other common escape sequences:
+    const pattern = /[\\t\\n\\r]/; // Tab, newline, carriage return
+    const unicodePattern = /\\u0000/; // Unicode escape
+  `
+}
+```
+
+#### 📋 Escape Sequence Reference
+
+When your code will be transmitted through JSON (function calling):
+
+| Intent | Write This | After JSON Parse |
+|--------|------------|------------------|
+| `\n` | `\\n` | `\n` |
+| `\r` | `\\r` | `\r` |
+| `\t` | `\\t` | `\t` |
+| `\\` | `\\\\` | `\\` |
+| `\"` | `\\"` | `\"` |
+| `\'` | `\\'` | `\'` |
+
+#### 🎯 Rule of Thumb
+
+1. **Regular string literals**: Use normal escape sequences
+2. **Regular expressions in function calling**: Use DOUBLE backslashes
+3. **String content validation**: Consider using character ranges or Unicode values
+
+```typescript
+// Alternative approaches that avoid escape sequence issues:
+
+// Option 1: Character codes
+if (title.includes(String.fromCharCode(10)) || title.includes(String.fromCharCode(13))) {
+  throw new HttpException("Title must not contain line breaks.", 400);
+}
+
+// Option 2: Direct string methods
+if (title.includes('\n') || title.includes('\r')) {
+  throw new HttpException("Title must not contain line breaks.", 400);
+}
+
+// Option 3: Split-based detection
+if (title.split('\n').length > 1 || title.split('\r').length > 1) {
+  throw new HttpException("Title must not contain line breaks.", 400);
+}
+```
    - ❌ FORBIDDEN: `const where = {...}; await prisma.findMany({where})`
    - ❌ FORBIDDEN: `const where: Record<string, unknown> = {...}` - WORST VIOLATION!
    - ❌ FORBIDDEN: `const orderBy = {...}; await prisma.findMany({orderBy})`
@@ -469,9 +675,11 @@ The output must strictly follow the `IAutoBeRealizeWriteApplication.IProps` inte
 export namespace IAutoBeRealizeWriteApplication {
   export interface IProps {
     plan: string;                    // Step 1: Implementation plan
-    prismaSchemas: string;          // Step 2: Relevant schema definitions  
-    review: string;                  // Step 3: Refined version
-    final: string;      // Step 4: Final implementation
+    draft: string;                   // Step 2: Initial implementation draft
+    revise: {                        // Step 3: Revision phase
+      review: string;                // Review and improvements
+      final: string | null;          // Final implementation (null if draft is perfect)
+    };
   }
 }
 ```
@@ -506,7 +714,7 @@ All text fields (plan, prismaSchemas, review) should be:
     - Verify database compatibility (PostgreSQL AND SQLite) - NEVER use PostgreSQL-specific features like `mode: "insensitive"`
   
   - **STEP 2 - API SPEC VS SCHEMA VERIFICATION**:
-    - Compare API comment/JSDoc requirements with actual Prisma schema
+    - Compare API requirements with actual Prisma schema
     - Identify any contradictions (e.g., API requires soft delete but schema lacks deleted_at)
     - If contradiction found, mark as "CONTRADICTION DETECTED" and plan to use typia.random<T>()
   
@@ -542,42 +750,39 @@ All text fields (plan, prismaSchemas, review) should be:
   - In such cases, only return detailed comment in `final` explaining why logic cannot be implemented
   
   **🔥 Error Handling Plan (if errors expected):**
-  - Document error messages and TypeScript error codes
+  - Identify error messages and TypeScript error codes
   - Analyze root cause (type mismatch, missing field, nullability)
   - Define concrete resolution steps (e.g., using `?? undefined` for nullable fields, proper relation handling)
 
-* **prismaSchemas** (Step 2):
-  **SCHEMA ANALYSIS, NOT SCHEMA COPY**: Analyze the relevant Prisma models for implementation feasibility.
-  **⚠️ LENGTH RESTRICTION: Maximum 500 characters total**
+* **draft** (Step 2):
+  **INITIAL IMPLEMENTATION**: First complete code implementation based on the plan.
   
   **Requirements**:
-  - **DO NOT copy-paste the entire Prisma schema** - provide analysis instead
-  - **Focus on critical field availability**:
-    - ✅ Verify time-related fields: `created_at`, `updated_at`, `deleted_at` existence
-    - ✅ Check for soft delete support: Does `deleted_at` field exist?
-    - ✅ Identify required fields for business logic: ownership fields, status fields, etc.
-    - ✅ Note nullable vs required fields that affect implementation
-  - **Concise analysis format (MUST be under 500 chars)**:
-    ```
-    User: id, email, created_at. NO deleted_at.
-    Post: author_id, created_at, updated_at. NO deleted_at.
-    Comment: post_id, user_id, deleted_at exists.
-    Missing: User.role field needed for authorization.
-    ```
-  - **Flag missing but needed fields**:
-    - If logic requires soft delete but `deleted_at` missing → note it
-    - If audit fields needed but not present → note it
-    - If relation fields missing → note it
+  - Must be a complete, working implementation
+  - Follow all AutoBE coding standards
+  - Include proper error handling with HttpException
+  - Implement all business logic requirements
+  - May contain areas for improvement (to be addressed in review phase)
 
-* **review** (Step 3):
-  **BE CONCISE**: Brief notes on key improvements and critical fixes only. Not a development diary.
+* **revise** (Step 3):
+  **REVIEW AND FINALIZATION PHASE**: Contains review analysis and final improved code.
   
-  **Focus on**:
-  - Critical type fixes applied
-  - Non-obvious implementation decisions
-  - Essential error handling added
+  **revise.review**:
+  - **BE CONCISE**: Brief notes on key improvements and critical fixes only. Not a development diary.
+  - **Focus on**:
+    - Critical type fixes to be applied
+    - Non-obvious implementation improvements
+    - Essential error handling enhancements
+    - Null/undefined handling corrections
+    - Performance or security improvements
+  - **Skip**: Obvious improvements, standard patterns, routine changes
   
-  **Skip**: Obvious improvements, standard patterns, routine null handling
+  **revise.final**:
+  - **FINAL IMPLEMENTATION**: The perfected code with all review suggestions applied
+  - Returns `null` if the draft is already perfect and needs no changes
+  - Must pass all TypeScript compilation checks
+  - Must follow all AutoBE coding standards
+  - Represents the production-ready version
 
 ## 🚨 CRITICAL: Error Handling with HttpException
 
@@ -652,29 +857,8 @@ throw new HttpException("Bad Request", 400);  // Direct number only
   - Do NOT use `Object.prototype.hasOwnProperty.call()`
   - Do NOT escape newlines/quotes in implementation string
   
-  **🚨 MANDATORY JSDoc Requirements**:
-  - Every function MUST include comprehensive JSDoc documentation
-  - The JSDoc MUST clearly describe the operation according to the OpenAPI specification
-  - Include @param descriptions for the props parameter (if it exists)
-  - Include @returns description that matches the operation's purpose
-  - Include @throws for all possible error conditions
-  
-  Example format:
+  **Function Structure**:
   ```typescript
-  /**
-   * [Operation title from OpenAPI spec]
-   * 
-   * [First paragraph: Main operation description]
-   * [Second paragraph: Additional context about business logic]
-   * [Third paragraph: Authorization and permission requirements if applicable]
-   * 
-   * @param props - Object containing all necessary parameters for the operation
-   * @param props.[authRole] - The authenticated [role] making the request (only if authentication exists)
-   * @param props.[paramName] - [Description of each path/query parameter] (only if parameters exist)
-   * @param props.body - Request body containing [description] (only if body exists)
-   * @returns [Description of what is returned]
-   * @throws {Error} [Description of each error condition]
-   */
   export async function [function_name](
     props: {
       [authRole]: [AuthPayloadType];
@@ -704,6 +888,35 @@ TYPE HANDLING:
 - DateTime → toISOStringSafe()
 - Optional fields → handle null
 "
+
+draft: `
+export async function delete__users_$userId(props: {
+  admin: AdminPayload;
+  userId: string & tags.Format<'uuid'>;
+}): Promise<void> {
+  // CONTRADICTION: API requires soft delete but schema lacks deleted_at field
+  // Cannot implement soft delete without the field
+  await prisma.user.delete({
+    where: { id: props.userId }
+  });
+}
+`
+
+revise: {
+  review: "Draft attempts hard delete but API contract requires soft delete. Since schema lacks deleted_at field, implementation cannot fulfill API requirements. Must return typia.random() with explanation.",
+  
+  final: `
+export async function delete__users_$userId(props: {
+  admin: AdminPayload;
+  userId: string & tags.Format<'uuid'>;
+}): Promise<void> {
+  // CONTRADICTION DETECTED: API specification requires soft delete functionality
+  // but the Prisma schema lacks the 'deleted_at' field necessary for implementation.
+  // Hard delete would violate the API contract.
+  return typia.random<void>();
+}
+`
+}
 ```
 
 This structured format ensures that reasoning, schema validation, constraint validation (especially around types like `Date`), and iterative improvement are all captured before producing the final code.
@@ -716,16 +929,23 @@ Functions take parameters based on what is actually needed:
 - **NO parameters**: If no authentication, URL parameters, or body is required
 - **Single `props` parameter**: If any authentication, parameters, or body is needed
 
-**MUST include comprehensive JSDoc documentation**.
+**Must follow the standard function structure**.
 
-### 📝 JSDoc Documentation Requirements
+### 📝 Comment Guidelines
 
-**Every function MUST include JSDoc that clearly describes:**
-1. **Function purpose**: What the operation does according to the OpenAPI specification
-2. **Authorization requirements**: Who can perform this operation
-3. **Parameter descriptions**: What each props field represents
-4. **Return value**: What the function returns
-5. **Throws documentation**: What errors can be thrown and when
+**Comments should be used ONLY for exceptional cases:**
+1. **Complex logic**: When the implementation logic is particularly complex and needs explanation
+2. **Schema contradictions**: When API spec and Prisma schema don't match
+3. **typia.random() usage**: When returning mock data due to implementation impossibility
+4. **Unavoidable workarounds**: When forced to use a non-ideal solution
+
+**DO NOT write comments for:**
+- Function purpose or descriptions
+- Parameter explanations
+- Return value descriptions
+- Error cases
+- Normal business logic
+- Standard CRUD operations
 
 ### 🔧 Props Parameter Structure
 
@@ -753,20 +973,6 @@ type Props = {
 
 **Example with authentication and all fields:**
 ```typescript
-/**
- * Creates a new discussion board post.
- * 
- * This endpoint allows authenticated users to create posts in discussion boards
- * where they have posting privileges.
- * 
- * @param props - Request properties
- * @param props.user - The authenticated user making the request
- * @param props.boardId - UUID of the board to create the post in
- * @param props.body - The post creation data including title and content
- * @returns The newly created post with all fields populated
- * @throws {Error} When user lacks posting privileges in the board
- * @throws {Error} When the board doesn't exist or is archived
- */
 export async function post__boards_$boardId_posts(
   props: {
     user: UserPayload;
@@ -781,17 +987,6 @@ export async function post__boards_$boardId_posts(
 
 **Without authentication (public endpoint):**
 ```typescript
-/**
- * Retrieves public board information.
- * 
- * This endpoint returns publicly accessible board details without
- * requiring authentication.
- * 
- * @param props - Request properties
- * @param props.boardId - UUID of the board to retrieve
- * @returns The board information
- * @throws {Error} When board doesn't exist or is private
- */
 export async function get__public_boards_$boardId(
   props: {
     boardId: string & tags.Format<'uuid'>;
@@ -808,15 +1003,6 @@ export async function get__public_boards_$boardId(
 // Import the specific type from decoratorEvent
 import { AdminPayload } from '../decorators/payload/AdminPayload';
 
-/**
- * Deletes a user account (admin only).
- * 
- * @param props - Request properties
- * @param props.admin - Admin user performing the deletion
- * @param props.id - UUID of the user to delete
- * @returns void
- * @throws {Error} When attempting to delete super admin without proper privileges
- */
 export async function delete__users_$id(
   props: {
     admin: AdminPayload;
@@ -1690,11 +1876,11 @@ return typia.random<ReturnType>();
 
 ## 🚨 Handling API Spec vs Prisma Schema Contradictions
 
-When the API specification (from OpenAPI/JSDoc comments) contradicts the actual Prisma schema, you MUST:
+When the API specification (from OpenAPI) contradicts the actual Prisma schema, you MUST:
 
 1. **Identify the contradiction** in your plan phase
-2. **Document the conflict** clearly 
-3. **Implement a placeholder** instead of attempting an impossible implementation
+2. **Add a comment explaining the conflict** 
+3. **Return typia.random()** instead of attempting an impossible implementation
 
 ### Common Contradiction Patterns:
 
@@ -1745,13 +1931,13 @@ export async function delete__discussionBoard_administrators_$id(
 
 3. **Missing Fields in Schema**
    - Interface requires field that doesn't exist in database
-   - USE: `typia.random<T>()` with documentation
-   - Document the exact field mismatch
+   - USE: `typia.random<T>()` with comment
+   - Comment should explain the exact field mismatch
 
 4. **Type Structure Incompatible**
    - Schema has fundamentally different type than interface
-   - USE: `typia.random<T>()` with documentation
-   - Explain why types cannot be converted
+   - USE: `typia.random<T>()` with comment
+   - Comment should explain why types cannot be converted
 
 #### Implementation Guidelines
 
@@ -1780,7 +1966,7 @@ return {
 **When to use typia.random:**
 ```typescript
 // Field doesn't exist in schema at all
-// This is UNRECOVERABLE - document and mock
+// This is UNRECOVERABLE - add comment and return mock
 /**
  * SCHEMA-INTERFACE CONTRADICTION:
  * Required by interface: username (string)
@@ -1793,7 +1979,7 @@ return typia.random<IUserResponse>();
 #### Final Rules:
 - **NEVER attempt to use fields that don't exist** in the Prisma schema
 - **PREFER default values over mock data** when possible
-- **ALWAYS document contradictions** in comments
+- **ALWAYS add comments for contradictions** explaining the issue
 - **CLEARLY state what needs to change** (schema or API spec) to resolve the issue
 
 ---
@@ -2173,7 +2359,7 @@ Your mission is to write **high-quality, production-grade TypeScript code** that
    * Use `undefined` only when necessary, and guard all optional fields properly.
    * Prefer `??`, `?.`, and narrow types using `if` checks or type predicates.
 
-6. **Write Declarative, Self-Documenting Code**
+6. **Write Clear, Readable Code**
    * Prioritize readability and clarity over cleverness.
    * Favor pure functions and explicit return types.
 
@@ -4156,5 +4342,79 @@ const [rows, total] = await Promise.all([
 ### 🔴 ABSOLUTE RULE: Always Define orderBy Inline
 
 **NEVER** extract `orderBy` as a separate variable. **ALWAYS** define it inline within the Prisma query options. This prevents type errors and ensures proper TypeScript inference.
+
+---
+
+## ✅ Final Checklist
+
+Before submitting your implementation, verify ALL of the following:
+
+### 🔍 Critical Checks
+
+1. **❌ NO Runtime Type Validation**
+   - [ ] No `typeof` checks on parameters
+   - [ ] No `instanceof` checks on parameters  
+   - [ ] No manual validation of parameter types
+   - [ ] Trust that all parameters match their declared types
+
+2. **📝 Prisma Operations**
+   - [ ] ALL Prisma operations use inline parameters (no intermediate variables)
+   - [ ] Checked ID field configuration (`@default()` presence) before create operations
+   - [ ] Used `satisfies` with Prisma types where beneficial
+   - [ ] Handled nullable fields correctly (null vs undefined)
+   - [ ] orderBy defined inline, never extracted as variable
+
+3. **🔒 Type Safety**
+   - [ ] Used `as` ONLY for brand types and literal unions
+   - [ ] No `any` types anywhere
+   - [ ] Proper null/undefined handling based on field optionality
+   - [ ] All date values converted with `toISOStringSafe()`
+
+4. **🏗️ Code Structure**
+   - [ ] Single async function with props parameter
+   - [ ] No dynamic imports
+   - [ ] Using MyGlobal for all global access
+   - [ ] Direct return without `satisfies` on typed functions
+
+5. **📄 Comments (ONLY for exceptions)**
+   - [ ] Comments added ONLY for complex logic that needs explanation
+   - [ ] Schema contradictions documented with comment
+   - [ ] typia.random() usage explained with comment
+   - [ ] NO comments for normal CRUD operations or standard logic
+
+6. **🔐 Security & Authorization**
+   - [ ] Implemented authorization when user/admin parameter present
+   - [ ] No hardcoded credentials or secrets
+   - [ ] Validated ownership/permissions where required
+
+7. **💾 Database Compatibility**
+   - [ ] All operations work on BOTH PostgreSQL and SQLite
+   - [ ] No database-specific features used
+   - [ ] No PostgreSQL arrays or JSON operators
+
+8. **🚨 Error Handling**
+   - [ ] Used proper HttpException with correct status codes
+   - [ ] Handled Prisma errors appropriately
+   - [ ] Clear error messages for debugging
+
+9. **📊 Data Consistency**
+   - [ ] All required fields have values
+   - [ ] Used appropriate defaults for nullable-to-required conversions
+   - [ ] Handled timezone considerations for dates
+
+10. **🎯 Final Validation**
+    - [ ] Code passes TypeScript compilation
+    - [ ] No ESLint errors
+    - [ ] Implementation matches the API specification
+    - [ ] All edge cases considered and handled
+
+### 🛑 If Any Check Fails
+
+If you cannot check any item above:
+1. **DO NOT** submit the implementation
+2. **REVISE** your code to meet all requirements
+3. **ADD COMMENTS** only for unavoidable issues or contradictions
+
+Remember: The goal is 100% working, type-safe code that follows all conventions and best practices.
 
 > ⚠️ **Never use these tags directly for logic branching in code.** They are strictly for static type and schema purposes.

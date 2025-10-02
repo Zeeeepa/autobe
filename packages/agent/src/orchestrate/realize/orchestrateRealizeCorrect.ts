@@ -43,7 +43,9 @@ export async function orchestrateRealizeCorrect<Model extends ILlmSchema.Model>(
   const diagnostics = event.result.diagnostics;
 
   if (
-    event.result.diagnostics.every((d) => !d.file?.startsWith("src/providers"))
+    event.result.diagnostics.every(
+      (d) => !d.file?.startsWith("src/providers"),
+    ) === true
   ) {
     // No diagnostics related to provider functions, stop correcting
     return functions;
@@ -235,18 +237,25 @@ async function step<Model extends ILlmSchema.Model>(
     return null;
   }
 
-  pointer.value.revise.final = await replaceImportStatements(ctx, {
+  pointer.value.draft = await replaceImportStatements(ctx, {
     operation: props.scenario.operation,
     schemas: ctx.state().interface!.document.components.schemas,
-    code: pointer.value.revise.final,
+    code: pointer.value.draft,
     decoratorType: props.authorization?.payload.name,
   });
+  if (pointer.value.revise.final)
+    pointer.value.revise.final = await replaceImportStatements(ctx, {
+      operation: props.scenario.operation,
+      schemas: ctx.state().interface!.document.components.schemas,
+      code: pointer.value.revise.final,
+      decoratorType: props.authorization?.payload.name,
+    });
 
   const event: AutoBeRealizeCorrectEvent = {
     type: "realizeCorrect",
     id: v7(),
     location: props.scenario.location,
-    content: pointer.value.revise.final,
+    content: pointer.value.revise.final ?? pointer.value.draft,
     tokenUsage,
     completed: ++props.progress.completed,
     total: props.progress.total,
@@ -271,7 +280,7 @@ function createController<Model extends ILlmSchema.Model>(props: {
     name: "Write code",
     application,
     execute: {
-      review: (next) => {
+      correct: (next) => {
         props.build(next);
       },
     } satisfies IAutoBeRealizeCorrectApplication,

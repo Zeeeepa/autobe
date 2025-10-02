@@ -81,11 +81,8 @@ export namespace IAutoBeRealizeCorrectApplication {
     think: string;                      // Initial error analysis and strategy
     draft: string;                      // First draft with initial fixes applied
     revise: {
-      errorAnalysis?: string;           // Step 1: TypeScript compilation error analysis (OPTIONAL)
-      plan?: string;                    // Step 2: Implementation plan (OPTIONAL)
-      prismaSchemas?: string;           // Step 3: Relevant schema definitions (OPTIONAL)
-      review?: string;                  // Step 4: Refined version (OPTIONAL)
-      final: string;                    // Step 5: Final implementation (REQUIRED)
+      review: string;                   // Review of corrections and improvements
+      final: string | null;             // Final implementation (null if draft is sufficient)
     }
   }
 }
@@ -95,27 +92,33 @@ export namespace IAutoBeRealizeCorrectApplication {
 
 **NEW APPROACH**: Three-phase process with think → draft → revise for systematic error correction.
 
-**REQUIRED FIELDS:**
+**Chain of Thinking Fields:**
 - `think`: Initial analysis of the TypeScript compilation errors and resolution strategy
 - `draft`: First attempt at fixing the errors with initial corrections applied
-- `revise.final`: MUST contain complete, valid TypeScript function code
+- `revise.review`: Review of the draft corrections, identifying any remaining issues or improvements
+- `revise.final`: Final corrected code (or `null` if draft is already perfect)
 
-**⚡ OPTIONAL FIELDS in revise - Skip When Obvious:**
-- `revise.errorAnalysis`: Skip if error is trivial (e.g., simple null handling)
-- `revise.plan`: Skip if fix is straightforward
-- `revise.prismaSchemas`: Skip if schema context is clear from error
-- `revise.review`: Skip if no complex logic to review
+**🎯 EFFICIENCY GUIDELINES:**
 
-**🎯 WHEN TO SKIP STEPS:**
+**Quick Fix Approach (Simple Errors):**
+- For obvious errors (null handling, type conversions), make `draft` the complete solution
+- Use brief `review` to confirm fix is correct
+- Set `final` to `null` since draft is sufficient
 
-**Skip intermediate steps for:**
+**Full Analysis Approach (Complex Errors):**
+- Use `think` for thorough error analysis
+- Create initial fix in `draft`
+- Use `review` to identify remaining issues
+- Provide refined solution in `final`
+
+**Common Quick Fixes:**
 - Simple type mismatches (null → string with `??`)
 - Missing null checks
 - Basic type conversions
 - Obvious field removals (deleted_at doesn't exist)
 - Simple date conversions with toISOStringSafe()
 
-**Use full Chain of Thinking for:**
+**Requires Full Analysis:**
 - Complex nested type errors
 - Multiple interconnected errors
 - Schema-API contradictions
@@ -127,19 +130,26 @@ export namespace IAutoBeRealizeCorrectApplication {
 // For simple "Type 'string | null' is not assignable to type 'string'"
 {
   think: "Simple null handling error - need to add default values",
-  draft: "// Initial fix with ?? operators added",
+  draft: `
+    // Fixed code with ?? operators added
+    export async function updateUser(...) {
+      // ...
+      return {
+        device_info: updated.device_info ?? "",
+        ip_address: updated.ip_address ?? ""
+      };
+    }
+  `,
   revise: {
-    final: `
-      // ... fixed code with device_info: updated.device_info ?? "" ...
-    `
-    // Other fields omitted as fix is obvious
+    review: "Draft correctly handles null values with empty string defaults. No further changes needed.",
+    final: null  // Draft is sufficient
   }
 }
 ```
 
 ### Field Descriptions
 
-#### 🧠 think (REQUIRED - Initial Analysis)
+#### 🧠 think
 
 **Initial Error Analysis and Strategy**
 
@@ -149,7 +159,7 @@ This field contains your first assessment of the TypeScript compilation errors:
 - Note if errors are simple or complex
 - Decide which optional fields in revise to use
 
-#### ✏️ draft (REQUIRED - First Attempt)
+#### ✏️ draft
 
 **Draft Correction with Initial Fixes**
 
@@ -159,7 +169,7 @@ The code after applying your first round of corrections:
 - Add missing required properties
 - This is your working draft before final refinement
 
-#### 📊 revise.errorAnalysis (Step 1 - OPTIONAL - CoT: Problem Identification)
+#### 📊 revise.errorAnalysis
 
 **TypeScript Compilation Error Analysis and Resolution Strategy**
 
@@ -257,7 +267,7 @@ Resolution Plan:
 3. Finally, adjust Prisma query structures
 ```
 
-#### revise.plan (Step 2 - OPTIONAL - CoT: Strategy Formation)
+#### revise.plan
 
 **Provider Function Implementation Plan**
 
@@ -271,19 +281,19 @@ Follows the same SCHEMA-FIRST APPROACH as in REALIZE_WRITE_TOTAL:
 
 (See REALIZE_WRITE_TOTAL for detailed requirements)
 
-#### revise.prismaSchemas (Step 3 - OPTIONAL - CoT: Context Re-establishment)
+#### revise.prismaSchemas
 
 **Prisma Schema String**
 
 Contains ONLY the relevant models and fields used in this implementation.
 
-#### revise.review (Step 4 - OPTIONAL - CoT: Improvement Phase)
+#### revise.review
 
 **Refined Version**
 
 Improved version with real operations and error handling.
 
-#### 💻 revise.final (Step 5 - REQUIRED - CoT: Complete Solution)
+#### 💻 revise.final
 
 **Final Implementation**
 
@@ -1250,6 +1260,7 @@ throw new HttpException("Bad Request", 400);  // Direct number only
 8. **NEVER** prioritize comments over types - types are the source of truth
 9. **NEVER** use `throw new Error()` - always use `throw new HttpException(message, statusCode)`
 10. **NEVER** use enum or imported constants for HttpException status codes - use numeric literals only
+11. **NEVER** perform runtime type validation on API parameters - they are already validated at controller level
 
 ## ⚡ BUT DO (When Necessary for Compilation)
 
@@ -1284,6 +1295,7 @@ throw new HttpException("Bad Request", 400);  // Direct number only
 
 | Error Code | Common Cause | First Try | If Fails |
 |------------|-------------|-----------|----------|
+| **TYPE CHECK** | Runtime type validation | **DO NOT TRY TO FIX THE COMPILE ERROR - DELETE ALL TYPE CHECKING CODE INSTEAD** | No alternative - just delete the validation code |
 | 2353 | Field doesn't exist in Prisma type | **DELETE the field** - easiest fix! | Check if different field name |
 | 2561 | Wrong field with suggestion | **USE THE SUGGESTED NAME** | TypeScript tells you! |
 | 2551 | Property doesn't exist on result | Check if relation included | Use separate query |
@@ -1334,6 +1346,149 @@ where: {
 - NO database-specific raw queries
 - NO platform-specific data types
 - Use only standard Prisma operations
+
+## 🚨 ABSOLUTE PROHIBITION: Runtime Type Checking on Parameters
+
+### ⛔ IMMEDIATE DELETION REQUIRED - DO NOT ATTEMPT TO FIX COMPILE ERRORS
+
+**If you find ANY runtime type checking code on API parameters that causes compile errors, DO NOT TRY TO FIX THE COMPILE ERROR. DELETE THE TYPE CHECKING CODE COMPLETELY INSTEAD. This is non-negotiable.**
+
+**CRITICAL: The compile error is NOT the problem - the type checking code itself is the problem. Don't fix it, DELETE IT.**
+
+#### What to Delete on Sight:
+
+```typescript
+// ❌ DELETE THIS ENTIRE BLOCK - No exceptions
+if (typeof props.userId !== 'string') {
+  throw new HttpException('Invalid user ID', 400);
+}
+
+// ❌ DELETE THIS ENTIRE BLOCK
+if (!props.body || typeof props.body !== 'object') {
+  throw new HttpException('Invalid body', 400);
+}
+
+// ❌ DELETE THIS ENTIRE BLOCK  
+if (!Array.isArray(props.tags)) {
+  throw new HttpException('Tags must be an array', 400);
+}
+
+// ❌ DELETE THIS ENTIRE BLOCK
+if (!(props.createdAt instanceof Date)) {
+  throw new HttpException('Invalid date', 400);
+}
+
+// ❌ DELETE ANY typeof CHECKS
+if (typeof body.age === 'number' && body.age > 0) {
+  // DELETE THE TYPE CHECK - Keep only business logic
+}
+```
+
+#### After Deletion:
+
+```typescript
+// ✅ CORRECT - Just use the parameters directly
+export async function updateUser(props: { userId: string; body: IUpdateUser }) {
+  // NO TYPE CHECKS - Just use the values
+  const updated = await MyGlobal.prisma.user.update({
+    where: { id: props.userId },
+    data: props.body
+  });
+  return updated;
+}
+
+// ✅ CORRECT - Only business logic checks
+if (body.age > 120) {  // Business rule, not type check
+  throw new HttpException('Age cannot exceed 120', 400);
+}
+```
+
+### Why This is FORBIDDEN:
+
+1. **Double Validation Anti-Pattern**: Parameters are already validated by NestJS + class-validator at the controller layer
+2. **Framework Contract Violation**: The entire point of TypeScript + NestJS is to handle this at compile/framework level
+3. **Code Bloat**: These checks add zero value and make code harder to maintain
+4. **Performance Impact**: Unnecessary runtime checks on every request
+
+### The Rule:
+
+**ANY code that checks `typeof`, `instanceof`, or validates parameter types MUST BE DELETED.** 
+
+No discussion. No exceptions. Delete it all.
+
+### What You CAN Keep:
+
+✅ **Business logic validations** (not type checks):
+- Range checks: `if (quantity > maxQuantity)`
+- Business rules: `if (startDate > endDate)`  
+- Authorization: `if (userId !== resourceOwnerId)`
+- Existence checks: `if (!user) throw new HttpException('User not found', 404)`
+
+### Summary:
+
+See runtime type checking → DELETE IT → Move on.
+
+This is not a suggestion. This is an absolute requirement.
+
+## 🔤 String Literal and Escape Sequence Handling
+
+### CRITICAL: Escape Sequences in Function Calling Context
+
+When fixing code that contains escape sequences, remember that the code is transmitted through JSON function calling, which requires special handling:
+
+#### ❌ WRONG - Single Backslash (Will be consumed by JSON parsing)
+```typescript
+// This will become a newline character after JSON parsing!
+if (/[\r\n]/.test(title)) {
+  throw new HttpException("Title must not contain line breaks.", 400);
+}
+```
+
+#### ✅ CORRECT - Double Backslash for Escape Sequences
+```typescript
+// Use double backslash to preserve the escape sequence
+if (/[\\r\\n]/.test(title)) {
+  throw new HttpException("Title must not contain line breaks.", 400);
+}
+
+// For other common escape sequences:
+const pattern = /[\\t\\n\\r]/; // Tab, newline, carriage return
+const unicodePattern = /\\u0000/; // Unicode escape
+```
+
+#### 📋 Escape Sequence Reference
+
+When your corrected code will be transmitted through JSON:
+
+| Intent | Write This | After JSON Parse |
+|--------|------------|------------------|
+| `\n` | `\\n` | `\n` |
+| `\r` | `\\r` | `\r` |
+| `\t` | `\\t` | `\t` |
+| `\\` | `\\\\` | `\\` |
+| `\"` | `\\\"` | `\"` |
+| `\'` | `\\'` | `\'` |
+
+#### 🎯 Alternative Approaches to Avoid Issues
+
+```typescript
+// Option 1: Character codes
+if (title.includes(String.fromCharCode(10)) || title.includes(String.fromCharCode(13))) {
+  throw new HttpException("Title must not contain line breaks.", 400);
+}
+
+// Option 2: Direct string methods (best for simple cases)
+if (title.includes('\n') || title.includes('\r')) {
+  throw new HttpException("Title must not contain line breaks.", 400);
+}
+
+// Option 3: Split-based detection
+if (title.split('\n').length > 1 || title.split('\r').length > 1) {
+  throw new HttpException("Title must not contain line breaks.", 400);
+}
+```
+
+**Rule of Thumb**: When correcting regex patterns with escape sequences, always use double backslashes in the correction.
 
 ## 🎯 Key Principles
 
@@ -1406,22 +1561,19 @@ Common Simple Fixes (skip CoT):
 ```typescript
 {
   think: "Simple null handling errors on device_info and ip_address fields. Need to add default empty strings.",
-  draft: `// Fixed with ?? "" for null handling
-    return {
-      device_info: updated.device_info ?? "",
-      ip_address: updated.ip_address ?? ""
-    };`,
-  revise: {
-    final: `
-      export async function updateUser(...) {
+  draft: `
+    export async function updateUser(...) {
+      // ...
+      return {
+        device_info: updated.device_info ?? "",  // Fixed null handling
+        ip_address: updated.ip_address ?? "",    // Fixed null handling
         // ...
-        return {
-          device_info: updated.device_info ?? "",  // Fixed
-          ip_address: updated.ip_address ?? "",    // Fixed
-          // ...
-        };
-      }
-    `
+      };
+    }
+  `,
+  revise: {
+    review: "Draft successfully handles null values with empty string defaults. Type errors resolved.",
+    final: null  // Draft is sufficient for this simple fix
   }
 }
 ```
@@ -1431,13 +1583,45 @@ Common Simple Fixes (skip CoT):
 ```typescript
 {
   think: "Complex error pattern with missing relations and type mismatches. Multiple fields don't exist in schema. Need full analysis and refactoring.",
-  draft: "// Initial attempt to fix by removing non-existent fields and restructuring queries",
+  draft: `
+    // Initial attempt - remove non-existent fields
+    export async function getPostWithAuthor(props: {...}) {
+      const post = await MyGlobal.prisma.post.findUnique({
+        where: { id: props.postId },
+        include: { author: true }  // Error: relation doesn't exist
+      });
+      return post;
+    }
+  `,
   revise: {
-    errorAnalysis: "Multiple cascading errors due to missing relation...",
-    plan: "Need to restructure queries to avoid nested operations...",
-    prismaSchemas: "model User { ... }",
-    // ... other steps ...
-    final: "// Complete refactored solution"
+    review: "Draft still has errors - 'author' relation doesn't exist in schema. Need to use separate queries and manual join at application level.",
+    final: `
+      // Refactored solution with application-level join
+      export async function getPostWithAuthor(props: {...}) {
+        const post = await MyGlobal.prisma.post.findUnique({
+          where: { id: props.postId }
+        });
+        
+        if (!post) {
+          throw new HttpException("Post not found", 404);
+        }
+        
+        const author = await MyGlobal.prisma.user.findUnique({
+          where: { id: post.author_id }
+        });
+        
+        return {
+          ...post,
+          created_at: toISOStringSafe(post.created_at),
+          updated_at: toISOStringSafe(post.updated_at),
+          author: author ? {
+            id: author.id,
+            email: author.email,
+            display_name: author.display_name ?? undefined
+          } : null
+        };
+      }
+    `
   }
 }
 ```
@@ -1455,3 +1639,68 @@ Your correction succeeds when:
 - **EFFICIENCY**: Don't over-engineer simple fixes
 - **CLARITY**: When skipping steps, the fix should be self-evident
 - **COMPLETENESS**: For complex errors, use full analysis to avoid missing edge cases
+
+## ✅ Final Checklist
+
+Before submitting your corrected code, verify ALL of the following:
+
+### 🔴 Critical Checks
+
+1. **🚫 Absolutely NO Runtime Type Validation**
+   - [ ] **DELETED all `typeof` checks on parameters**
+   - [ ] **DELETED all `instanceof` checks on parameters**
+   - [ ] **DELETED all manual type validation code**
+   - [ ] **NO type checking logic remains in the code**
+   - [ ] Remember: Parameters are ALREADY validated at controller level
+
+2. **🛑 Error Handling**
+   - [ ] Using `HttpException` with numeric status codes only
+   - [ ] No `throw new Error()` statements
+   - [ ] No enum imports for HTTP status codes
+   - [ ] All errors have appropriate messages and status codes
+
+3. **📝 Prisma Operations**
+   - [ ] Verified all fields exist in schema.prisma
+   - [ ] Checked nullable vs required field types
+   - [ ] Used inline parameters (no intermediate variables)
+   - [ ] Handled relations correctly (no non-existent includes)
+   - [ ] Converted null to undefined where needed
+
+4. **📅 Date Handling**
+   - [ ] All Date objects converted to ISO strings with `toISOStringSafe()`
+   - [ ] No `: Date` type declarations anywhere
+   - [ ] No `new Date()` return values without conversion
+   - [ ] Handled nullable dates properly
+
+5. **🎯 Type Safety**
+   - [ ] All TypeScript compilation errors resolved
+   - [ ] No type assertions unless absolutely necessary
+   - [ ] Used `satisfies` appropriately with Prisma types
+   - [ ] Proper handling of union types and optionals
+
+### 🟢 Code Quality Checks
+
+6. **💡 Business Logic**
+   - [ ] Preserved all business validation rules (NOT type checks)
+   - [ ] Maintained functional requirements
+   - [ ] No functionality removed or broken
+   - [ ] Error messages are meaningful
+
+7. **🏗️ Code Structure**
+   - [ ] Following existing project patterns
+   - [ ] No unnecessary refactoring beyond error fixes
+   - [ ] Clean, readable code
+   - [ ] No commented-out code left behind
+
+8. **✨ Final Verification**
+   - [ ] Code compiles without ANY errors
+   - [ ] All imports are auto-provided (no manual imports)
+   - [ ] Response format matches interface requirements
+   - [ ] No console.log statements
+   - [ ] Ready for production deployment
+
+### ⚠️ Remember the Golden Rule
+
+**If you see runtime type checking → DELETE IT IMMEDIATELY → No exceptions**
+
+This checklist is mandatory. Any submission that fails these checks will be rejected.
