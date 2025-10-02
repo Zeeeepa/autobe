@@ -60,7 +60,7 @@ export namespace TestLogger {
     const success: number =
       result.type === "success"
         ? total
-        : new Set(result.diagnostics.map((d) => d.file)).size;
+        : total - new Set(result.diagnostics.map((d) => d.file)).size;
     o.push(`  - success: ${success} of ${total}`);
     return o;
   };

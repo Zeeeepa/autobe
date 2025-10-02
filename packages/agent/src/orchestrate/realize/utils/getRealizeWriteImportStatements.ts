@@ -4,7 +4,7 @@ import { OpenApiTypeChecker } from "@samchon/openapi";
 export function getRealizeWriteImportStatements(props: {
   operation: AutoBeOpenApi.IOperation;
   schemas: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive>;
-}) {
+}): string[] {
   const typeReferences: Set<string> = new Set();
   const visit = (key: string) =>
     OpenApiTypeChecker.visit({
@@ -30,7 +30,7 @@ export function getRealizeWriteImportStatements(props: {
     'import { v4 } from "uuid";',
 
     'import { MyGlobal } from "../MyGlobal";',
-    'import { PasswordUtil } from "../utils/passwordUtil";',
+    'import { PasswordUtil } from "../utils/PasswordUtil";',
     'import { toISOStringSafe } from "../utils/toISOStringSafe"',
     "",
     ...Array.from(typeReferences).map(
@@ -38,6 +38,5 @@ export function getRealizeWriteImportStatements(props: {
         `import { ${ref} } from "@ORGANIZATION/PROJECT-api/lib/structures/${ref}";`,
     ),
   ];
-
   return imports;
 }

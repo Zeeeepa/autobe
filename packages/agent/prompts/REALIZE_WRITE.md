@@ -107,6 +107,8 @@ result: dbValue === null
    - All parameters passed to API provider functions have ALREADY been validated by the NestJS controller layer
    - The controller uses class-validator decorators and transformation pipes
    - By the time parameters reach your function, they are GUARANTEED to match their declared types
+   - **JSON Schema validation is PERFECT and COMPLETE** - it handles ALL constraints including minLength, maxLength, pattern, format, etc.
+   - **ABSOLUTE TRUST**: Never doubt that JSON Schema has already validated everything perfectly
 
 2. **TypeScript Type System is Sufficient**
    - The TypeScript compiler ensures type safety at compile time
@@ -117,11 +119,14 @@ result: dbValue === null
    - NestJS + class-validator handle ALL input validation
    - Your provider functions should trust the framework's validation pipeline
    - Adding duplicate validation creates maintenance burden and potential inconsistencies
+   - **JSON Schema is INFALLIBLE** - if a parameter passes through, it means ALL constraints are satisfied
+   - **NEVER second-guess JSON Schema** - it has already checked length, format, pattern, and every other constraint
 
 4. **Business Logic vs Type Validation**
    - Business logic validation (e.g., checking if a value exceeds a limit) is ALLOWED and EXPECTED
    - Type validation (e.g., checking if a string is actually a string) is FORBIDDEN
    - The distinction: If TypeScript already knows the type, don't check it at runtime
+   - **CRITICAL CLARIFICATION**: String.length checks, String.trim().length checks, and pattern validation are NOT business logic - they are TYPE/FORMAT validation that JSON Schema has ALREADY handled perfectly
 
 #### ❌ ABSOLUTELY FORBIDDEN Patterns:
 
@@ -159,11 +164,69 @@ if (typeof body.title !== 'string' || body.title.trim() === '') {
   throw new Error('Title must be a non-empty string');
 }
 
+// ❌ FORBIDDEN - Using trim() to bypass validation
+if (body.title.trim().length === 0) {
+  throw new HttpException("Title cannot be empty or whitespace.", 400);
+}
+
+// ❌ FORBIDDEN - Any form of trim() followed by length check
+const trimmed = body.title.trim();
+if (trimmed.length < 5 || trimmed.length > 100) {
+  throw new HttpException("Title must be between 5 and 100 characters", 400);
+}
+
 // ❌ FORBIDDEN - Validating that a typed parameter matches its type
 if (body.price && typeof body.price !== 'number') {
   throw new Error('Price must be a number');
 }
+
+// ❌ FORBIDDEN - JSON Schema constraint validation
+export async function postTodoListAdminTodos(props: {
+  admin: AdminPayload;
+  body: ITodoListTodo.ICreate;
+}): Promise<ITodoListTodo> {
+  // ❌ ALL OF THESE VALIDATIONS ARE FORBIDDEN!
+  const title = props.body.title.trim();
+  if (title.length === 0) {
+    throw new HttpException("Title must not be empty or whitespace-only.", 400);
+  }
+  if (title.length > 100) {
+    throw new HttpException("Title must not exceed 100 characters.", 400);
+  }
+  if (/[\r\n]/.test(title)) {
+    throw new HttpException("Title must not contain line breaks.", 400);
+  }
+
+  // ❌ Even though whitespace trimming is a common practice,
+  //     this is also a distrust of the type system AND JSON Schema
+  //     just believe the framework, and never doubt it!
+  // ❌ ABSOLUTELY FORBIDDEN - trim() does NOT make validation acceptable
+  const trimmed = title.trim();
+  if (trimmed.length === 0)
+    throw new HttpException("Title cannot be empty or whitespace-only.", 400);
+  
+  // ❌ ALSO FORBIDDEN - checking trimmed length against any constraint
+  if (title.trim().length < 3 || title.trim().length > 100) {
+    throw new HttpException("Title must be between 3 and 100 characters", 400);
+  }
+
+  // ...
+}
 ```
+
+**CRITICAL**: The above example shows MULTIPLE violations:
+1. **Minimum length validation** (`title.length === 0`) - JSON Schema can enforce `minLength`
+2. **Maximum length validation** (`title.length > 100`) - JSON Schema can enforce `maxLength`  
+3. **Pattern validation** (checking for newlines) - JSON Schema can enforce `pattern`
+4. **Trim-based validation** (`title.trim().length`) - JSON Schema has ALREADY handled whitespace constraints
+5. **Any form of String.trim() followed by validation** - This is attempting to bypass JSON Schema's perfect validation
+
+These constraints are ALREADY validated by NestJS using JSON Schema decorators in the DTO. The controller has already ensured:
+- The title meets minimum/maximum length requirements
+- The title matches allowed patterns
+- All required fields are present and correctly typed
+
+Performing these validations again violates the principle of trusting the framework's validation pipeline.
 
 #### ✅ CORRECT Approach:
 
@@ -196,11 +259,6 @@ export async function createPost(props: {
 
 ✅ **Business logic conditions** (NOT type validation):
 ```typescript
-// ✅ OK - Business rule validation (checking VALUE, not TYPE)
-if (props.title.trim().length === 0) {
-  throw new HttpException('Title cannot be empty', 400);
-}
-
 // ✅ OK - Business constraint validation
 if (props.quantity > props.maxAllowed) {
   throw new HttpException('Quantity exceeds maximum allowed', 400);
@@ -210,11 +268,6 @@ if (props.quantity > props.maxAllowed) {
 if (body.email) {
   // Email was provided (we already know it's a string if present)
   await sendEmailTo(body.email);
-}
-
-// ✅ OK - Validating business rules on string content
-if (body.title.length > 100) {
-  throw new HttpException('Title must not exceed 100 characters', 400);
 }
 
 // ❌ BUT THIS IS FORBIDDEN - Don't validate the TYPE
@@ -234,35 +287,71 @@ Any code that checks `typeof`, `instanceof`, or validates that a parameter match
 
 ### CRITICAL: Escape Sequences in Function Calling Context
 
+Code generated through function calling is processed as JSON.
+
+In JSON, the backslash (`\`) is interpreted as an escape character and gets consumed during parsing. Therefore, when using escape sequences within code strings, you must use double backslashes (`\\`).
+
+**Core Principle:**
+- During JSON parsing: `\n` → becomes actual newline character
+- During JSON parsing: `\\n` → remains as literal `\n` string
+- If you need `\n` in final code, you must write `\\n` in JSON
+
 When writing code that will be generated through function calling (JSON), escape sequences require special handling:
 
 #### ❌ WRONG - Single Backslash (Will be consumed by JSON parsing)
 ```typescript
+//----
 // This will become a newline character after JSON parsing!
+//----
 {
   draft: `
-    const value = "Hello.\nNice to meet you.";
+    // The new line character \n can cause critical problem
+    const value: string = "Hello.\nNice to meet you.";
+
     if (/[\r\n]/.test(title)) {
       throw new HttpException("Title must not contain line breaks.", 400);
     }
   `
 }
+
+//----
+// After JSON parsing, it becomes:
+//----
+// The new line character 
+ can cause critical problem
+const value: string = "Hello.
+Nice to meet you.";
+
+if (/[\r
+]/.test(title)) {
+  throw new HttpException("Title must not contain line breaks.", 400);
+}
 ```
 
 #### ✅ CORRECT - Double Backslash for Escape Sequences
 ```typescript
+//----
+// This will remain a literal '\n' after JSON parsing!
+//----
 {
   draft: `
-    // Use double backslash to preserve the escape sequence
-    const value = "Hello.\\nNice to meet you.";
+    // The new line character \\n can cause critical problem
+    const value: string = "Hello.\\nNice to meet you.";
+
     if (/[\\r\\n]/.test(title)) {
       throw new HttpException("Title must not contain line breaks.", 400);
     }
-    
-    // For other common escape sequences:
-    const pattern = /[\\t\\n\\r]/; // Tab, newline, carriage return
-    const unicodePattern = /\\u0000/; // Unicode escape
   `
+}
+
+//----
+// After JSON parsing, it remains:
+//----
+// The new line character \n can cause critical problem
+const value: string = "Hello.\nNice to meet you.";
+
+if (/[\r\n]/.test(title)) {
+  throw new HttpException("Title must not contain line breaks.", 400);
 }
 ```
 
@@ -279,6 +368,46 @@ When your code will be transmitted through JSON (function calling):
 | `\"` | `\\"` | `\"` |
 | `\'` | `\\'` | `\'` |
 
+#### ⚠️ WARNING: You Should Never Need Newline Characters
+
+**CRITICAL**: In this TypeScript code generation agent, there is NO legitimate reason to use newline characters (`\n`) in your implementation. If you find yourself writing code that checks for newline characters, you are likely making a fundamental error.
+
+The presence of newline validation typically indicates you're violating the **ABSOLUTE PROHIBITION** against runtime type checking on API parameters. As stated earlier, all parameters passed to API provider functions have ALREADY been validated by the NestJS controller layer.
+
+**Common Violation Patterns:**
+```typescript
+// ❌ FORBIDDEN: This indicates distrust of the type system
+if (title.includes('\n')) {
+  throw new HttpException("Title must not contain line breaks.", 400);
+}
+
+// ❌ FORBIDDEN: Using trim() to bypass JSON Schema validation
+if (title.trim().length === 0) {
+  throw new HttpException("Title cannot be empty or whitespace.", 400);
+}
+
+// ❌ FORBIDDEN: Checking trimmed value length
+const trimmedTitle = title.trim();
+if (trimmedTitle.length < 10 || trimmedTitle.length > 200) {
+  throw new HttpException("Title must be between 10 and 200 characters", 400);
+}
+
+// ❌ FORBIDDEN: ANY String manipulation followed by validation
+if (!title.trim() || title.trim().length === 0) {
+  throw new HttpException("Invalid title", 400);
+}
+```
+
+This type of check suggests you're doubting whether the `title` parameter conforms to its declared type, which violates our core principle of trusting the framework's validation pipeline.
+
+**MANDATORY ACTION**: If you encounter such validation code, you MUST delete it entirely. This includes:
+- ANY use of `String.trim()` followed by validation
+- ANY length checks on strings (trimmed or untrimmed)
+- ANY pattern matching or character validation
+- ANY attempt to "clean" or "normalize" input before validation
+
+Under no circumstances are you permitted to validate the type or content constraints of input parameters. The correct approach is complete removal of any code that doubts parameter validity. JSON Schema has ALREADY done this perfectly.
+
 #### 🎯 Rule of Thumb
 
 1. **Regular string literals**: Use normal escape sequences
@@ -288,7 +417,7 @@ When your code will be transmitted through JSON (function calling):
 ```typescript
 // Alternative approaches that avoid escape sequence issues:
 
-// Option 1: Character codes
+// Option 1: Character codes (Recommended for clarity)
 if (title.includes(String.fromCharCode(10)) || title.includes(String.fromCharCode(13))) {
   throw new HttpException("Title must not contain line breaks.", 400);
 }
@@ -939,12 +1068,45 @@ Functions take parameters based on what is actually needed:
 3. **typia.random() usage**: When returning mock data due to implementation impossibility
 4. **Unavoidable workarounds**: When forced to use a non-ideal solution
 
+**Comment Format Guidelines:**
+```typescript
+// ✅ CORRECT: Multi-line JSDoc style for complex explanations
+/**
+ * SCHEMA-INTERFACE CONTRADICTION:
+ * - API requires soft delete functionality
+ * - No 'deleted_at' field exists in discussionboard_administrators model
+ * - No 'revoked_at' field exists
+ * - No 'is_deleted' field exists
+ * 
+ * This is an irreconcilable contradiction between the API contract and database schema.
+ * Cannot implement the requested logic without schema changes.
+ * 
+ * @todo Either update the Prisma schema to include soft delete fields, or update the API spec to use hard delete
+ */
+
+// ✅ CORRECT: Single-line comment for simple contradictions
+// CONTRADICTION: Interface requires 'deleted_at' but schema lacks soft delete fields
+
+// ✅ CORRECT: Multi-line comment for workaround explanations
+// TypeScript limitation: Boolean variables don't narrow types
+// Using direct null checks instead of hasPostId variable
+// See: https://github.com/microsoft/TypeScript/issues/12184
+
+// ❌ WRONG: Comments on same line as code
+return typia.random<IUser>(); // Missing fields
+
+// ❌ WRONG: Comments explaining obvious code
+// Get user by ID
+const user = await prisma.user.findUnique({ where: { id } });
+```
+
 **DO NOT write comments for:**
 - Function purpose or descriptions
 - Parameter explanations
-- Return value descriptions
+- Return value descriptions  
 - Error cases
 - Normal business logic
+- Obvious CRUD operations
 - Standard CRUD operations
 
 ### 🔧 Props Parameter Structure
@@ -1933,11 +2095,13 @@ export async function delete__discussionBoard_administrators_$id(
    - Interface requires field that doesn't exist in database
    - USE: `typia.random<T>()` with comment
    - Comment should explain the exact field mismatch
+   - Comment should be on multiple lines for clarity
 
 4. **Type Structure Incompatible**
    - Schema has fundamentally different type than interface
    - USE: `typia.random<T>()` with comment
    - Comment should explain why types cannot be converted
+   - Use multi-line comments for detailed explanations
 
 #### Implementation Guidelines
 
@@ -1967,6 +2131,8 @@ return {
 ```typescript
 // Field doesn't exist in schema at all
 // This is UNRECOVERABLE - add comment and return mock
+
+// ✅ CORRECT: Multi-line comment with clear structure
 /**
  * SCHEMA-INTERFACE CONTRADICTION:
  * Required by interface: username (string)
@@ -1974,6 +2140,13 @@ return {
  * Resolution: Returning mock data - schema needs username field added
  */
 return typia.random<IUserResponse>();
+
+// ✅ ALSO CORRECT: Single-line comment for simple contradictions
+// CONTRADICTION: Interface requires 'deleted_at' but schema lacks soft delete fields
+return typia.random<void>();
+
+// ❌ WRONG: Comment on same line as code
+return typia.random<IUserResponse>(); // Schema missing username field
 ```
 
 #### Final Rules:
@@ -4355,7 +4528,14 @@ Before submitting your implementation, verify ALL of the following:
    - [ ] No `typeof` checks on parameters
    - [ ] No `instanceof` checks on parameters  
    - [ ] No manual validation of parameter types
+   - [ ] No newline character (`\n`) checks in strings
+   - [ ] No String.trim() followed by any validation
+   - [ ] No String.length checks (including after trim())
+   - [ ] No empty string validation (e.g., `str === ""` or `!str`)
+   - [ ] No pattern/regex validation on parameters
+   - [ ] No whitespace-only checks
    - [ ] Trust that all parameters match their declared types
+   - [ ] Trust that JSON Schema has validated ALL constraints perfectly
 
 2. **📝 Prisma Operations**
    - [ ] ALL Prisma operations use inline parameters (no intermediate variables)

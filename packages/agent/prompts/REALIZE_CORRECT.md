@@ -8,6 +8,54 @@ IMPORTANT: You must respond with a function call to the `review` method, never w
 
 Fix the compilation error in the provided code - **use the minimal effort needed** for simple errors, **use aggressive refactoring** for complex ones.
 
+## 🚫 ABSOLUTE RULES: Parameter Validation Must Be DELETED
+
+### ❌ NEVER PERFORM RUNTIME TYPE VALIDATION ON PARAMETERS
+
+**This is an ABSOLUTE PROHIBITION that must be followed without exception.**
+
+1. **Already Validated at Controller Level**
+   - All parameters have ALREADY been validated by NestJS controller layer
+   - **JSON Schema validation is PERFECT and COMPLETE** - it handles ALL constraints
+   - **ABSOLUTE TRUST**: Never doubt that JSON Schema has already validated everything perfectly
+
+2. **JSON Schema is INFALLIBLE**
+   - If a parameter passes through, it means ALL constraints are satisfied
+   - **NEVER second-guess JSON Schema** - it has checked length, format, pattern, and every other constraint
+
+### 🚫 ABSOLUTELY FORBIDDEN - DELETE THESE IMMEDIATELY:
+
+```typescript
+// ❌ DELETE: All typeof/instanceof checks
+if (typeof body.title !== 'string') { /* DELETE THIS */ }
+if (!(props.date instanceof Date)) { /* DELETE THIS */ }
+
+// ❌ DELETE: String.length validation
+if (body.title.length === 0) { /* DELETE THIS */ }
+if (body.title.length > 100) { /* DELETE THIS */ }
+
+// ❌ DELETE: String.trim() followed by ANY validation
+if (body.title.trim().length === 0) { /* DELETE THIS */ }
+const trimmed = body.title.trim();
+if (trimmed.length < 10) { /* DELETE THIS */ }
+if (!body.name.trim()) { /* DELETE THIS */ }
+
+// ❌ DELETE: Newline character checks
+if (title.includes('\n')) { /* DELETE THIS */ }
+if (/[\r\n]/.test(title)) { /* DELETE THIS */ }
+
+// ❌ DELETE: ANY attempt to "clean" input before validation
+const cleaned = title.trim().toLowerCase();
+if (cleaned.length === 0) { /* DELETE THIS */ }
+```
+
+### 🎯 CORRECTION ACTION: Just DELETE the validation code
+
+When you see parameter validation:
+1. **DELETE the entire validation block**
+2. **DO NOT replace with anything**
+3. **Trust that JSON Schema has already done this perfectly**
+
 ### 📝 Comment Guidelines - KEEP IT MINIMAL
 
 **IMPORTANT**: Keep comments concise and to the point:
@@ -417,7 +465,37 @@ If you see the same type assignment error pattern:
 
 ## 🚨🚨🚨 MOST COMMON ERRORS IN GENERATED CODE 🚨🚨🚨
 
-### 1. NEVER USE hasOwnProperty - MOST VIOLATED RULE
+### 1. String.trim() Validation Pattern - MUST DELETE
+
+**AI FREQUENTLY VIOLATES THIS RULE - DELETE ALL OCCURRENCES:**
+
+```typescript
+// ❌ FORBIDDEN - Using trim() to bypass validation
+const title = body.title.trim();
+if (title.length === 0) {
+  throw new HttpException("Title cannot be empty", 400);
+}
+
+// ❌ FORBIDDEN - trim() in any validation context
+if (!body.description.trim()) {
+  throw new HttpException("Description required", 400);
+}
+
+// ❌ FORBIDDEN - Complex trim() validation
+if (body.name.trim().length < 3 || body.name.trim().length > 50) {
+  throw new HttpException("Invalid name length", 400);
+}
+
+// ❌ FORBIDDEN - Using trimmed variable for checks
+const trimmedValue = input.trim();
+if (trimmedValue === "" || trimmedValue.length === 0) {
+  // DELETE ENTIRE BLOCK
+}
+```
+
+**🎯 CORRECT ACTION**: DELETE the entire validation. JSON Schema has ALREADY validated ALL constraints including whitespace handling.
+
+### 2. NEVER USE hasOwnProperty - MOST VIOLATED RULE
 
 **ABSOLUTELY FORBIDDEN - AI KEEPS VIOLATING THIS:**
 ```typescript
@@ -1382,7 +1460,33 @@ if (!(props.createdAt instanceof Date)) {
 if (typeof body.age === 'number' && body.age > 0) {
   // DELETE THE TYPE CHECK - Keep only business logic
 }
+
+// ❌ DELETE JSON Schema constraint validation
+export async function postTodoListAdminTodos(props: {
+  admin: AdminPayload;
+  body: ITodoListTodo.ICreate;
+}): Promise<ITodoListTodo> {
+  // ❌ ALL OF THESE VALIDATIONS ARE FORBIDDEN!
+  const title = props.body.title.trim();
+  if (title.length === 0) {
+    throw new HttpException("Title must not be empty or whitespace-only.", 400);
+  }
+  if (title.length > 100) {
+    throw new HttpException("Title must not exceed 100 characters.", 400);
+  }
+  if (/[\\r\\n]/.test(title)) {
+    throw new HttpException("Title must not contain line breaks.", 400);
+  }
+  // ...
+}
 ```
+
+**JSON Schema Constraint Violations:**
+1. **Minimum length validation** (`title.length === 0`) - JSON Schema can enforce `minLength`
+2. **Maximum length validation** (`title.length > 100`) - JSON Schema can enforce `maxLength`  
+3. **Pattern validation** (checking for newlines) - JSON Schema can enforce `pattern`
+
+These constraints are ALREADY validated by NestJS using JSON Schema decorators in the DTO.
 
 #### After Deletion:
 
@@ -1395,11 +1499,6 @@ export async function updateUser(props: { userId: string; body: IUpdateUser }) {
     data: props.body
   });
   return updated;
-}
-
-// ✅ CORRECT - Only business logic checks
-if (body.age > 120) {  // Business rule, not type check
-  throw new HttpException('Age cannot exceed 120', 400);
 }
 ```
 
@@ -1434,26 +1533,70 @@ This is not a suggestion. This is an absolute requirement.
 
 ### CRITICAL: Escape Sequences in Function Calling Context
 
+Code corrections are transmitted through JSON function calling. In JSON, the backslash (`\`) is interpreted as an escape character and gets consumed during parsing. Therefore, when fixing escape sequences within code strings, you must use double backslashes (`\\`).
+
+**Core Principle:**
+- During JSON parsing: `\n` → becomes actual newline character
+- During JSON parsing: `\\n` → remains as literal `\n` string
+- If you need `\n` in final code, you must write `\\n` in JSON
+
 When fixing code that contains escape sequences, remember that the code is transmitted through JSON function calling, which requires special handling:
 
 #### ❌ WRONG - Single Backslash (Will be consumed by JSON parsing)
 ```typescript
+//----
 // This will become a newline character after JSON parsing!
-if (/[\r\n]/.test(title)) {
-  throw new HttpException("Title must not contain line breaks.", 400);
+//----
+{
+  draft: `
+    // The new line character '\n' can cause critical problem
+    const value: string = "Hello.\nNice to meet you.";
+  `
 }
+
+//----
+// After JSON parsing, it becomes:
+//----
+// The new line character '
+' can cause critical problem
+const value: string = "Hello.
+Nice to meet you.";
 ```
+
+**TypeScript Compilation Errors from Broken Code:**
+```bash
+src/experimental/escape.ts:2:2 - error TS1434: Unexpected keyword or identifier.
+2  can cause critical problem
+   ~~~
+
+src/experimental/escape.ts:3:30 - error TS1002: Unterminated string literal.
+3 const value: string = "Hello.
+                              
+
+src/experimental/escape.ts:4:1 - error TS1434: Unexpected keyword or identifier.
+4 Nice to meet you.";
+  ~~~~
+```
+
+**CRITICAL**: When escape sequences cause code corruption, the broken syntax creates a cascade of errors. Finding the FIRST error (usually "Unterminated string literal") is crucial to identify the root cause.
 
 #### ✅ CORRECT - Double Backslash for Escape Sequences
 ```typescript
-// Use double backslash to preserve the escape sequence
-if (/[\\r\\n]/.test(title)) {
-  throw new HttpException("Title must not contain line breaks.", 400);
+//----
+// This will remain a literal '\n' after JSON parsing!
+//----
+{
+  draft: `
+    // The new line character '\\n' can cause critical problem
+    const value: string = "Hello.\\nNice to meet you.";
+  `
 }
 
-// For other common escape sequences:
-const pattern = /[\\t\\n\\r]/; // Tab, newline, carriage return
-const unicodePattern = /\\u0000/; // Unicode escape
+//----
+// After JSON parsing, it remains:
+//----
+// The new line character '\n' can cause critical problem
+const value: string = "Hello.\nNice to meet you.";
 ```
 
 #### 📋 Escape Sequence Reference
@@ -1469,28 +1612,25 @@ When your corrected code will be transmitted through JSON:
 | `\"` | `\\\"` | `\"` |
 | `\'` | `\\'` | `\'` |
 
-#### 🎯 Alternative Approaches to Avoid Issues
+**Rule of Thumb**: When correcting regex patterns with escape sequences, always use double backslashes in the correction.
 
+#### ⚠️ WARNING: You Should Never Need Newline Characters
+
+**CRITICAL**: When correcting TypeScript code, there is NO legitimate reason to use or check for newline characters (`\n`) in your corrections. If you find yourself fixing code that validates newline characters, you are encountering a fundamental violation.
+
+The presence of newline validation indicates a violation of the **ABSOLUTE PROHIBITION** against runtime type checking on API parameters. All parameters have ALREADY been validated by the NestJS controller layer.
+
+**Common Violation Pattern:**
 ```typescript
-// Option 1: Character codes
-if (title.includes(String.fromCharCode(10)) || title.includes(String.fromCharCode(13))) {
-  throw new HttpException("Title must not contain line breaks.", 400);
-}
-
-// Option 2: Direct string methods (best for simple cases)
-if (title.includes('\n') || title.includes('\r')) {
-  throw new HttpException("Title must not contain line breaks.", 400);
-}
-
-// Option 3: Split-based detection
-if (title.split('\n').length > 1 || title.split('\r').length > 1) {
+// ❌ FORBIDDEN: This indicates distrust of the type system
+if (title.includes('\n')) {
   throw new HttpException("Title must not contain line breaks.", 400);
 }
 ```
 
-**Rule of Thumb**: When correcting regex patterns with escape sequences, always use double backslashes in the correction.
+**MANDATORY ACTION**: When you encounter such validation code during error correction, you MUST delete it entirely. The correct fix is complete removal of any code that validates parameter types or content constraints. Trust the framework's validation pipeline.
 
-## 🎯 Key Principles
+#### 🎯 Key Principles
 
 1. **Types > Comments**: When type and comment conflict, type is ALWAYS correct
 2. **Schema is Truth**: If field doesn't exist in schema, it cannot be used
@@ -1650,8 +1790,12 @@ Before submitting your corrected code, verify ALL of the following:
    - [ ] **DELETED all `typeof` checks on parameters**
    - [ ] **DELETED all `instanceof` checks on parameters**
    - [ ] **DELETED all manual type validation code**
+   - [ ] **DELETED all newline character (`\n`) checks in strings**
+   - [ ] **DELETED all String.trim() followed by validation**
+   - [ ] **DELETED all length checks after trim()**
    - [ ] **NO type checking logic remains in the code**
    - [ ] Remember: Parameters are ALREADY validated at controller level
+   - [ ] Remember: JSON Schema validation is PERFECT and COMPLETE
 
 2. **🛑 Error Handling**
    - [ ] Using `HttpException` with numeric status codes only
