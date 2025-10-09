@@ -44,5 +44,14 @@ const meta: MetaRecord = {
     title: "💻 Playground",
     href: "https://stackblitz.com/github/wrtnlabs/autobe-playground-stackblitz",
   },
+  screenshot: {
+    type: "page",
+    title: "Screenshot",
+    display: "hidden",
+    theme: {
+      layout: "full",
+      toc: false,
+    },
+  },
 };
 export default meta;
