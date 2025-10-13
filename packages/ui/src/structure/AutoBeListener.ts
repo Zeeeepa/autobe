@@ -125,7 +125,7 @@ export class AutoBeListener {
         this.insert(event);
       },
       interfacePrerequisites: async (event) => {
-        this.insert(event);
+        this.accumulate(event);
       },
       interfaceComplete: async (event) => {
         this.dict_.delete("interfaceEndpoints");
