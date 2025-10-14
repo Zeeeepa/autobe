@@ -95,6 +95,7 @@ export class AutoBeListener {
         this.dict_.delete("interfaceOperationsReview");
         this.dict_.delete("interfaceSchemas");
         this.dict_.delete("interfaceSchemasReview");
+        this.dict_.delete("interfacePrerequisites");
         this.insert(event);
       },
       interfaceGroups: async (event) => {
