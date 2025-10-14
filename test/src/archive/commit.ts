@@ -77,6 +77,7 @@ const commit = async (props: {
 
 const main = async (): Promise<void> => {
   for (const vendor of [
+    "anthropic/claude-sonnet-4.5",
     "openai/gpt-4.1",
     "openai/gpt-4.1-mini",
     "openai/gpt-5",
