@@ -7,8 +7,11 @@ export namespace AutoBeDemoStorage {
 
   export const getModelProjects = (
     model: string,
-  ): IAutoBePlaygroundReplay.ISummary[] | null =>
-    (data as IAutoBePlaygroundReplay.Collection)[model] ?? null;
+  ): IAutoBePlaygroundReplay.ISummary[] | null => {
+    const replays = (data as IAutoBePlaygroundReplay.Collection)[model];
+    if (replays === undefined) return null;
+    return replays.filter((r) => PROJECTS.includes(r.project));
+  };
 
   export const getProject = (props: {
     model: string;
@@ -19,3 +22,5 @@ export namespace AutoBeDemoStorage {
     return projects?.find((next) => next.project === props.project) ?? null;
   };
 }
+
+const PROJECTS = ["todo", "bbs", "reddit", "shopping"];
