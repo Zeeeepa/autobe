@@ -53,19 +53,19 @@ export const transformTestScenarioHistories = (props: {
       text: StringUtil.trim`
         ## Instructions
 
-        The following e2e-test-specific instructions were extracted by AI from
+        The following e2e-test-specific instructions were extracted from
         the user's requirements and conversations. These instructions focus
         exclusively on test-related aspects such as test coverage priorities,
         specific edge cases to validate, business logic verification strategies,
         and critical user workflows that must be tested.
         
-        Apply these instructions when generating test scenarios to ensure the
-        tests align with the user's testing requirements and expectations.
-        If any instructions are relevant to the target API operations,
-        you MUST follow them exactly without arbitrary judgment.
-        DO NOT make your own decisions even if you think you have better ideas.
-        Only ignore instructions that are completely unrelated to the target
-        API operations.
+        Follow these instructions when generating test scenarios.
+        Carefully distinguish between:
+        - Suggestions or recommendations (consider these as guidance)
+        - Direct specifications or explicit commands (these must be followed exactly)
+        
+        When instructions contain direct specifications or explicit design decisions, 
+        follow them precisely even if you believe you have better alternatives.
 
         ${props.instruction}
 

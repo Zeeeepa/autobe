@@ -41,18 +41,18 @@ export const transformInterfaceComplementHistories = (props: {
     text: StringUtil.trim`
       ## API Design Instructions
 
-      The following API-specific instructions were extracted by AI from
-      the user's utterances. These focus ONLY on API interface design aspects
+      The following API-specific instructions were extracted from
+      the user's requirements. These focus on API interface design aspects
       such as endpoint patterns, request/response formats, DTO schemas,
       and operation specifications.
 
-      Apply these instructions when completing the missing schema types.
-      Focus on ensuring the schemas align with the overall API design patterns
-      and data structure requirements. If the instructions are relevant
-      to the specific schemas you need to create, you MUST follow them exactly
-      without arbitrary judgment. DO NOT make your own decisions even if you think
-      you have better ideas. Only ignore instructions that are completely unrelated
-      to the schemas you need to create.
+      Follow these instructions when completing missing schema types.
+      Carefully distinguish between:
+      - Suggestions or recommendations (consider these as guidance)
+      - Direct specifications or explicit commands (these must be followed exactly)
+      
+      When instructions contain direct specifications or explicit design decisions, 
+      follow them precisely even if you believe you have better alternatives.
 
       ${props.instruction}
 

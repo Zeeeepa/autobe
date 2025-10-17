@@ -47,18 +47,18 @@ export const transformInterfaceOperationHistories = (props: {
       text: StringUtil.trim`
         ## API Design Instructions
 
-        The following API-specific instructions were extracted by AI from
-        the user's utterances. These focus ONLY on API interface design aspects
+        The following API-specific instructions were extracted from
+        the user's requirements. These focus on API interface design aspects
         such as endpoint patterns, request/response formats, DTO schemas,
         and operation specifications.
 
-        Apply these instructions when designing the detailed operation specifications
-        for each endpoint. Consider parameter types, request/response structures,
-        error handling, and API behavior patterns. If the instructions are relevant
-        to the operations you need to implement, you MUST follow them exactly without
-        arbitrary judgment. DO NOT make your own decisions even if you think you have
-        better ideas. Only ignore instructions that are completely unrelated to the
-        operations you need to implement.
+        Follow these instructions when designing operation specifications. 
+        Carefully distinguish between:
+        - Suggestions or recommendations (consider these as guidance)
+        - Direct specifications or explicit commands (these must be followed exactly)
+        
+        When instructions contain direct specifications or explicit design decisions, 
+        follow them precisely even if you believe you have better alternatives.
 
         ${props.instruction}
 

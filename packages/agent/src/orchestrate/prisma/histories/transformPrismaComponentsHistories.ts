@@ -85,16 +85,17 @@ export const transformPrismaComponentsHistories = (
 
         ## Database Design Instructions
 
-        The following database-specific instructions were extracted by AI from
-        the user's utterances. These focus ONLY on database schema design aspects
+        The following database-specific instructions were extracted from
+        the user's requirements. These focus on database schema design aspects
         such as table structure, relationships, constraints, and indexing strategies.
 
-        Reference these instructions when designing namespace components and 
-        DB table names. You MUST follow them exactly without arbitrary judgment.
-        DO NOT make your own decisions even if you think you have better ideas.
-        Follow the user's instructions precisely. If the instructions seem
-        awkward or unreasonable, remember that following them is your
-        fundamental responsibility.
+        Follow these instructions when designing namespace components and DB table names. 
+        Carefully distinguish between:
+        - Suggestions or recommendations (consider these as guidance)
+        - Direct specifications or explicit commands (these must be followed exactly)
+        
+        When instructions contain direct specifications or explicit design decisions, 
+        follow them precisely even if you believe you have better alternatives.
 
         ${props.instruction}
       `,

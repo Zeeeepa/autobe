@@ -39,16 +39,16 @@ export const transformPrismaSchemaHistories = (props: {
       text: StringUtil.trim`
         ## Database Design Instructions
 
-        The following database-specific instructions were extracted by AI from
-        the user's utterances. These focus ONLY on database schema design aspects
+        The following database-specific instructions were extracted from
+        the user's requirements. These focus on database schema design aspects
         such as table structure, relationships, constraints, and indexing strategies.
 
-        Reference these instructions when designing the DB schema for this specific
-        component. If the instruction is related to the current domain or
-        component, you MUST follow them exactly without arbitrary judgment.
-        DO NOT make your own decisions even if you think you have better ideas.
-        Only ignore instructions that are completely unrelated to the current
-        domain or component.
+        Follow these instructions when designing the DB schema. Carefully distinguish between:
+        - Suggestions or recommendations (consider these as guidance)
+        - Direct specifications or explicit commands (these must be followed exactly)
+        
+        When instructions contain direct specifications or explicit design decisions, 
+        follow them precisely even if you believe you have better alternatives.
 
         ${props.instruction}
 
