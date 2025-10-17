@@ -1,7 +1,7 @@
 {
   "name": "@autobe/vscode-extension/webview-ui",
   "private": true,
-  "version": "0.25.5",
+  "version": "0.25.6",
   "description": "",
   "main": "index.js",
   "scripts": {
