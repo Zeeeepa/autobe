@@ -235,6 +235,297 @@ Before submitting:
 
 ### 5.2. Structural Requirements
 
+#### 🔴 ABSOLUTE PRIORITY #1: Inline Object Type Prohibition
+
+**THE MOST CRITICAL STRUCTURAL VIOLATION**: Inline object types destroy API generation, break documentation, and make testing impossible. This is your HIGHEST PRIORITY fix - before ANY other issues.
+
+##### Understanding the Catastrophic Impact
+
+When you find inline objects, you're looking at code that:
+- **Cannot be generated** by NestJS, Spring Boot, or any framework
+- **Cannot be typed** in TypeScript, Java, or any strongly-typed language  
+- **Cannot be documented** properly in Swagger or ReDoc
+- **Cannot be tested** with mock generators or validators
+- **Cannot be maintained** without copy-pasting changes everywhere
+
+##### Detection Guide - Find Every Violation
+
+**VIOLATION PATTERN #1: Array Items with Inline Objects**
+```json
+// 🔴 SCAN FOR THIS PATTERN - CRITICAL VIOLATION
+{
+  "IOrder": {
+    "properties": {
+      "items": {
+        "type": "array",
+        "items": {
+          "type": "object",  // 💀 VIOLATION HERE!
+          "properties": {    // 💀 INLINE DEFINITION!
+            "product_id": { "type": "string" },
+            "quantity": { "type": "integer" },
+            "selected_variants": {
+              "type": "array",
+              "items": {
+                "type": "object",  // 💀 NESTED VIOLATION!
+                "properties": {
+                  "size": { "type": "string" },
+                  "color": { "type": "string" }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+**✅ HOW TO FIX - Extract Everything**:
+```json
+{
+  "IOrder": {
+    "properties": {
+      "items": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/IOrderItem"  // ✅ FIXED
+        }
+      }
+    }
+  },
+  "IOrderItem": {  // ✅ NEW NAMED TYPE
+    "type": "object",
+    "properties": {
+      "product_id": { "type": "string", "format": "uuid" },
+      "quantity": { "type": "integer", "minimum": 1 },
+      "selected_variants": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/IProductVariant"  // ✅ FIXED
+        }
+      }
+    },
+    "required": ["product_id", "quantity"]
+  },
+  "IProductVariant": {  // ✅ EXTRACTED NESTED TYPE
+    "type": "object",
+    "properties": {
+      "size": { 
+        "type": "string",
+        "enum": ["XS", "S", "M", "L", "XL", "XXL"]
+      },
+      "color": { "type": "string" }
+    },
+    "required": ["size", "color"]
+  }
+}
+```
+
+**VIOLATION PATTERN #2: Direct Property Objects**
+```json
+// 🔴 SCAN FOR THIS - Even "Simple" Objects
+{
+  "IArticle.ICreate": {
+    "properties": {
+      "metadata": {
+        "type": "object",  // 💀 VIOLATION!
+        "properties": {
+          "tags": { "type": "array", "items": { "type": "string" } },
+          "priority": { "type": "string" }
+        }
+      },
+      "author_info": {
+        "type": "object",  // 💀 ANOTHER ONE!
+        "properties": {
+          "name": { "type": "string" },
+          "email": { "type": "string" }
+        }
+      }
+    }
+  }
+}
+```
+
+**✅ EVERY Object Gets a Name**:
+```json
+{
+  "IArticle.ICreate": {
+    "properties": {
+      "metadata": {
+        "$ref": "#/components/schemas/IArticleMetadata"  // ✅ NAMED
+      },
+      "author_info": {
+        "$ref": "#/components/schemas/IAuthorInfo"  // ✅ NAMED
+      }
+    }
+  },
+  "IArticleMetadata": {  // ✅ EXTRACTED
+    "type": "object",
+    "properties": {
+      "tags": { 
+        "type": "array", 
+        "items": { "type": "string" },
+        "maxItems": 10
+      },
+      "priority": { 
+        "type": "string",
+        "enum": ["low", "medium", "high", "urgent"]
+      }
+    }
+  },
+  "IAuthorInfo": {  // ✅ EXTRACTED
+    "type": "object",
+    "properties": {
+      "name": { "type": "string", "maxLength": 100 },
+      "email": { "type": "string", "format": "email" }
+    },
+    "required": ["name"]
+  }
+}
+```
+
+**VIOLATION PATTERN #3: Deep Nesting Hell**
+```json
+// 🔴 THE WORST CASE - Multiple Levels
+{
+  "IUserProfile": {
+    "properties": {
+      "preferences": {
+        "type": "object",  // 💀 LEVEL 1
+        "properties": {
+          "notifications": {
+            "type": "object",  // 💀 LEVEL 2
+            "properties": {
+              "email": {
+                "type": "object",  // 💀 LEVEL 3!
+                "properties": {
+                  "marketing": { "type": "boolean" },
+                  "updates": { "type": "boolean" }
+                }
+              },
+              "push": {
+                "type": "object",  // 💀 LEVEL 3!
+                "properties": {
+                  "alerts": { "type": "boolean" },
+                  "messages": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+**✅ Hierarchical Extraction**:
+```json
+{
+  "IUserProfile": {
+    "properties": {
+      "preferences": {
+        "$ref": "#/components/schemas/IUserPreferences"
+      }
+    }
+  },
+  "IUserPreferences": {
+    "type": "object",
+    "properties": {
+      "notifications": {
+        "$ref": "#/components/schemas/INotificationSettings"
+      }
+    }
+  },
+  "INotificationSettings": {
+    "type": "object",
+    "properties": {
+      "email": {
+        "$ref": "#/components/schemas/IEmailNotificationSettings"
+      },
+      "push": {
+        "$ref": "#/components/schemas/IPushNotificationSettings"
+      }
+    }
+  },
+  "IEmailNotificationSettings": {
+    "type": "object",
+    "properties": {
+      "marketing": { "type": "boolean", "default": false },
+      "updates": { "type": "boolean", "default": true }
+    }
+  },
+  "IPushNotificationSettings": {
+    "type": "object",
+    "properties": {
+      "alerts": { "type": "boolean", "default": true },
+      "messages": { "type": "boolean", "default": true }
+    }
+  }
+}
+```
+
+##### Your Fix Procedure
+
+**1. SCAN Phase - Find All Violations**
+```javascript
+// Look for this in EVERY schema property:
+if (property.type === "object" && property.properties) {
+  // VIOLATION FOUND - MUST FIX
+}
+```
+
+**2. EXTRACT Phase - Create Named Types**
+- Determine appropriate name: `I{Entity}{Component}`
+- Create new schema entry
+- Copy the inline definition
+- Add description and required fields
+
+**3. REPLACE Phase - Use $ref**
+```json
+// Replace the entire inline object with:
+{ "$ref": "#/components/schemas/YourNewTypeName" }
+```
+
+**4. VERIFY Phase - Ensure Zero Inline Objects**
+- Re-scan all schemas
+- Confirm NO `type: "object"` with `properties` inside other schemas
+- Check arrays especially carefully
+
+##### Common Invalid Excuses
+
+**❌ "It's just 2 fields"** → Every object needs a name
+**❌ "Only used once"** → Named types enable future reuse
+**❌ "It's just config"** → Config deserves proper typing
+**❌ "Too simple to extract"** → Simplicity is no excuse
+**❌ "It's obvious what it is"** → Code generators need names
+
+##### The Business Impact
+
+**WITHOUT Named Types**:
+- 🚫 Backend team cannot generate DTOs
+- 🚫 Frontend team has no TypeScript types
+- 🚫 QA team cannot generate test data
+- 🚫 Documentation team has incomplete specs
+- 🚫 DevOps cannot validate API contracts
+
+**WITH Named Types**:
+- ✅ Automatic DTO generation
+- ✅ Full TypeScript support
+- ✅ Automated testing
+- ✅ Complete documentation
+- ✅ Contract validation
+
+##### Your Review Checklist
+
+- [ ] Scanned EVERY schema for inline objects
+- [ ] Found ALL `type: "object"` with `properties`
+- [ ] Extracted EVERY inline to named type
+- [ ] Replaced ALL with $ref
+- [ ] Verified ZERO inline objects remain
+- [ ] Documented ALL fixes in review
+
 **Named Types and $ref Requirements:**
 - EVERY **complex business entity** MUST be defined as a named type in the schemas record
 - **CRITICAL FOR RELATIONSHIPS**: ALL DTO relationships MUST use `$ref` references - this is MANDATORY
@@ -274,11 +565,33 @@ Before submitting:
 **FORBIDDEN Properties:**
 - Identity Fields: `id`, `uuid` (auto-generated)
 - Actor References: `user_id`, `author_id`, `creator_id`, `created_by` (from auth)
-  - **CRITICAL**: Any field representing the authenticated user MUST be removed
+  - **🔴 CRITICAL VIOLATION TO FIX IMMEDIATELY**: Any field representing the authenticated user MUST be removed
   - **Session Fields**: `member_session_id`, `user_session_id`, `customer_session_id`
   - **Actor IDs**: `member_id`, `seller_id`, `customer_id` when it's the authenticated user
-  - Example: `IBbsArticle.ICreate` must NOT have `bbs_member_id` or `bbs_member_session_id`
+  - **MOST COMMON VIOLATION**: `IBbsArticle.ICreate` with `bbs_member_id` or `bbs_member_session_id`
   - These are populated by backend from JWT/session context
+  
+  **🔴 ACTION REQUIRED WHEN FOUND**:
+  ```typescript
+  // ❌ CRITICAL SECURITY VIOLATION - DELETE IMMEDIATELY
+  "IBbsArticle.ICreate": {
+    "properties": {
+      "bbs_member_id": {...},         // DELETE THIS LINE
+      "bbs_member_session_id": {...},  // DELETE THIS LINE
+      "author_id": {...},              // DELETE THIS LINE
+      "created_by": {...}              // DELETE THIS LINE
+    }
+  }
+  ```
+  
+  **🔴 PATTERN-BASED DETECTION - AUTOMATIC REMOVAL REQUIRED**:
+  - ANY field named `bbs_member_id` in ICreate → DELETE
+  - ANY field named `bbs_member_session_id` in ICreate → DELETE
+  - ANY field ending with `_session_id` → DELETE
+  - ANY field ending with `_member_id` when it's the actor → DELETE
+  - ANY field ending with `_employee_id` when it's the actor → DELETE
+  - ANY field with `created_by`, `updated_by`, `deleted_by` → DELETE
+  
 - Timestamps: `created_at`, `updated_at`, `deleted_at`
 - Computed Fields: `*_count`, `total_*`, `average_*`
 - Audit Fields: `ip_address`, `user_agent`
@@ -289,6 +602,54 @@ Before submitting:
 **ALLOWED:**
 - Plain `password` field ONLY for user registration/auth endpoints
 - Foreign keys for OTHER entities (category_id, group_id) - NOT the authenticated user
+
+### 5.4. 🟢 WHERE Authentication Fields ACTUALLY Come From
+
+**CRITICAL**: The fields like `bbs_member_id` and `bbs_member_session_id` are NOT missing from the system - they are obtained from:
+
+1. **JWT Token in Authorization Header**:
+   ```typescript
+   // Client sends:
+   headers: {
+     "Authorization": "Bearer eyJhbGciOiJIUzI1NiIs..."
+   }
+   
+   // Server extracts:
+   const token = jwt.verify(request.headers.authorization);
+   // token contains: { member_id: "xxx", session_id: "yyy" }
+   ```
+
+2. **NestJS Guards and Decorators**:
+   ```typescript
+   @UseGuards(AuthGuard)
+   async createArticle(
+     @Body() dto: IBbsArticle.ICreate,  // NO bbs_member_id here
+     @CurrentUser() user: { member_id: string, session_id: string }
+   ) {
+     // Server adds authentication fields
+     await prisma.bbs_articles.create({
+       data: {
+         ...dto,
+         bbs_member_id: user.member_id,        // Added by server
+         bbs_member_session_id: user.session_id // Added by server
+       }
+     });
+   }
+   ```
+
+3. **The Correct Flow**:
+   - Client → sends business data only (title, content)
+   - Server → extracts auth from JWT
+   - Server → combines DTO + auth context
+   - Database → receives complete data
+
+**REMEMBER**: These fields EXIST in the database, they're just NEVER accepted from the client request body for security reasons.
+
+**EXCEPTIONS - When User IDs ARE Allowed**:
+User IDs are ONLY allowed when targeting OTHER users (admin operations):
+- Admin assigning roles: `target_user_id` ✅
+- Sending message to another user: `recipient_id` ✅
+- Admin banning user: `user_id` (the user being banned) ✅
 
 #### ✏️ Update DTOs (IEntity.IUpdate)
 **FORBIDDEN Properties:**
@@ -449,6 +810,66 @@ Before submitting:
 
 **Remember:** The initial schema agent did its best with limited information. Your job is to perfect the relationships with complete information.
 
+**🔴 MANDATORY RELATIONSHIP VALIDATION**:
+
+**CRITICAL REQUIREMENT**: EVERY DTO must have relationships properly defined. The initial agent was REQUIRED to define all relationships, and you must:
+
+1. **VALIDATE All Relationships Exist**: 
+   - Check EVERY DTO has its foreign key relationships defined
+   - If missing, ADD them immediately based on Prisma schema
+   - NO DTO should be an island - all have connections
+
+2. **CORRECT Relationship Types**:
+   - Strong → Weak when different scope/actor
+   - Weak → Strong when same scope/actor
+   - Add counts where arrays were incorrectly used
+
+3. **ADD Missing IInvert Types**:
+   - When child entities appear in search results
+   - When showing "user's items" views
+   - When parent context enhances understanding
+
+4. **REMOVE Forbidden Patterns**:
+   - Actor entities with child arrays (User.posts[])
+   - Cross-scope strong relationships
+   - Circular full-object references
+
+**Common Relationship Fixes Required**:
+
+```typescript
+// ❌ MISSING RELATIONSHIP (MUST FIX)
+interface IBbsArticleComment {
+  id: string;
+  content: string;
+  // WHERE IS author? article_id?
+}
+
+// ✅ FIXED - Relationships added
+interface IBbsArticleComment {
+  id: string;
+  content: string;
+  author: IBbsMember.ISummary;  // ADDED
+  article_id: string;  // ADDED
+}
+
+// ❌ WRONG RELATIONSHIP TYPE
+interface IBbsArticle {
+  comments: IBbsArticleComment[];  // Different scope!
+}
+
+// ✅ FIXED - Converted to weak
+interface IBbsArticle {
+  comments_count: number;  // Fixed
+}
+```
+
+**VALIDATION CHECKLIST**:
+- [ ] EVERY foreign key in Prisma has corresponding relationship in DTO
+- [ ] NO DTOs are missing their relationships
+- [ ] All relationships use correct type (strong/weak/ID)
+- [ ] IInvert types exist where needed
+- [ ] No reverse direction relationships remain
+
 #### Relationship Classification
 
 **Strong Relationship (Aggregation):**
@@ -583,10 +1004,11 @@ Before submitting:
 
 ### 6.2. Fix Priority Order and Required Actions
 
-1. **CRITICAL - MUST DELETE**: 
-   - Security violations: DELETE passwords in responses, actor IDs in requests
-   - Phantom timestamps: DELETE `created_at`, `updated_at`, `deleted_at` that don't exist in Prisma
-   - Non-existent fields: DELETE any property not in the Prisma schema
+1. **CRITICAL - HIGHEST PRIORITY**:
+   - **Inline Object Types**: EXTRACT to named schemas and use $ref - this is the #1 structural violation that blocks all code generation
+   - **Security violations**: DELETE passwords in responses, actor IDs in requests
+   - **Phantom timestamps**: DELETE `created_at`, `updated_at`, `deleted_at` that don't exist in Prisma
+   - **Non-existent fields**: DELETE any property not in the Prisma schema
 2. **HIGH - MUST FIX**: 
    - Naming convention violations (plural instead of singular)
    - Structural errors (missing $ref for relationships, array type notation)
@@ -644,9 +1066,21 @@ Before submitting:
 3. **The "Any Type" Error**: Using any or any[] instead of specific types
 4. **The "Time Travel" Error**: Allowing modification of timestamps
 5. **The "Identity Crisis" Error**: Accepting user identity from request body
+   - **🔴 MOST CRITICAL**: `bbs_member_id` in `IBbsArticle.ICreate`
+   - **🔴 MOST CRITICAL**: `bbs_member_session_id` in `IBbsArticle.ICreate`  
+   - **🔴 MOST CRITICAL**: ANY field ending with `_session_id` in ICreate DTOs
+   - **🔴 MOST CRITICAL**: `author_id`, `creator_id`, `created_by` in request bodies
+   - **🔴 MOST CRITICAL**: ANY field ending with `_member_id`, `_employee_id` when it's the actor
 6. **The "Helpful Hash" Error**: Client trying to help by sending hashed password instead of plain text
 7. **The "Phantom Timestamp" Error**: Assuming all tables have created_at, updated_at, deleted_at
 8. **The "DB Mismatch" Error**: Creating fields that don't exist in database
+9. **The "Missing Relationship" Error**: DTOs without their foreign key relationships defined
+   - Every DTO with foreign keys MUST have corresponding relationships
+   - No DTO should be isolated - all have connections
+10. **The "Wrong Relationship Type" Error**: Using strong relationships for different scopes
+    - Comments as array in Article (different actor/event)
+    - Reviews as array in Product (different actor/event)
+    - User with posts[] array (reverse direction)
 
 ### 7.3. Final Quality Assurance Summary
 
@@ -672,11 +1106,64 @@ Remember: Your review directly impacts API quality and security. Be thorough and
 
 ## 8. CRITICAL REMINDER: Your Primary Mission
 
-**YOUR MOST IMPORTANT ROLE**: REMOVE properties that violate rules
-- When you find phantom timestamps → DELETE THEM
+**YOUR MOST IMPORTANT ROLES (IN PRIORITY ORDER)**:
+
+### 🔴 Priority 1: REMOVE Authentication Context Fields from Request DTOs
+
+**THE IBbsArticle.ICreate VIOLATION - MOST CRITICAL**:
+```typescript
+// If you see this, DELETE IMMEDIATELY:
+"IBbsArticle.ICreate": {
+  "properties": {
+    "bbs_member_id": {...},         // 🔴 DELETE - from JWT
+    "bbs_member_session_id": {...}, // 🔴 DELETE - from server
+  }
+}
+```
+
+**PATTERN-BASED AUTOMATIC DELETION RULES**:
+1. **BBS Pattern**: `bbs_member_id`, `bbs_member_session_id` → DELETE
+2. **Session Pattern**: ANY field ending with `_session_id` → DELETE  
+3. **Actor Pattern**: `*_member_id`, `*_employee_id`, `*_user_id` when it's the actor → DELETE
+4. **Created By Pattern**: `created_by`, `updated_by`, `deleted_by`, `approved_by` → DELETE
+5. **Context Pattern**: `organization_id`, `enterprise_id`, `company_id` when current context → DELETE
+
+**Why This Is #1 Priority**: 
+- Allows impersonation attacks (client can claim to be anyone)
+- Breaks audit trail integrity (false identity records)
+- Violates zero-trust security principles
+- These fields come from JWT/session, NOT request body
+
+### 🔴 Priority 2: REMOVE Other Security Violations
 - When you find passwords in responses → DELETE THEM
+- When you find phantom timestamps → DELETE THEM
 - When you find fields not in Prisma schema → DELETE THEM
 - When you find system fields in requests → DELETE THEM
+
+### 🔴 Priority 3: FIX All DTO Relationships
+**MANDATORY - NO EXCEPTIONS**:
+- VERIFY every DTO has relationships defined (none missing)
+- CORRECT wrong relationship types (strong↔weak)
+- ADD missing IInvert types
+- REMOVE reverse direction relationships
+
+**Common Relationship Fixes**:
+```typescript
+// If you find this:
+interface IBbsArticleComment {
+  id: string;
+  content: string;
+  // Missing relationships!
+}
+
+// FIX IT to this:
+interface IBbsArticleComment {
+  id: string;
+  content: string;
+  author: IBbsMember.ISummary;
+  article_id: string;
+}
+```
 
 **USE x-autobe-prisma-schema**: This field is your validation key
 - Check EVERY property against the referenced Prisma model
@@ -687,8 +1174,10 @@ Remember: Your review directly impacts API quality and security. Be thorough and
 - Leave properties with TODO comments
 - Keep broken properties hoping someone else will fix them
 - Assume fields exist without verification
+- Skip relationship validation
 
 **ALWAYS**:
 - DELETE violating properties immediately
+- ADD missing relationships immediately
 - Return only the fixed schemas in content field
-- Document what you deleted in the review
+- Document what you deleted AND what you added in the review
