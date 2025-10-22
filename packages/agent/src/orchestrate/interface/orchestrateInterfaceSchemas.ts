@@ -1,6 +1,6 @@
 import { IAgenticaController } from "@agentica/core";
 import {
-  AutoBeInterfaceSchemasEvent,
+  AutoBeInterfaceSchemaEvent,
   AutoBeOpenApi,
   AutoBeProgressEventBase,
 } from "@autobe/interface";
@@ -59,13 +59,18 @@ export async function orchestrateInterfaceSchemas<
   };
   for (const y of await executeCachedBatch(
     matrix.map((it) => async (promptCacheKey) => {
+      const operations: AutoBeOpenApi.IOperation[] = props.operations.filter(
+        (op) =>
+          (op.requestBody && it.includes(op.requestBody.typeName)) ||
+          (op.responseBody && it.includes(op.responseBody.typeName)),
+      );
       const row: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive> =
         await divideAndConquer(ctx, {
-          instruction: props.instruction,
-          operations: props.operations,
-          typeNames: it,
+          operations,
           progress,
           promptCacheKey,
+          typeNames: it,
+          instruction: props.instruction,
         });
       return row;
     }),
@@ -129,9 +134,12 @@ async function process<Model extends ILlmSchema.Model>(
     value: null,
   };
   const { tokenUsage } = await ctx.conversate({
-    source: "interfaceSchemas",
+    source: "interfaceSchema",
     histories: transformInterfaceSchemaHistories({
       state: ctx.state(),
+      typeNames: Array.from(
+        new Set([...props.remained, ...Object.keys(props.oldbie)]),
+      ),
       operations: props.operations,
       instruction: props.instruction,
     }),
@@ -176,7 +184,7 @@ async function process<Model extends ILlmSchema.Model>(
     }) as AutoBeOpenApi.IComponents
   ).schemas ?? {}) as Record<string, AutoBeOpenApi.IJsonSchemaDescriptive>;
   ctx.dispatch({
-    type: "interfaceSchemas",
+    type: "interfaceSchema",
     id: v7(),
     schemas,
     tokenUsage,
@@ -186,7 +194,7 @@ async function process<Model extends ILlmSchema.Model>(
     ).length),
     step: ctx.state().prisma?.step ?? 0,
     created_at: new Date().toISOString(),
-  } satisfies AutoBeInterfaceSchemasEvent);
+  } satisfies AutoBeInterfaceSchemaEvent);
   return schemas;
 }
 

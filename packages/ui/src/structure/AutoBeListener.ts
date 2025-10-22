@@ -58,14 +58,14 @@ export class AutoBeListener {
 
       // PRISMA
       prismaStart: async (event) => {
-        this.dict_.delete("prismaSchemas");
+        this.dict_.delete("prismaSchema");
         this.dict_.delete("prismaReview");
         this.insert(event);
       },
-      prismaComponents: async (event) => {
+      prismaComponent: async (event) => {
         this.insert(event);
       },
-      prismaSchemas: async (event) => {
+      prismaSchema: async (event) => {
         this.accumulate(event);
       },
       prismaInsufficient: async (event) => {
@@ -81,7 +81,7 @@ export class AutoBeListener {
         this.insert(event);
       },
       prismaComplete: async (event) => {
-        this.dict_.delete("prismaSchemas");
+        this.dict_.delete("prismaSchema");
         this.dict_.delete("prismaReview");
         this.state_.setPrisma(event);
         this.insert(event);
@@ -90,68 +90,78 @@ export class AutoBeListener {
       // INTERFACE
       interfaceStart: async (event) => {
         this.dict_.delete("interfaceAuthorization");
-        this.dict_.delete("interfaceEndpoints");
-        this.dict_.delete("interfaceOperations");
-        this.dict_.delete("interfaceOperationsReview");
-        this.dict_.delete("interfaceSchemas");
-        this.dict_.delete("interfaceSchemasReview");
-        this.dict_.delete("interfacePrerequisites");
+        this.dict_.delete("interfaceEndpoint");
+        this.dict_.delete("interfaceOperation");
+        this.dict_.delete("interfaceOperationReview");
+        this.dict_.delete("interfaceSchema");
+        this.dict_.delete("interfaceSchemaSecurityReview");
+        this.dict_.delete("interfaceSchemaRelationReview");
+        this.dict_.delete("interfaceSchemaContentReview");
+        this.dict_.delete("interfacePrerequisite");
         this.insert(event);
       },
-      interfaceGroups: async (event) => {
+      interfaceGroup: async (event) => {
         this.insert(event);
       },
-      interfaceEndpoints: async (event) => {
+      interfaceEndpoint: async (event) => {
         this.accumulate(event);
       },
-      interfaceEndpointsReview: async (event) => {
+      interfaceEndpointReview: async (event) => {
         this.accumulate(event);
       },
-      interfaceOperations: async (event) => {
+      interfaceOperation: async (event) => {
         this.accumulate(event);
       },
-      interfaceOperationsReview: async (event) => {
+      interfaceOperationReview: async (event) => {
         this.accumulate(event);
       },
       interfaceAuthorization: async (event) => {
         this.accumulate(event);
       },
-      interfaceSchemas: async (event) => {
+      interfaceSchema: async (event) => {
         this.accumulate(event);
       },
-      interfaceSchemasReview: async (event) => {
+      interfaceSchemaSecurityReview: async (event) => {
+        this.accumulate(event);
+      },
+      interfaceSchemaRelationReview: async (event) => {
+        this.accumulate(event);
+      },
+      interfaceSchemaContentReview: async (event) => {
         this.accumulate(event);
       },
       interfaceComplement: async (event) => {
         this.insert(event);
       },
-      interfacePrerequisites: async (event) => {
+      interfacePrerequisite: async (event) => {
         this.accumulate(event);
       },
       interfaceComplete: async (event) => {
-        this.dict_.delete("interfaceEndpoints");
-        this.dict_.delete("interfaceOperations");
-        this.dict_.delete("interfaceOperationsReview");
+        this.dict_.delete("interfaceEndpoint");
+        this.dict_.delete("interfaceOperation");
+        this.dict_.delete("interfaceOperationReview");
         this.dict_.delete("interfaceAuthorization");
-        this.dict_.delete("interfaceSchemas");
-        this.dict_.delete("interfaceSchemasReview");
-        this.dict_.delete("interfacePrerequisites");
+        this.dict_.delete("interfaceSchema");
+        this.dict_.delete("interfaceSchemaSecurityReview");
+        this.dict_.delete("interfaceSchemaRelationReview");
+        this.dict_.delete("interfaceSchemaContentReview");
+        this.dict_.delete("interfacePrerequisite");
         this.state_.setInterface(event);
         this.insert(event);
       },
 
       // TEST
       testStart: async (event) => {
-        this.dict_.delete("testScenarios");
+        this.dict_.delete("testScenario");
         this.dict_.delete("testWrite");
         this.dict_.delete("testValidate");
         this.dict_.delete("testCorrect");
         this.insert(event);
       },
-      testScenarios: async (event) => {
+      testScenario: async (event) => {
         this.accumulate(event);
       },
-      testScenariosReview: async (event) => {
+      testScenarioReview: async (event) => {
         this.accumulate(event);
       },
       testWrite: async (event) => {
@@ -164,7 +174,7 @@ export class AutoBeListener {
         this.accumulate(event);
       },
       testComplete: async (event) => {
-        this.dict_.delete("testScenarios");
+        this.dict_.delete("testScenario");
         this.dict_.delete("testWrite");
         this.dict_.delete("testValidate");
         this.dict_.delete("testCorrect");

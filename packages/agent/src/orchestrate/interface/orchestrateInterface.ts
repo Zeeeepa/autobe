@@ -2,7 +2,7 @@ import {
   AutoBeAssistantMessageHistory,
   AutoBeInterfaceAuthorization,
   AutoBeInterfaceCompleteEvent,
-  AutoBeInterfaceGroupsEvent,
+  AutoBeInterfaceGroupEvent,
   AutoBeInterfaceHistory,
   AutoBeOpenApi,
 } from "@autobe/interface";
@@ -16,6 +16,7 @@ import { ILlmSchema } from "@samchon/openapi";
 import { HashMap, Pair } from "tstl";
 import { v7 } from "uuid";
 
+import { AutoBeSystemPromptConstant } from "../../constants/AutoBeSystemPromptConstant";
 import { AutoBeContext } from "../../context/AutoBeContext";
 import { IAutoBeFacadeApplicationProps } from "../../context/IAutoBeFacadeApplicationProps";
 import { predicateStateMessage } from "../../utils/predicateStateMessage";
@@ -25,8 +26,8 @@ import { orchestrateInterfaceEndpoints } from "./orchestrateInterfaceEndpoints";
 import { orchestrateInterfaceGroups } from "./orchestrateInterfaceGroups";
 import { orchestrateInterfaceOperations } from "./orchestrateInterfaceOperations";
 import { orchestrateInterfacePrerequisites } from "./orchestrateInterfacePrerequisites";
+import { orchestrateInterfaceSchemaReview } from "./orchestrateInterfaceSchemaReview";
 import { orchestrateInterfaceSchemas } from "./orchestrateInterfaceSchemas";
-import { orchestrateInterfaceSchemasReview } from "./orchestrateInterfaceSchemasReview";
 import { JsonSchemaFactory } from "./utils/JsonSchemaFactory";
 
 export const orchestrateInterface =
@@ -57,7 +58,7 @@ export const orchestrateInterface =
     });
 
     // ENDPOINTS
-    const init: AutoBeInterfaceGroupsEvent = await orchestrateInterfaceGroups(
+    const init: AutoBeInterfaceGroupEvent = await orchestrateInterfaceGroups(
       ctx,
       {
         instruction: props.instruction,
@@ -116,9 +117,11 @@ export const orchestrateInterface =
       },
     };
 
+    const assign = (
+      schemas: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive>,
+    ) => Object.assign(document.components.schemas, schemas);
     const complement = async () =>
-      Object.assign(
-        document.components.schemas,
+      assign(
         await orchestrateInterfaceComplement(ctx, {
           instruction: props.instruction,
           document,
@@ -126,14 +129,24 @@ export const orchestrateInterface =
       );
     await complement();
 
-    Object.assign(
-      document.components.schemas,
-      await orchestrateInterfaceSchemasReview(
-        ctx,
-        operations,
-        document.components.schemas,
-      ),
-    );
+    for (const config of [
+      {
+        type: "interfaceSchemaSecurityReview" as const,
+        systemPrompt:
+          AutoBeSystemPromptConstant.INTERFACE_SCHEMA_SECURITY_REVIEW,
+      },
+      {
+        type: "interfaceSchemaRelationReview" as const,
+        systemPrompt:
+          AutoBeSystemPromptConstant.INTERFACE_SCHEMA_RELATION_REVIEW,
+      },
+      {
+        type: "interfaceSchemaContentReview" as const,
+        systemPrompt:
+          AutoBeSystemPromptConstant.INTERFACE_SCHEMA_CONTENT_REVIEW,
+      },
+    ])
+      assign(await orchestrateInterfaceSchemaReview(ctx, config, document));
     if (missedOpenApiSchemas(document).length !== 0) await complement();
 
     JsonSchemaFactory.finalize({

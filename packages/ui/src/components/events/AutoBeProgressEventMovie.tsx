@@ -49,7 +49,7 @@ function getState(event: AutoBeProgressEventMovie.IProps["event"]): IState {
           title: "Analyze Review",
           description: "Reviewing the analysis results",
         };
-      case "prismaSchemas":
+      case "prismaSchema":
         return {
           title: "Prisma Schemas",
           description: "Designing Database schemas",
@@ -59,17 +59,17 @@ function getState(event: AutoBeProgressEventMovie.IProps["event"]): IState {
           title: "Prisma Review",
           description: "Reviewing the Prisma schemas",
         };
-      case "interfaceEndpoints":
+      case "interfaceEndpoint":
         return {
           title: "Interface Endpoints",
           description: "Collecting API endpoints",
         };
-      case "interfaceOperations":
+      case "interfaceOperation":
         return {
           title: "Interface Operations",
           description: "Designing API operations",
         };
-      case "interfaceOperationsReview":
+      case "interfaceOperationReview":
         return {
           title: "Interface Operations Review",
           description: "Reviewing API operations",
@@ -79,27 +79,38 @@ function getState(event: AutoBeProgressEventMovie.IProps["event"]): IState {
           title: "Interface Authorization",
           description: "Designing API authorization operations",
         };
-      case "interfaceSchemas":
+      case "interfaceSchema":
         return {
           title: "Interface Schemas",
           description: "Designing API type schemas",
         };
-      case "interfaceSchemasReview":
+      case "interfaceSchemaSecurityReview":
+        return {
+          title: "Interface Schemas Security Review",
+          description: "Reviewing API type schemas security",
+        };
+      case "interfaceSchemaRelationReview":
+        return {
+          title: "Interface Schemas Relation Review",
+          description: "Reviewing API type schemas relation",
+        };
+      case "interfaceSchemaContentReview":
         return {
           title: "Interface Schemas Review",
-          description: "Reviewing API type schemas",
+          description:
+            "Reviewing API type schemas content completeness and consistency",
         };
-      case "interfacePrerequisites":
+      case "interfacePrerequisite":
         return {
           title: "Interface Prerequisites",
           description: "Defining API prerequisites",
         };
-      case "testScenarios":
+      case "testScenario":
         return {
           title: "Test Scenarios",
           description: "Planning E2E test scenarios",
         };
-      case "testScenariosReview":
+      case "testScenarioReview":
         return {
           title: "Test Scenarios Review",
           description: "Reviewing E2E test scenarios",

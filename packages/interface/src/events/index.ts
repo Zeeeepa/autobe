@@ -24,30 +24,32 @@ export * from "./AutoBeAnalyzeWriteEvent";
 
 // PRISMA
 export * from "./AutoBePrismaCompleteEvent";
-export * from "./AutoBePrismaComponentsEvent";
+export * from "./AutoBePrismaComponentEvent";
 export * from "./AutoBePrismaCorrectEvent";
 export * from "./AutoBePrismaInsufficientEvent";
 export * from "./AutoBePrismaReviewEvent";
-export * from "./AutoBePrismaSchemasEvent";
+export * from "./AutoBePrismaSchemaEvent";
 export * from "./AutoBePrismaStartEvent";
 export * from "./AutoBePrismaValidateEvent";
 
 // INTERFACE
 export * from "./AutoBeInterfaceComplementEvent";
 export * from "./AutoBeInterfaceCompleteEvent";
-export * from "./AutoBeInterfaceEndpointsEvent";
-export * from "./AutoBeInterfaceGroupsEvent";
-export * from "./AutoBeInterfaceOperationsEvent";
-export * from "./AutoBeInterfaceOperationsReviewEvent";
-export * from "./AutoBeInterfaceSchemasEvent";
-export * from "./AutoBeInterfaceSchemasReviewEvent";
+export * from "./AutoBeInterfaceEndpointEvent";
+export * from "./AutoBeInterfaceGroupEvent";
+export * from "./AutoBeInterfaceOperationEvent";
+export * from "./AutoBeInterfaceOperationReviewEvent";
+export * from "./AutoBeInterfaceSchemaEvent";
+export * from "./AutoBeInterfaceSchemaSecurityReviewEvent";
+export * from "./AutoBeInterfaceSchemaRelationReviewEvent";
+export * from "./AutoBeInterfaceSchemaContentReviewEvent";
 export * from "./AutoBeInterfaceStartEvent";
 
 // TEST
 export * from "./AutoBeTestCompleteEvent";
 export * from "./AutoBeTestCorrectEvent";
-export * from "./AutoBeTestScenariosEvent";
-export * from "./AutoBeTestScenariosReviewEvent";
+export * from "./AutoBeTestScenarioEvent";
+export * from "./AutoBeTestScenarioReviewEvent";
 export * from "./AutoBeTestStartEvent";
 export * from "./AutoBeTestValidateEvent";
 export * from "./AutoBeTestWriteEvent";
