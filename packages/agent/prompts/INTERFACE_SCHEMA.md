@@ -2149,6 +2149,17 @@ Each DTO type serves a specific purpose with distinct restrictions on what prope
 - Apply field-level permissions based on user role
 - Consider separate DTOs for different user roles (IUser vs IUserAdmin)
 
+**CRITICAL - Actor References and Session Handling**:
+- **Actor References MUST Be Transformed**: Foreign keys representing actors should become full objects
+  - Example: `author: IBbsMember.ISummary` instead of raw `bbs_member_id`
+  - Example: `customer: IShoppingCustomer.ISummary` instead of raw `customer_id`
+  - This provides essential context about WHO performed actions
+- **Authentication Session References Should Generally Be Excluded**: 
+  - Fields like `{actor}_session_id` (linking to `{actor}_sessions` tables) are internal authentication infrastructure
+  - These track user login sessions and are NOT business data
+  - Only include if specifically required for audit trails or admin functionality
+  - Different from business "sessions" (e.g., `training_session`, `game_session`) which ARE valid business entities to include
+
 ### 5.2. Create DTOs (IEntity.ICreate) - Request bodies for POST
 
 **Purpose**: Data required to create new entities
