@@ -2138,27 +2138,68 @@ Each DTO type serves a specific purpose with distinct restrictions on what prope
 
 **Purpose**: Full entity representation returned from single-item queries (GET /entity/:id)
 
+**🔴 CRITICAL TRANSFORMATION RULE - MUST READ FIRST**:
+
+Every Response DTO MUST transform foreign keys to provide complete information without additional API calls. This is NOT optional.
+
+**The Two-Category FK Classification**:
+
+1. **Hierarchical Parent FK** → Keep as ID (prevents circular references)
+   - Direct parent in a composition hierarchy where child is contained in parent's array
+   - Example: `article_id` in comment when article contains `comments[]`
+
+2. **Contextual Reference FK** → MUST Transform to Object
+   - ANY FK providing context or additional information
+   - ALL actor references (`author_id`, `customer_id`, `seller_id`)
+   - ALL category/classification references (`category_id`, `section_id`)
+   - ALL organizational references (`company_id`, `department_id`)
+
+**❌ ABSOLUTELY FORBIDDEN Pattern - Raw FK Exposure**:
+```typescript
+// 🔴 CATASTROPHIC VIOLATION - Never do this in Response DTOs:
+interface IBbsArticle {
+  id: string;
+  title: string;
+  content: string;
+  bbs_member_id: string;        // ❌ WRONG - Raw FK exposed
+  category_id: string;          // ❌ WRONG - Raw FK exposed
+  parent_article_id: string;    // ❌ WRONG - Raw FK exposed
+  // This forces clients to make additional API calls!
+}
+```
+
+**✅ MANDATORY Pattern - Transformed Relations**:
+```typescript
+// ✅ CORRECT - All FKs transformed to objects:
+interface IBbsArticle {
+  id: string;
+  title: string;
+  content: string;
+  author: IBbsMember.ISummary;      // ✅ bbs_member_id → transformed
+  category: IBbsCategory;           // ✅ category_id → transformed
+  parent: IBbsArticle.ISummary;     // ✅ parent_article_id → transformed
+  // Client has ALL information in single response!
+}
+```
+
 **FORBIDDEN Properties**:
 - **Passwords & Secrets**: `password`, `hashed_password`, `salt`, `password_hash`, `secret_key`
 - **Security Tokens**: `refresh_token`, `api_key`, `access_token`, `session_token`
 - **Internal Flags**: `is_deleted` (for soft delete), `internal_status`, `debug_info`
 - **System Internals**: Database connection strings, file system paths, internal IDs
+- **Raw Foreign Keys**: ANY `*_id` field that could be transformed to an object (except hierarchical parent)
 
-**Required Considerations**:
-- Include all public-facing fields from the database
+**Required Transformations**:
+- Transform ALL actor FKs → `author: IUser.ISummary`, `customer: ICustomer.ISummary`
+- Transform ALL classification FKs → `category: ICategory`, `type: IType`
+- Transform ALL organizational FKs → `company: ICompany.ISummary`, `department: IDepartment`
+- Include all compositional relations as nested arrays/objects
+- Include aggregation counts (but not the arrays themselves)
+
+**Special Considerations**:
 - Apply field-level permissions based on user role
 - Consider separate DTOs for different user roles (IUser vs IUserAdmin)
-
-**CRITICAL - Actor References and Session Handling**:
-- **Actor References MUST Be Transformed**: Foreign keys representing actors should become full objects
-  - Example: `author: IBbsMember.ISummary` instead of raw `bbs_member_id`
-  - Example: `customer: IShoppingCustomer.ISummary` instead of raw `customer_id`
-  - This provides essential context about WHO performed actions
-- **Authentication Session References Should Generally Be Excluded**: 
-  - Fields like `{actor}_session_id` (linking to `{actor}_sessions` tables) are internal authentication infrastructure
-  - These track user login sessions and are NOT business data
-  - Only include if specifically required for audit trails or admin functionality
-  - Different from business "sessions" (e.g., `training_session`, `game_session`) which ARE valid business entities to include
+- Authentication Session References (`{actor}_session_id`) should generally be excluded as they're internal infrastructure
 
 ### 5.2. Create DTOs (IEntity.ICreate) - Request bodies for POST
 
@@ -2522,9 +2563,43 @@ interface IBbsArticle.IUpdate {
    - Apply security filtering - remove sensitive fields
    - Document thoroughly with descriptions from Prisma schema
 
-3. **Analyze and Define Relations**:
-   - **Remember**: You only have DTO type names, not their actual definitions
-   - Study the complete Prisma schema thoroughly:
+3. **Analyze and Define Relations** (🔴 CRITICAL for Response DTOs):
+   
+   **MANDATORY FIRST STEP for Response DTOs**: Transform ALL foreign keys except hierarchical parents
+   
+   - **The FK Transformation Algorithm for Response DTOs**:
+     ```
+     For EACH field ending with '_id' in Prisma model:
+     ├─ Is it a hierarchical parent? (child contained in parent's array)
+     │  └─ YES → Keep as ID string
+     │  └─ NO → Continue
+     ├─ Is it an actor reference? (user_id, author_id, customer_id, etc.)
+     │  └─ YES → MUST transform to: actor: IActorType.ISummary
+     ├─ Is it a classification? (category_id, type_id, status_id, etc.)
+     │  └─ YES → MUST transform to: category: ICategoryType
+     └─ Is it ANY other FK?
+        └─ YES → MUST transform to appropriate object type
+     ```
+   
+   - **❌ FORBIDDEN in Response DTOs**:
+     ```typescript
+     // NEVER leave raw FKs like this:
+     bbs_member_id: string;      // ❌ WRONG
+     category_id: string;        // ❌ WRONG
+     section_id: string;         // ❌ WRONG
+     seller_id: string;          // ❌ WRONG
+     ```
+   
+   - **✅ REQUIRED in Response DTOs**:
+     ```typescript
+     // ALWAYS transform to objects:
+     author: IBbsMember.ISummary;     // ✅ CORRECT
+     category: IBbsCategory;          // ✅ CORRECT
+     section: IShoppingSection;       // ✅ CORRECT
+     seller: IShoppingSeller.ISummary; // ✅ CORRECT
+     ```
+   
+   - **Study the complete Prisma schema thoroughly**:
      - Examine all model definitions and their properties
      - Analyze foreign key constraints and @relation annotations
      - Review field types, nullability, and constraints
@@ -2532,13 +2607,13 @@ interface IBbsArticle.IUpdate {
      - Identify table naming patterns (parent_child relations)
    
    - **Apply Foreign Key Transformation Strategy**:
-     - **Step 1**: Identify all foreign keys in each entity
+     - **Step 1**: Identify ALL foreign keys in each entity (anything ending with _id)
      - **Step 2**: Classify each FK:
        - Direct Parent (Has relation inverse) → Keep as ID
        - Associated Reference (Actor/Category/Organization) → Transform to object
      - **Step 3**: For Response DTOs (IEntity, ISummary):
-       - Transform ALL associated reference FKs to objects
-       - Keep direct parent FKs as IDs (prevent circular references)
+       - Transform ALL associated reference FKs to objects (THIS IS MANDATORY)
+       - Keep ONLY direct parent FKs as IDs (prevent circular references)
      - **Step 4**: For Request DTOs (ICreate, IUpdate):
        - Actor FKs are FORBIDDEN (from JWT/session)
        - Other FKs remain as IDs

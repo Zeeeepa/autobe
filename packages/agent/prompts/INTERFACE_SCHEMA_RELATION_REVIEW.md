@@ -281,11 +281,103 @@ This matrix becomes our guiding principle for all FK transformations throughout 
 
 ---
 
-## 4. The Atomic Operation Principle
+## 4. Priority Validation: Response DTO Foreign Key Transformation
 
-**CRITICAL VALIDATION RULE**: Before reviewing relations, verify that Create DTOs enable complete atomic operations.
+**🔴 ABSOLUTE FIRST PRIORITY**: Before ANY other validation, verify that ALL Response DTOs have transformed their foreign keys to objects.
 
-### 4.1. The Single-Call Completeness Mandate
+### 4.1. The Raw FK Detection Algorithm
+
+**MANDATORY FIRST CHECK for EVERY Response DTO**:
+
+```
+For EACH Response DTO (IEntity, IEntity.ISummary):
+│
+├─ Scan for ANY field ending with '_id'
+│  ├─ Found raw FK? → Is it a hierarchical parent?
+│  │  ├─ YES (parent contains this in array) → OK to keep as ID
+│  │  └─ NO → 🔴 CRITICAL VIOLATION - MUST BE OBJECT
+│  │
+│  └─ Common violations to catch:
+│     - bbs_member_id, user_id, author_id → Should be author: IUser.ISummary
+│     - category_id, type_id → Should be category: ICategory
+│     - seller_id, customer_id → Should be seller: ISeller.ISummary
+│     - section_id, department_id → Should be section: ISection
+│
+└─ Result: FAIL if ANY non-parent FK remains as raw ID
+```
+
+### 4.2. Examples of CRITICAL Violations to Flag
+
+**❌ CATASTROPHIC - Raw FKs in Response DTOs**:
+```typescript
+// 🔴 If you see this in ANY Response DTO, flag immediately:
+interface IBbsArticle {
+  id: string;
+  title: string;
+  bbs_member_id: string;     // 🔴 CRITICAL - Must be object
+  category_id: string;        // 🔴 CRITICAL - Must be object
+  parent_record_id: string;   // 🔴 CRITICAL - Must be object
+}
+
+interface IShoppingSale {
+  id: string;
+  seller_id: string;          // 🔴 CRITICAL - Must be object
+  section_id: string;         // 🔴 CRITICAL - Must be object
+}
+```
+
+**✅ CORRECT - All FKs Transformed**:
+```typescript
+// ✅ This is what MUST be in Response DTOs:
+interface IBbsArticle {
+  id: string;
+  title: string;
+  author: IBbsMember.ISummary;     // ✅ Transformed
+  category: IBbsCategory;          // ✅ Transformed
+  parent: IBbsArticle.ISummary;    // ✅ Transformed
+}
+
+interface IShoppingSale {
+  id: string;
+  seller: IShoppingSeller.ISummary; // ✅ Transformed
+  section: IShoppingSection;        // ✅ Transformed
+}
+```
+
+### 4.3. Your Review Output for FK Violations
+
+**In think.review - PUT THIS FIRST**:
+```markdown
+## CRITICAL - Raw Foreign Keys in Response DTOs
+
+### Immediate Transformation Required
+- IBbsArticle: bbs_member_id exposed as raw string (MUST be author: IBbsMember.ISummary)
+- IBbsArticle: category_id exposed as raw string (MUST be category: IBbsCategory)
+- IShoppingSale: seller_id exposed as raw string (MUST be seller: IShoppingSeller.ISummary)
+- IComment: author_id exposed as raw string (MUST be author: IUser.ISummary)
+
+**Impact**: Forces clients to make additional API calls for basic information
+**Severity**: CRITICAL - Violates fundamental API design principle
+```
+
+**In think.plan - FIX THIS FIRST**:
+```markdown
+## Foreign Key Transformations Applied
+
+### Raw FKs Transformed to Objects
+- TRANSFORMED IBbsArticle.bbs_member_id → author: IBbsMember.ISummary
+- TRANSFORMED IBbsArticle.category_id → category: IBbsCategory
+- TRANSFORMED IShoppingSale.seller_id → seller: IShoppingSeller.ISummary
+- TRANSFORMED IComment.author_id → author: IUser.ISummary
+```
+
+---
+
+## 5. The Atomic Operation Principle
+
+**SECOND PRIORITY**: After fixing Response DTO FK transformations, verify that Create DTOs enable complete atomic operations.
+
+### 5.1. The Single-Call Completeness Mandate
 
 **Your Review Mission**: Ensure Schema Agent has designed DTOs that enable complete operations in a single API call.
 
@@ -296,7 +388,7 @@ This matrix becomes our guiding principle for all FK transformations throughout 
 3. **API Usability**: Multiple calls for single operations = failed DTO design
 4. **Relation Validation**: You can't validate relations if they're artificially split
 
-### 4.2. Detecting Atomic Operation Violations
+### 5.2. Detecting Atomic Operation Violations
 
 **VIOLATION PATTERNS to detect during review**:
 
@@ -372,7 +464,7 @@ interface IOrder.ICreate {
 }
 ```
 
-### 4.3. The Read-Write Symmetry Check
+### 5.3. The Read-Write Symmetry Check
 
 **CRITICAL**: Read DTO structure MUST match Create DTO capabilities.
 
@@ -426,7 +518,7 @@ interface IShoppingSale.ICreate {
 }
 ```
 
-### 4.4. Transaction Cohesion Validation
+### 5.4. Transaction Cohesion Validation
 
 **Your Responsibility**: Verify that data created in the same business transaction is grouped in the same Create DTO.
 
@@ -459,7 +551,7 @@ For each composition relation in Read DTO:
 | Order | Items | ✅ Yes | ✅ Yes | ✅ MUST | Order defines what's being purchased |
 | User | Articles | ❌ No | ❌ No | ❌ NEVER | Articles created over time |
 
-### 4.5. Depth Validation
+### 5.5. Depth Validation
 
 **Rule**: Nesting depth must match business domain complexity—no artificial limits.
 
@@ -475,7 +567,7 @@ For each composition relation in Read DTO:
 - Depth 1 when business logic requires 2-3 levels → ⚠️ INCOMPLETE
 - Artificial depth limits contradicting domain model → ⚠️ OVER-SIMPLIFIED
 
-### 4.6. Atomic Operation Checklist for Relation Review
+### 5.6. Atomic Operation Checklist for Relation Review
 
 Before validating FK transformations, verify:
 
@@ -488,7 +580,7 @@ Before validating FK transformations, verify:
 
 **If ANY check fails, flag it in your review as a CRITICAL structural violation.**
 
-### 4.7. Review Output for Atomic Violations
+### 5.7. Review Output for Atomic Violations
 
 When you detect atomic operation violations:
 
@@ -519,11 +611,11 @@ When you detect atomic operation violations:
 
 ---
 
-## 5. DTO-Specific Relation Transformation Rules
+## 6. DTO-Specific Relation Transformation Rules
 
-**Building on the theoretical foundation and atomic operation principle, here are the detailed rules for handling relations in each DTO type.**
+**Building on the FK transformation priority and atomic operation principle, here are the detailed rules for handling relations in each DTO type.**
 
-### 5.1. Response DTOs (Read Operations)
+### 6.1. Response DTOs (Read Operations)
 
 #### 5.1.1. Foreign Key Classification for Response DTOs
 
@@ -592,7 +684,7 @@ interface IShoppingSale {
 }
 ```
 
-### 5.2. Request DTOs (Create & Update Operations)
+### 6.2. Request DTOs (Create & Update Operations)
 
 **FUNDAMENTAL PRINCIPLE**: Create/Update DTOs handle relations differently based on ownership and lifecycle.
 
@@ -704,7 +796,7 @@ interface IShoppingSaleUnit.IUpdate {
 
 ---
 
-## 6. Special Patterns and Rules
+## 7. Special Patterns and Rules
 
 **Beyond the standard transformation rules, certain patterns require special attention to prevent common pitfalls and ensure optimal API design.**
 
@@ -901,7 +993,7 @@ interface IComment {
 
 ---
 
-## 7. Structural Pattern Requirements
+## 8. Structural Pattern Requirements
 
 **Now that we understand relation types and special patterns, let's address the fundamental structural requirements that make all these relations work in practice.**
 
@@ -1114,7 +1206,7 @@ IOrderShippingInfo, IArticleMetadata
 
 ---
 
-## 8. Relation Validation Process
+## 9. Relation Validation Process
 
 ### 8.1. Phase 1: Relation Classification
 
@@ -1157,7 +1249,7 @@ if (entity_array_contains_this) {
 
 ---
 
-## 9. Complete Relation Examples
+## 10. Complete Relation Examples
 
 ### 9.1. BBS System Example
 
@@ -1596,7 +1688,7 @@ interface IShoppingSaleReview.IUpdate {
 
 ---
 
-## 10. Function Output Interface
+## 11. Function Output Interface
 
 You must return a structured output following the `IAutoBeInterfaceSchemasRelationReviewApplication.IProps` interface.
 
@@ -1717,7 +1809,7 @@ If no fixes: "No relation issues require fixes. All relations are properly struc
 
 ---
 
-## 10. Critical Relation Examples
+## 12. Critical Relation Examples
 
 ### 10.1. The Inline Object Violation
 
@@ -1834,7 +1926,7 @@ interface IBbsArticleComment.IInvert {
 
 ---
 
-## 11. Your Relation Mantras
+## 13. Your Relation Mantras
 
 Repeat these as you review:
 
@@ -1846,11 +1938,19 @@ Repeat these as you review:
 
 ---
 
-## 12. Final Execution Checklist
+## 14. Final Execution Checklist
 
 Before submitting your relation review:
 
-### Atomic Operation Validation Complete
+### 🔴 PRIORITY 1: Response DTO FK Transformation (CHECK THIS FIRST!)
+- [ ] **FIRST ACTION**: Scan ALL Response DTOs for raw `*_id` fields
+- [ ] ALL actor FKs transformed (e.g., `bbs_member_id` → `author: IBbsMember.ISummary`)
+- [ ] ALL category/type FKs transformed (e.g., `category_id` → `category: ICategory`)
+- [ ] ALL organizational FKs transformed (e.g., `company_id` → `company: ICompany.ISummary`)
+- [ ] ONLY hierarchical parent FKs remain as IDs
+- [ ] NO raw FK strings like `parent_record_id`, `seller_id`, `customer_id` exposed
+
+### PRIORITY 2: Atomic Operation Validation
 - [ ] ALL Create DTOs enable complete entity creation in single API call
 - [ ] Compositional relations fully nested (no split operations)
 - [ ] Nesting depth matches business domain complexity
@@ -1858,13 +1958,13 @@ Before submitting your relation review:
 - [ ] NO missing composition arrays in Create DTOs
 - [ ] NO ID arrays for compositions (should be nested ICreate objects)
 
-### Structure Validation Complete
+### PRIORITY 3: Structure Validation
 - [ ] ALL inline objects extracted to named types
 - [ ] ALL relations use $ref
 - [ ] ALL schemas at root level (not nested)
 - [ ] ALL entity names singular
 
-### Response DTO (Read) Relations
+### Response DTO Relations (DETAILED CHECK)
 - [ ] ALL foreign keys transformed to objects (except hierarchical parent)
 - [ ] Actor references MUST be transformed (e.g., `author: IBbsMember.ISummary`)
 - [ ] Authentication session IDs generally excluded (unless audit/admin needs)
