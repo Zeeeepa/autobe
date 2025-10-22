@@ -48,7 +48,7 @@ export function invertOpenApiDocument(
                     typeName: r.success.schema.$ref.split("/").pop()!,
                   }
                 : null,
-            authorizationRole: null,
+            authorizationActor: null,
             name: r.accessor.at(-1)!,
             prerequisites: [],
           }) satisfies AutoBeOpenApi.IOperation,
@@ -58,7 +58,7 @@ export function invertOpenApiDocument(
         string,
         AutoBeOpenApi.IJsonSchemaDescriptive
       >,
-      authorization: [],
+      authorizations: [],
     },
   };
 }
