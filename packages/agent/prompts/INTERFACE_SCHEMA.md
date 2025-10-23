@@ -784,7 +784,7 @@ All IPage types MUST follow this exact structure:
 
 **Implementation Rules**:
 1. The `pagination` and `data` properties are IMMUTABLE and REQUIRED
-2. You MAY add additional properties like `search` or `sort` if needed
+2. You MAY add additional properties like `search` or `sort` metadata if needed
 3. You MUST NEVER modify or remove the `pagination` and `data` properties
 4. The `data` property is ALWAYS an array type
 5. The array items reference the type indicated in the IPage name
@@ -1881,10 +1881,15 @@ interface IShoppingSeller.ISummary {
   id: string;
   name: string;
   rating: number;
-  // ⚠️ CRITICAL: Summary does NOT include ANY references
-  // NO sales[] array (actor reversal)
-  // NO company object (reference)
-  // Only scalar fields and owned 1:1 compositions
+
+  // ⚠️ CRITICAL RULES for .ISummary:
+  // ✅ INCLUDE: BELONGS-TO references (as .ISummary) - provides context
+  // ✅ INCLUDE: Owned 1:1 compositions - structural integrity
+  // ❌ EXCLUDE: HAS-MANY arrays (actor reversal, aggregations)
+
+  company: IShoppingCompany.ISummary;  // ✅ BELONGS-TO reference included
+  verification?: ISellerVerification.ISummary;  // ✅ 1:1 composition included
+  // NO sales[] array (HAS-MANY - actor reversal)
 }
 ```
 
@@ -1896,7 +1901,16 @@ interface IShoppingSeller.ISummary {
 | **HAS-MANY** (Owns children array) | Base type (detail) | Parent owns - no circular risk |
 | **HAS-ONE** (Owns single child) | Base type (detail) | Parent owns - no circular risk |
 
-**No Case-by-Case Judgment**: Every reference uses `.ISummary` regardless of size or complexity.
+**No Case-by-Case Judgment**: Every BELONGS-TO reference uses `.ISummary` regardless of entity size or complexity.
+
+**Why ALWAYS create .ISummary?** (Even for "small" entities)
+1. **Consistency**: Uniform pattern across entire codebase - easier to maintain
+2. **Future-proofing**: Today's 4-field entity becomes tomorrow's 12-field entity
+3. **Code generation**: AutoBE generates thousands of entities - consistent rules essential
+4. **Circular prevention**: Even small entities can create circular chains if they reference back
+5. **Performance**: Explicit .ISummary types enable better serialization optimization
+
+**Never skip .ISummary for BELONGS-TO relations** - even if the entity seems "already minimal".
 
 **Practical Examples**:
 
@@ -1930,6 +1944,74 @@ interface IBbsArticle {
 6. **Client can fetch detailed reference via separate API if needed**
 
 #### 4.4.4. Response DTOs (Read Operations)
+
+**CRITICAL DISTINCTION**: Response DTOs come in TWO forms - Detail and Summary - each with different relation inclusion rules.
+
+##### 4.4.4.1. Understanding Detail vs Summary Response DTOs
+
+**Detail Response DTOs (Main Entity Type - `IEntity`)**:
+- **Purpose**: Complete entity representation for single-entity retrieval (GET /entities/:id)
+- **Use Case**: Displaying full entity detail page
+- **Relation Strategy**: Include BOTH belongs-to references AND has-many/has-one compositions
+
+**Summary Response DTOs (`IEntity.ISummary`)**:
+- **Purpose**: Lightweight representation for lists and embeddings (GET /entities)
+- **Use Case**: Displaying entity in list views or as reference in other entities
+- **Relation Strategy**: Include ONLY belongs-to references, EXCLUDE has-many compositions
+
+**Why This Distinction Matters**:
+- **Performance**: Summary DTOs are 3-10x smaller (5-15KB vs 50KB per entity)
+- **List Efficiency**: 20-item list = 100-300KB vs 1MB
+- **Both use `.ISummary` for references**: But Detail includes compositions, Summary excludes them
+
+**Example Comparison**:
+
+```typescript
+// Detail DTO - Complete entity with everything
+interface IShoppingSale {
+  id: string;
+  name: string;
+  description: string;  // Full description
+
+  // ✅ BELONGS-TO references - use .ISummary
+  seller: IShoppingSeller.ISummary;
+  section: IShoppingSection.ISummary;
+  categories: IShoppingCategory.ISummary[];
+
+  // ✅ HAS-MANY compositions - include full arrays
+  units: IShoppingSaleUnit[];
+  images: IShoppingSaleImage[];
+
+  // ✅ Aggregations - counts only
+  reviews_count: number;
+}
+
+// Summary DTO - Lightweight for lists
+interface IShoppingSale.ISummary {
+  id: string;
+  name: string;
+  price: number;
+  thumbnail?: string;  // Just one image
+
+  // ✅ BELONGS-TO references - use .ISummary (same as Detail)
+  seller: IShoppingSeller.ISummary;
+  section: IShoppingSection.ISummary;
+  primary_category?: IShoppingCategory.ISummary;
+
+  // ❌ HAS-MANY compositions - EXCLUDE for efficiency
+  // units: NO
+  // images: NO
+
+  // ✅ Aggregations - counts only
+  reviews_count: number;
+}
+```
+
+**The Universal `.ISummary` Rule Applies to BOTH**:
+- Detail DTOs: Use `.ISummary` for BELONGS-TO, include HAS-MANY compositions
+- Summary DTOs: Use `.ISummary` for BELONGS-TO, EXCLUDE HAS-MANY compositions
+
+##### 4.4.4.2. Foreign Key Transformation Rules for Response DTOs
 
 **Rule**: Transform ALL contextual FKs to objects for complete information.
 
@@ -3583,6 +3665,38 @@ Before completing the schema generation, verify ALL of the following items:
 - [ ] **English descriptions only** - All descriptions in English
 - [ ] **Complete documentation** - Every schema and property has meaningful descriptions
 - [ ] **All schemas at root level** - NO schemas nested inside other schemas
+
+---
+
+## 11.5. Handoff to Relation Review Agent
+
+After you complete schema generation, a specialized Relation Review Agent will perform a SECOND PASS to:
+- **Validate AND FIX atomic operation violations**: You create initial atomic structure, Reviewer verifies and fixes
+- Validate FK transformations (all BELONGS-TO use `.ISummary`)
+- Check for circular references
+- Add missing IInvert types
+- Extract inline objects to named types
+
+**What You Should Do**:
+1. **MUST create atomic DTOs**: This is YOUR primary responsibility - ensure Write DTOs can complete operations in single API call
+2. **MUST apply BELONGS-TO → .ISummary rule**: All references use summary types
+3. **BEST EFFORT on complex patterns**: If unsure about IInvert or deep nesting, create it anyway - Relation Reviewer will refine
+4. **MUST ensure security and business logic**: Relation Reviewer will NOT fix these - get them right first time
+
+**Division of Labor**:
+- **YOU (Schema Agent)**: Create complete, secure, atomic schemas with BEST EFFORT relations
+- **Relation Reviewer**: VALIDATE and FIX relation patterns if violations found (should be rare if you follow rules)
+
+**What Gets Reviewed**:
+- The Relation Reviewer receives a SUBSET of schemas (typically 2-5) that need relation validation
+- Selection criteria: Complex entities with multiple relations, compositions, or FK transformations
+- Simple entities (e.g., ICategory with just id/name) may skip relation review
+
+**What You're Still Responsible For**:
+- ✅ Security (actor fields, password protection, authorization)
+- ✅ Business logic (field validation, required fields, enums)
+- ✅ Database consistency (all fields exist in Prisma schema)
+- ⚠️ Relation patterns (best effort, will be reviewed)
 
 ---
 
