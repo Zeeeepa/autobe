@@ -1,267 +1,246 @@
-# AutoBE Project Context for Claude
+# AutoBE Project Context for Claude Code
 
-## Project Overview
-AutoBE is an AI-powered no-code agent that automatically generates complete backend applications using TypeScript, NestJS, and Prisma. The system follows a waterfall development model with compiler feedback validation to ensure 100% working code output.
+## What is AutoBE?
 
-## Core Architecture
-The system consists of specialized agents working in sequence:
+AutoBE is an AI-powered no-code system that automatically generates production-ready backend applications from natural language requirements. Users describe their backend needs through a chat interface, and AutoBE generates a complete TypeScript + NestJS + Prisma application.
 
-### Functional Agents
-- **Analyze Agent**: Requirements analysis and specifications
-- **Prisma Agent**: Database schema design (ERD) with Postgres/SQLite support - structured 3-step process (plan → review → models)
-- **Interface Agent**: API design and OpenAPI specification generation
-- **Test Agent**: End-to-end test code generation with scenario planning
-- **Realize Agent**: Main program implementation and integration
+**Core Capabilities**:
+- 100% compilation guarantee
+- Full type safety across the stack
+- Comprehensive documentation (ERD, OpenAPI, API docs)
+- Complete E2E test coverage
+- Clean, maintainable implementation code
 
-### Compiler Validation
-- Prisma Compiler: Validates database schemas
-- OpenAPI Validator: Validates API specifications  
-- TypeScript Compiler: Validates generated code quality
+**Generated Outputs**:
+Requirements Analysis → Database Schema (Prisma) → API Specification (OpenAPI) → E2E Tests → API Implementation → Type-Safe SDK
 
-## Project Structure
-```
-/autobe/
-   assets/                    # Compiler dependencies and repositories
-      compiler-dependencies/  # Node modules for compiler
-      repositories/           # Sample backend repositories (bbs, shopping)
-   deploy/                    # Deployment scripts
-      sync_dependencies.js    # Dependency synchronization
-      sync_readme.js          # README synchronization
-   internals/                 # Internal configurations and dependencies
-      compiler-dependencies/  # Compiler node modules
-      config/                 # Build configuration
-      dependencies/           # NestJS and test dependencies
-      filesystem/             # File system utilities
-      nestjs-dependencies/    # NestJS specific dependencies
-      repositories/           # Internal sample repositories
-      template/               # Project templates for agents
-      test-dependencies/      # Test-specific dependencies
-      website-examples/       # Example code for website
-   packages/                  # Core package modules (monorepo)
-      agent/                  # Core agent implementation
-      compiler/               # Compiler implementations
-      filesystem/             # File system utilities
-      interface/              # Interface definitions
-      playground-server/      # Playground backend server
-      playground-ui/          # Playground frontend UI
-      rpc/                    # RPC service implementation
-      utils/                  # Shared utilities
-      vscode-extension/       # VSCode extension (planned)
-   test/                      # Comprehensive test suite and results
-      assets/                 # Test assets and histories
-      benchmark-logs/         # Performance benchmark logs
-      results/                # Test execution results
-      scripts/                # Test scenario scripts
-      src/                    # Test source code
-   website/                   # Documentation website (Next.js)
-      articles/               # Blog articles and documentation
-      public/                 # Static assets
-      src/                    # Website source code
-   playground/                # Interactive demo environment
-   playground-result/         # Playground execution results
-   CLAUDE.md                  # This file
-```
+## Three Fundamental Concepts
 
-## Key Technologies
-- **Backend Stack**: TypeScript + NestJS + Prisma
-- **Database**: PostgreSQL (primary), SQLite (development)
-- **API**: OpenAPI/Swagger specification
-- **Testing**: Automated e2e test generation
-- **Validation**: Multi-layer compiler feedback
+### 1. Waterfall + Spiral Pipeline
 
-## Package Architecture
+AutoBE follows a 5-phase waterfall with internal spiral loops:
 
-### Core Packages (/packages/)
-- **@autobe/agent**: Core agent implementation with orchestration logic
-  - Analyze orchestration (requirements analysis)
-  - Prisma orchestration (database schema generation)  
-  - Interface orchestration (API design)
-  - Test orchestration (test code generation)
-  - Realize orchestration (implementation generation)
-- **@autobe/compiler**: Compiler implementations for validation
-  - Prisma compiler (schema validation)
-  - Interface compiler (OpenAPI validation)
-  - TypeScript compiler (code validation)
-  - Test compiler (test code validation)
-  - Realize compiler (implementation validation)
-- **@autobe/filesystem**: File system management utilities
-- **@autobe/interface**: Type definitions and interfaces
-- **@autobe/playground-server**: WebSocket-based playground backend
-- **@autobe/playground-ui**: React-based playground frontend  
-- **@autobe/rpc**: RPC service for agent communication
-- **@autobe/utils**: Shared utilities and helpers
+**Requirements** → **Analyze** → **Prisma** → **Interface** → **Test** → **Realize**
 
-## Development Phase
-Currently in **Beta Phase** (2025-06-01 to 2025-08-31) focusing on:
-- Test Agent refinement with compiler feedback
-- Realize Agent development with runtime validation
-- 100% autonomous backend development capability
-- Ecosystem integration preparation
+Each phase has 40+ specialized AI agents that collaborate. Failures trigger spiral loops that regenerate and correct until success.
 
-## Ecosystem Vision
-Part of WrtnLabs' no-code ecosystem:
-- **@autobe**: Backend application generation
-- **@agentica**: AI chatbot creation from swagger.json
-- **@autoview**: Frontend application generation from swagger.json
+### 2. Compiler-Driven Development
 
-Mission: "Can you converse? Then you're a full-stack developer."
+Three-tier validation ensures 100% compilation:
 
-## Example Use Cases
-1. **BBS (Bulletin Board System)**: Political/economic discussion platform
-2. **E-Commerce Platform**: Shopping mall with voice-driven interactions
-3. **Custom Business Applications**: Requirement-driven development
+**AutoBE Prisma Compiler** → **AutoBE OpenAPI Compiler** → **TypeScript Compiler**
 
-## Key Features
-- **Waterfall Model**: Systematic phase-by-phase development
-- **Compiler Feedback**: Real-time validation and error correction
-- **Function Calling**: AI agent coordination and task distribution
-- **WebSocket Support**: Real-time communication protocols
-- **Schema-First Development**: Database-driven architecture
+Compiler diagnostics feed back to AI agents, creating self-healing loops that automatically correct errors.
 
-## Testing & Validation
-- Automated test scenario generation
-- Compiler-validated code output
-- Benchmark performance testing
-- End-to-end integration testing
+### 3. Vibe Coding
 
-## Instructions for Claude
+Conversation becomes software through automatic transformation:
 
-### Communication Language
-- **Write all code, comments, and documentation in English**
-- **Communicate with the user in Korean (한국어)**
-- Maintain professional yet conversational tone in Korean
+**Conversation** → **Requirements** → **AST** → **Code** → **Application**
 
-### Development Guidelines
-1. Follow the existing TypeScript/NestJS/Prisma patterns
-2. Respect the waterfall development sequence when making changes
-3. Ensure compiler validation passes for any generated code
-4. Reference the test results in `/test/results/` for examples
-5. Use the existing agent patterns found in `/packages/` directory
+The entire pipeline is event-driven, with 65+ event types tracking progress in real-time.
 
-### Development Conventions
+## Documentation Index
 
-All commits, pull requests, and issues follow the same convention format.
+Detailed documentation is organized by topic. **Always consult relevant documents before making changes.**
 
-#### Convention Format
-**Format**: `<type>(<workspace>): <description>`
+### Architecture & Design
+- **[ARCHITECTURE.md](.ai/ARCHITECTURE.md)** - Overall system architecture, three paradigms, package structure
+- **[STATE_MACHINE.md](.ai/STATE_MACHINE.md)** - Step counter pattern, automatic state invalidation
+- **[AST_DESIGN.md](.ai/AST_DESIGN.md)** - Simplified AST philosophy for AI generation
 
-This format is used for:
-- Commit messages
-- Pull request titles
-- Issue titles
+### Agent System (`@autobe/agent`)
+- **[AGENTICA_INTEGRATION.md](.ai/AGENTICA_INTEGRATION.md)** - MicroAgentica pattern, IPointer, function calling abstraction
+- **[FUNCTION_CALLING.md](.ai/FUNCTION_CALLING.md)** - Facade pattern, LLM autonomous decision making
+- **[AGENT_ORCHESTRATION.md](.ai/AGENT_ORCHESTRATION.md)** - Hierarchical orchestration, batch processing, self-healing loops
+- **[AGENT_SYSTEM_PROMPTS.md](.ai/AGENT_SYSTEM_PROMPTS.md)** - System prompt design and editing guide ⭐ **Most Important!**
+- **[AGENT_TOOLS.md](.ai/AGENT_TOOLS.md)** - Function calling tool definitions
+- **[AGENT_HISTORIES.md](.ai/AGENT_HISTORIES.md)** - Context optimization with prompt caching
 
-**Types**:
-- `feat`: New feature
-- `fix`: Bug fix
-- `docs`: Documentation changes
-- `style`: Code style changes (formatting, missing semicolons, etc.)
-- `refactor`: Code refactoring without changing functionality
-- `test`: Adding or modifying tests
-- `chore`: Maintenance tasks, dependency updates
-- `perf`: Performance improvements
+### Compiler System (`@autobe/compiler`)
+- **[COMPILER_SYSTEM.md](.ai/COMPILER_SYSTEM.md)** - Three-tier validation, diagnostic generation, feedback loops
 
-**Workspaces** (from pnpm-workspace.yaml):
-- `agent`, `compiler`, `filesystem`, `interface`, `playground-server`, `playground-ui`, `rpc`, `utils`, `vscode-extension` (in packages/)
-- `test` 
-- `website`
-- `internals/website-examples`
+### Type System & Communication
+- **[TYPE_SYSTEM.md](.ai/TYPE_SYSTEM.md)** - @autobe/interface, discriminated unions, Typia, TGrid RPC
+- **[EVENT_SYSTEM.md](.ai/EVENT_SYSTEM.md)** - 65+ event types, type-safe mapper, WebSocket streaming
+- **[RPC_SYSTEM.md](.ai/RPC_SYSTEM.md)** - WebSocket-based type-safe RPC communication
 
-**Examples**:
-```
-# Commits, PRs, and Issues all use the same format:
-feat(agent): add partial modification support to analyze agent
-fix(compiler): resolve TypeScript compilation error in realize agent
-refactor(utils): remove console log from randomBackoffStrategy function
-chore: release v0.14.6
-```
+### Performance
+- **[OPTIMIZATION.md](.ai/OPTIMIZATION.md)** - Prompt caching, batch processing, concurrency control
 
-#### Pull Request Guidelines
-1. **PR Title**: Must follow the convention format above
-2. **PR Description** must include:
-   - Summary of changes
-   - Related issue number (e.g., `Closes #123`, `Related to #456`)
-   - Test plan or verification steps
-   - Breaking changes (if any)
+### Frontend & UI (`@autobe/ui`, Website, Apps)
+- **[FRONTEND_SYSTEM.md](.ai/FRONTEND_SYSTEM.md)** - UI components, real-time communication, session management
 
-**PR Template**:
-```markdown
-## Summary
-Brief description of what this PR does
+### Development
+- **[DEVELOPMENT_GUIDE.md](.ai/DEVELOPMENT_GUIDE.md)** - Adding features, debugging, code navigation
+- **[BEST_PRACTICES.md](.ai/BEST_PRACTICES.md)** - System prompt editing, optimization, troubleshooting
 
-## Related Issues
-Closes #123
+## Quick Start for Claude Code
 
-## Changes
-- List of specific changes
-- What was modified and why
+### First Time Working on AutoBE
+1. Read [ARCHITECTURE.md](.ai/ARCHITECTURE.md) - Understand system fundamentals
+2. Read [AGENTICA_INTEGRATION.md](.ai/AGENTICA_INTEGRATION.md) - Understand agent structure
+3. Read package-specific documentation for your work area
 
-## Test Plan
-How to verify these changes work correctly
+### Editing System Prompts (Most Important!)
 
-## Breaking Changes
-Any breaking changes (or "None")
-```
+**Absolute Rule**: User instructions are absolute. Claude Code must NEVER modify, reduce, or omit user commands based on its own judgment.
 
-#### Issue Guidelines
-1. **Issue Title**: Must follow the convention format above
-2. **Issue Body** structure:
+**Before Editing**:
+1. **Read [AGENT_SYSTEM_PROMPTS.md](.ai/AGENT_SYSTEM_PROMPTS.md)** completely
+2. Read the target prompt file fully
+3. Review related Orchestrator code (`packages/agent/src/orchestrate/`)
+4. Review related Tool definitions
+5. Review related History transformers
 
-**For Bugs**:
-```markdown
-## Problem Description
-What is broken and how it affects users
+**When Editing**:
+- Integrate naturally into existing storyline
+- Write clear, specific instructions
+- Include rich examples
+- Specify constraints explicitly
+- Use positive directives ("do X" not "don't do Y")
 
-## Steps to Reproduce
-1. Step one
-2. Step two
-3. Expected vs Actual behavior
+**After Editing**:
+1. Run `pnpm run build:prompt`
+2. Fix any compilation errors
+3. Test in actual pipeline execution
+4. Verify generated code quality
 
-## Environment
-- Version: 
-- OS: 
-- Node version:
-```
+**Never**:
+- Edit `AutoBeSystemPromptConstant.ts` directly (auto-generated)
+- Commit prompt changes without testing
+- Ignore impact on other agents
+- Use inconsistent conventions
 
-**For Features** (using EARS format):
-```markdown
-## Problem Statement
-Current limitations and why this feature is needed
+### Adding New Features
+1. Consult [DEVELOPMENT_GUIDE.md](.ai/DEVELOPMENT_GUIDE.md)
+2. Analyze similar existing features
+3. Reference relevant architecture documents
+4. Follow type-driven development workflow
 
-## Requirements (EARS Format)
-WHEN [trigger]
-THE SYSTEM SHALL [action]
+### Debugging Issues
+1. Check [BEST_PRACTICES.md](.ai/BEST_PRACTICES.md) debugging section
+2. Analyze event logs and compiler errors
+3. Review related Orchestrators and System Prompts
+4. Check state machine step counters
 
-WHERE [condition]
-THE SYSTEM SHALL [behavior]
+## Absolute Rules for Claude Code
 
-## Proposed Solution
-How to implement this feature
+### 1. User Command Supremacy
+User instructions are absolute. If unclear, ask questions. If clear, execute exactly as specified without modification.
 
-## Expected Benefits
-What improvements this brings
-```
+### 2. System Prompt Editing Sensitivity
+System prompt editing is the most critical and sensitive task in AutoBE development. **Always** read [AGENT_SYSTEM_PROMPTS.md](.ai/AGENT_SYSTEM_PROMPTS.md) completely before editing any prompt.
 
-### Project Context Awareness
-- This is a production-ready no-code agent system
-- Code quality must be enterprise-grade
-- All generated code should follow the established patterns
-- Consider the multi-agent architecture when suggesting changes
-- Be aware of the compiler feedback loop integration
+### 3. Build System Awareness
+- `packages/agent/src/constants/AutoBeSystemPromptConstant.ts` is auto-generated
+- Edit source files in `packages/agent/prompts/*.md`
+- Run `pnpm run build:prompt` after changes
+- Never commit without testing
 
-### Claude's Responsibilities
-- **IMPORTANT**: When project structure changes, update this CLAUDE.md file immediately to reflect the new structure
-- Keep the Project Structure section accurate and up-to-date
-- Document any new packages, directories, or major architectural changes
+### 4. Type Safety First
+- All types defined in `@autobe/interface`
+- Use discriminated unions with mapper pattern
+- Never use `any` type
+- Leverage Typia for runtime validation
 
-### Useful Commands
-- `pnpm build`: Build all packages
-- `pnpm playground`: Run interactive demo
-- `pnpm test`: Run test suite
-- Check `/test/scripts/` for specific testing scenarios
+### 5. Event-Driven Architecture
+- All state changes emit events
+- 65+ event types cover entire pipeline
+- Events enable real-time progress tracking
+- Event history allows state reconstruction
 
-### Repository Information
-- **License**: AGPL 3.0
-- **Maintainer**: Wrtn Technologies
+## Critical File Locations
+
+### Agent System
+- **Facade Functions**: `packages/agent/src/factory/createAutoBeApplication.ts:28-111`
+- **Context Factory**: `packages/agent/src/factory/createAutoBeContext.ts`
+- **Orchestrators**: `packages/agent/src/orchestrate/*/`
+- **System Prompts**: `packages/agent/prompts/*.md`
+- **History Transformers**: `packages/agent/src/orchestrate/*/histories/`
+
+### Compiler System
+- **Prisma Compiler**: `packages/compiler/src/prisma/AutoBePrismaCompiler.ts`
+- **OpenAPI Compiler**: `packages/compiler/src/interface/AutoBeInterfaceCompiler.ts`
+- **TypeScript Compiler**: `packages/compiler/src/AutoBeTypeScriptCompiler.ts`
+
+### Type System
+- **All Types**: `packages/interface/src/`
+- **Events**: `packages/interface/src/events/`
+- **Histories**: `packages/interface/src/histories/`
+- **OpenAPI AST**: `packages/interface/src/openapi/AutoBeOpenApi.ts`
+
+### RPC & Frontend
+- **RPC Service**: `packages/rpc/src/AutoBeRpcService.ts`
+- **UI Components**: `packages/ui/src/`
+- **Website**: `packages/website/`
+
+## Development Workflow
+
+### Type-Driven Development
+1. Define types in `@autobe/interface`
+2. Add to discriminated union and mapper
+3. Implement in other packages
+4. Types enforce correctness at compile time
+
+### Event-Driven Updates
+1. Emit events at key orchestration points
+2. Events automatically stream via RPC
+3. Frontend subscribes to relevant events
+4. State reconstructs from event history
+
+### Compiler-Driven Quality
+1. Generate code via LLM
+2. Validate with appropriate compiler
+3. Extract diagnostics on failure
+4. Pass to Correct orchestrator
+5. Regenerate with fixes
+6. Repeat until success
+
+## Common Tasks
+
+### Adding a New Event Type
+1. Define in `packages/interface/src/events/`
+2. Add to `AutoBeEvent` union
+3. Add to `AutoBeEvent.Mapper`
+4. Add to `IAutoBeRpcListener`
+5. Emit from orchestrator: `ctx.dispatch(event)`
+6. **No RPC code changes needed** - automatic forwarding!
+
+### Modifying System Prompt
+1. Read [AGENT_SYSTEM_PROMPTS.md](.ai/AGENT_SYSTEM_PROMPTS.md)
+2. Edit `packages/agent/prompts/*.md`
+3. Run `pnpm run build:prompt`
+4. Test with actual generation
+5. Verify output quality
+
+### Adding New Orchestrator
+1. Study existing orchestrators
+2. Follow hierarchical pattern
+3. Use `executeCachedBatch` for parallelization
+4. Emit events at key points
+5. Integrate compiler feedback loops
+6. Update state on completion
+
+## Performance Considerations
+
+- **Prompt Caching**: First task sequential (establish cache), rest parallel
+- **Batch Processing**: Use `executeCachedBatch` pattern everywhere
+- **Concurrency**: Semaphore limits compilations to 2
+- **Incremental Compilation**: Reuse prior TypeScript program
+- **Token Optimization**: History transformers curate minimal context
+
+## Repository Information
+
 - **Repository**: https://github.com/wrtnlabs/autobe
 - **Documentation**: https://autobe.dev/docs/
-- **Main Branch**: main
+- **Main Branch**: `main`
+- **License**: AGPL 3.0
+- **Discord**: https://discord.gg/aMhRmzkqCx
+
+---
+
+**Version**: 2.1.0
+**Last Updated**: 2025-01-23
+
+This document provides Claude Code with essential context for understanding and contributing to AutoBE. For detailed technical information, always consult the specific documentation files listed above.
