@@ -301,7 +301,7 @@ export interface IWrtnChatSession {
 export interface IWrtnEnterpriseEmployee {
   // FK 참조관계 및 has 관계 맵핑
   enterprise: IWrtnEnterprise.ISummary;
-  companions: IWrtnEnterpriseTeamCompanion.ISummary[];
+  companions: IWrtnEnterpriseTeamCompanion[];
 
   // 이후로 자유로이 나머지 속성들을 설계할 것...
   id: string & tags.Format<"uuid">;
@@ -311,6 +311,26 @@ export interface IWrtnEnterpriseEmployee {
   updated_at: string & tags.Format<"date-time">;
   approved_at: string & tags.Format<"date-time"> | null;
 }
+export namespace IWrtnEnterpriseEmployee {
+  export interface ISummary {
+    // FK 참조관계 및 has 관계 맵핑
+  enterprise: IWrtnEnterprise.ISummary;
+
+  // 여기만큼은 예외적으로 1: M has relationship 이지만
+  // 이렇게 소속 팀 정보를 전부 다 보여주어야 함
+  // 이게 은근 중요한 정보라 summary 차원에서도 필히 표기해야하여 그러하다
+  companions: IWrtnEnterpriseTeamCompanion[];
+
+  // 이후로 자유로이 나머지 속성들을 설계할 것...
+  id: string & tags.Format<"uuid">;
+  email: string & tags.Format<"email">;
+  title: "master" | "manager" | "member" | null;
+  created_at: string & tags.Format<"date-time">;
+  updated_at: string & tags.Format<"date-time">;
+  approved_at: string & tags.Format<"date-time"> | null;
+  }
+}
+
 export interface IWrtnEnterpriseEmployeeAppointment {
   id: string & tags.Format<"uuid">;
   employee: IWrtnEnterpriseEmployee.ISummary; // 임명된 사람
@@ -318,6 +338,7 @@ export interface IWrtnEnterpriseEmployeeAppointment {
   title: "master" | "manager" | "member" | null;
   created_at: string & tags.Format<"date-time">;
 }
+
 export interface IWrtnEnterpriseEmployeeInvitation {
   id: string & tags.Format<"uuid">;
   employee: IWrtnEnterpriseEmployee.ISummary; // 초대한 사람
@@ -745,11 +766,31 @@ model wrtn_chat_session_histories {
   wrtn_chat_session_connection_id String @uuid
   type String // Discriminator type
   data String // JSON value, encrypted
-  token_usage String? // JSON value
   created_at DateTime
 
   @@index([wrtn_chat_session_id, created_at])
   @@index([wrtn_chat_session_connection_id])
+}
+
+// Token usage for individual chat history entries (1:1 relationship)
+model wrtn_chat_session_history_token_usages {
+  id String @id @uuid
+  wrtn_chat_session_history_id String @uuid
+  
+  // Total tokens
+  total Int
+  
+  // Input token breakdown
+  input_total Int
+  input_cached Int
+  
+  // Output token breakdown  
+  output_total Int
+  output_reasoning Int
+  output_accepted_prediction Int
+  output_rejected_prediction Int
+  
+  @@unique([wrtn_chat_session_history_id])
 }
 
 // File attachments for chat history entries
@@ -768,19 +809,37 @@ model wrtn_chat_session_aggregates {
   id String @id @uuid
   wrtn_chat_session_id String @uuid
   history_count Int
-  token_usage String // JSON value
 
   @@unique([wrtn_chat_session_id])
+}
+
+// Token usage aggregates for chat sessions (1:1 relationship)
+model wrtn_chat_session_aggregate_token_usages {
+  id String @id @uuid
+  wrtn_chat_session_aggregate_id String @uuid
+  
+  // Total tokens
+  total Int
+  
+  // Input token breakdown
+  input_total Int
+  input_cached Int
+  
+  // Output token breakdown  
+  output_total Int
+  output_reasoning Int
+  output_accepted_prediction Int
+  output_rejected_prediction Int
+  
+  @@unique([wrtn_chat_session_aggregate_id])
 }
 ```
 
 AI Chatbot 서비스는 뤼튼 엔터프라이즈의 핵심 기능으로써, OpenAI GPT 등의 AI 모델과 자연어로 대화할 수 있는 서비스이다.
 
-> **중요**: 이 섹션의 모든 JSON 필드들은 반드시 JSON 타입으로 유지해야 한다. 절대로 JSON 필드를 해체하여 정규 컬럼으로 나누지 마라. 특히 다음 필드들은 반드시 JSON으로 유지해야 한다:
+> **중요**: 이 섹션의 JSON 필드들은 반드시 JSON 타입으로 유지해야 한다. 절대로 JSON 필드를 해체하여 정규 컬럼으로 나누지 마라. 특히 다음 필드는 반드시 JSON으로 유지해야 한다:
 >
-> - `wrtn_chat_session_histories.data` - JSON value, encrypted
-> - `wrtn_chat_session_histories.token_usage` - JSON value
-> - `wrtn_chat_session_aggregates.token_usage` - JSON value
+> - `wrtn_chat_session_histories.data` - JSON value, encrypted (채팅 메시지 내용)
 >
 > 추가 필드를 달아도 된다는 것은 새로운 컬럼을 추가할 수 있다는 의미이지, 기존 JSON 필드를 분해하라는 의미가 절대 아니다.
 
@@ -901,6 +960,14 @@ export interface IWrtnChatFunctionCallHistory {
 
 토큰 사용량 타입은 이렇게 정의한다.
 
+이 DTO는 정규화된 토큰 사용량 테이블들의 데이터를 표현한다:
+- `wrtn_chat_session_history_token_usages` - 개별 채팅 히스토리의 토큰 사용량
+- `wrtn_chat_session_aggregate_token_usages` - 채팅 세션 전체의 누적 토큰 사용량  
+- `wrtn_procedure_session_history_token_usages` - 개별 프로시저 히스토리의 토큰 사용량
+- `wrtn_procedure_session_aggregate_token_usages` - 프로시저 세션 전체의 누적 토큰 사용량
+
+토큰을 소비하지 않는 히스토리 엔트리(예: 사용자 메시지, 시스템 이벤트 등)의 경우, 대응하는 토큰 사용량 레코드가 존재하지 않을 수 있다. 이 경우 API 레벨에서 모든 값을 0으로 채워서 반환한다.
+
 물론 이 또한 AutoBE가 상세한 설명을 보충하여 (JSON schema 상 `description`) DTO 정의해야함.
 
 ```typescript
@@ -995,7 +1062,6 @@ model wrtn_procedure_session_histories {
   arguments String    // JSON value, encrypted
   success Boolean?    // Whether returned or exception thrown
   value String?       // JSON value of return or exception, encrypted
-  token_usage String? // JSON value
   created_at DateTime
   completed DateTime?
   
@@ -1003,24 +1069,64 @@ model wrtn_procedure_session_histories {
   @@index([wrtn_procedure_session_connection_id])
 }
 
+// Token usage for individual procedure history entries (1:1 relationship)
+model wrtn_procedure_session_history_token_usages {
+  id String @id @uuid
+  wrtn_procedure_session_history_id String @uuid
+  
+  // Total tokens
+  total Int
+  
+  // Input token breakdown
+  input_total Int
+  input_cached Int
+  
+  // Output token breakdown  
+  output_total Int
+  output_reasoning Int
+  output_accepted_prediction Int
+  output_rejected_prediction Int
+  
+  @@unique([wrtn_procedure_session_history_id])
+}
+
 // Aggregated metrics for procedure sessions
 model wrtn_procedure_session_aggregates {
   id String @id @uuid
   wrtn_procedure_session_id String @uuid
   history_count Int
-  token_usage String // JSON value, total aggregation
   
   @@unique([wrtn_procedure_session_id])
+}
+
+// Token usage aggregates for procedure sessions (1:1 relationship)
+model wrtn_procedure_session_aggregate_token_usages {
+  id String @id @uuid
+  wrtn_procedure_session_aggregate_id String @uuid
+  
+  // Total tokens
+  total Int
+  
+  // Input token breakdown
+  input_total Int
+  input_cached Int
+  
+  // Output token breakdown  
+  output_total Int
+  output_reasoning Int
+  output_accepted_prediction Int
+  output_rejected_prediction Int
+  
+  @@unique([wrtn_procedure_session_aggregate_id])
 }
 ```
 
 함수 형태의 AI 서비스.
 
-**중요**: 이 섹션의 모든 JSON 필드들은 반드시 JSON 타입으로 유지해야 한다. 절대로 JSON 필드를 해체하여 정규 컬럼으로 나누지 마라. 특히 다음 필드들은 반드시 JSON으로 유지해야 한다:
+**중요**: 이 섹션의 JSON 필드들은 반드시 JSON 타입으로 유지해야 한다. 절대로 JSON 필드를 해체하여 정규 컬럼으로 나누지 마라. 특히 다음 필드들은 반드시 JSON으로 유지해야 한다:
 - `wrtn_procedure_session_histories.arguments` - JSON value, encrypted
 - `wrtn_procedure_session_histories.value` - JSON value, encrypted
-- `wrtn_procedure_session_histories.token_usage` - JSON value
-- `wrtn_procedure_session_aggregates.token_usage` - JSON value
+
 추가 필드를 달아도 된다는 것은 새로운 컬럼을 추가할 수 있다는 의미이지, 기존 JSON 필드를 분해하라는 의미가 절대 아니다.
 
 뤼튼 엔터프라이즈에서 말하는 AI Procedure 란, 위 [4. AI Chatbot](#4-ai-chatbot) 과 같은 챗봇의 형태가 아닌, 지정된 형태의 인풋을 받아서 약속된 형태의 아웃풋을 반환하는 함수형 서비스이다. 문자 그대로 함수(프로시저) 형태의 AI 서비스로써, Stable Diffusion 으로 이미지를 생성하는게 AI Procedure 의 가장 대표적인 사례이다.
@@ -1037,9 +1143,11 @@ Connect to | Session | Session
 Histories  | 1       | N
 Progress   | None    | Streaming
 
-참고로 `wrtn_procedure_session_histories` 의 경우에는 `success`, `value`, `token_usage`, `completed_at` 컬럼들이 모두 NULLABLE 한데, 이것은 해당 프로시저의 작업이 아직 끝나지 않아서 그러한 것이다. 즉, 프로시저가 모든 작업을 마치거든, 이 값들이 공실히 남아있지 않고 모두 채워지게 되는 것.
+참고로 `wrtn_procedure_session_histories` 의 경우에는 `success`, `value`, `completed` 컬럼들이 모두 NULLABLE 한데, 이것은 해당 프로시저의 작업이 아직 끝나지 않아서 그러한 것이다. 즉, 프로시저가 모든 작업을 마치면, 이 값들이 공란으로 남아있지 않고 모두 채워지게 되는 것.
 
-이외에 `wrtn_procedure_session_aggregates` 테이블에는 각 `wrtn_procedure_session_histories` 가 완료될 때마다의 `token_usage` 총 사용량이 누적되어 기록되어야 한다. `token_usage` 에 기록되는 JSON value type 은 `IWrtnTokenUsage` 로써 앞서의 [4. AI Chatbot](#4-ai-chatbot) 때와 같다.
+이외에 `wrtn_procedure_session_aggregate_token_usages` 테이블에는 각 `wrtn_procedure_session_histories` 가 완료될 때마다의 총 토큰 사용량이 누적되어 기록되어야 한다. 
+
+토큰을 소비하지 않는 히스토리 엔트리의 경우, 해당하는 token_usages 테이블 레코드가 존재하지 않을 수 있다. 이 경우 API 레벨에서는 `IWrtnTokenUsage` 인터페이스의 모든 속성값을 0으로 채워서 반환한다.
 
 ## 7. Configurations
 ### 7.1. Persona
@@ -1235,6 +1343,20 @@ model wrtn_ai_model_pricings {
 
 ### 9.3. Chat Session 통계 지표
 
+> **🚨 절대적 구현 요구사항 - B2B SaaS의 핵심**
+> 
+> **본 섹션(9.3)과 다음 섹션(9.4)에서 정의하는 모든 통계 지표와 집계 차원은 B2B 엔터프라이즈 서비스의 핵심이다.**
+> 
+> AutoBE는 아래에 나열되는 **모든 메트릭, 모든 집계 차원, 모든 권한별 조회 범위, 모든 다차원 집계 옵션**에 대하여 **단 하나도 빠짐없이** API operation과 DTO schema를 설계해야 한다. 이는 선택사항이 아니라 필수 요구사항이다.
+> 
+> **왜 이것이 절대적으로 중요한가?**
+> - B2B 서비스에서 통계와 대시보드는 고객사가 ROI를 판단하는 핵심 지표다
+> - 기업 고객은 모든 차원에서 상세한 비용 분석과 사용량 추적을 요구한다
+> - 통계 정보 제공이 미흡하면 전체 백엔드 어플리케이션의 가치가 무너진다
+> - 엔터프라이즈 고객은 불완전한 통계 시스템을 가진 서비스를 절대 신뢰하지 않는다
+> 
+> **주의사항**: 통계 정보를 저장하는 별도 DB 테이블은 없다. 하지만 이것이 통계 API와 DTO를 생략하라는 의미가 절대 아니다. 모든 통계는 기존 테이블로부터 실시간 집계하여 제공되어야 하며, 이를 위한 완벽한 API 스펙이 필수적이다.
+
 **기본 메트릭**
 - **토큰 사용량**: 입력/출력/캐시/추론 토큰을 각각 별도 집계
 - **비용**: 토큰 사용량 × 모델별 단가로 계산된 실제 비용
@@ -1242,16 +1364,20 @@ model wrtn_ai_model_pricings {
 - **연결 시간**: 각 세션의 총 연결 시간 (connected_at ~ disconnected_at)
 
 **집계 차원**
-- **AI 모델별**: vendor 필드 기준으로 그룹핑 (예: openai/gpt-4o, anthropic/claude-3)
+- **AI 모델별**: vendor 필드 기준으로 그룹핑 (예: `openai/gpt-5`, `anthropic/claude-sonnet-4.5`)
 - **주기별**: 일일/주간/월간 단위로 집계
 - **날짜 범위**: 사용자가 지정한 시작일~종료일 범위 내 데이터 조회
 - **조직별**: 법인/팀/개인 단위로 그룹핑
 
 **권한별 조회 범위**
-- **wrtn_moderators (master/manager)**: 모든 기업의 집계 통계 조회 가능
-- **wrtn_enterprise_employees (master)**: 자사 전체의 법인/팀/개인별 통계 조회 가능
-- **wrtn_enterprise_employees (manager)**: 자사 전체의 법인/팀별 통계 조회 가능 (개인별은 본인만)
-- **wrtn_enterprise_employees (member)**: 본인 개인 통계만 조회 가능
+
+| 권한 유형 | 조회 가능 범위 | 상세 내용 |
+|----------|--------------|----------|
+| **wrtn_moderators (master)** | 시스템 전체 | • 모든 기업/팀/직원의 집계 통계<br>• 개별 기업별 상세 통계<br>• 시스템 전체 사용량 추이 |
+| **wrtn_moderators (manager)** | 시스템 전체 | • 모든 기업/팀/직원의 집계 통계<br>• 개별 기업별 상세 통계<br>• 시스템 전체 사용량 추이 |
+| **wrtn_enterprise_employees (master)** | 자사 전체 | • 자사 법인 전체 통계<br>• 모든 팀별 상세 통계<br>• 모든 개인별 상세 통계 |
+| **wrtn_enterprise_employees (manager)** | 제한적 범위 | • 자사 법인 전체 집계 통계<br>• 모든 팀별 집계 통계<br>• **개인별 통계**:<br>&nbsp;&nbsp;- master 권한자: 조회 불가<br>&nbsp;&nbsp;- master 외: 상세 조회 가능<br>&nbsp;&nbsp;- 본인 통계: 상세 조회 가능 |
+| **wrtn_enterprise_employees (member)** | 본인만 | • 본인의 개인 통계만 |
 
 **통계 조회 요구사항**
 - AI 모델별로 그룹핑하여 통계를 볼 수 있어야 한다
@@ -1260,7 +1386,30 @@ model wrtn_ai_model_pricings {
 - 법인/팀/개인 단위로 그룹핑하여 조회할 수 있어야 한다
 - 권한에 따라 조회 가능한 범위가 제한되어야 한다
 
+**다차원 집계 옵션**
+
+| 집계 기준 | 설명 | 사용 예시 |
+|----------|------|----------|
+| **시간 기준** | | |
+| `daily` | 일별 집계 | 일일 사용량 추이 |
+| `weekly` | 주별 집계 | 주간 패턴 분석 |
+| `monthly` | 월별 집계 | 월간 비용 관리 |
+| `yearly` | 연별 집계 | 연간 성장 추이 |
+| **조직 기준** | | |
+| `system` | 시스템 전체 | 전체 현황 파악 |
+| `enterprise` | 기업별 | 기업 단위 분석 |
+| `team` | 팀별 | 팀 성과 비교 |
+| `employee` | 개인별 | 개인 사용량 추적 |
+| **모델 기준** | | |
+| `vendor` | AI 벤더 모델별 | AI 벤더 모델별 비용 분석 |
+
 ### 9.4. Procedure Session 통계 지표
+
+> **📊 절대적 구현 요구사항 - 섹션 9.3과 함께 B2B SaaS의 핵심**
+> 
+> 본 섹션에서 정의하는 모든 Procedure Session 통계 지표 역시 앞선 Chat Session 통계(9.3)와 마찬가지로 **완벽하게 구현되어야 한다**. 모든 메트릭, 집계 차원, 권한별 조회 범위에 대한 API operation과 DTO schema가 **누락 없이** 설계되어야 한다.
+> 
+> 기업 고객은 AI Procedure의 ROI를 정확히 측정하기 위해 이 모든 통계를 요구한다. 하나라도 누락되면 서비스 전체의 신뢰성이 무너진다.
 
 **기본 메트릭**
 - **토큰 사용량**: 각 프로시저별 입력/출력/캐시/추론 토큰 집계
@@ -1314,6 +1463,18 @@ model wrtn_ai_model_pricings {
 
 ### 9.6. 통계 조회 요구사항 요약
 
+> **⚠️ AutoBE에게 다시 한 번 강조하는 절대적 구현 명령**
+> 
+> **아래에 요약되는 모든 통계 요구사항은 100% 완벽하게 API operation과 DTO schema로 구현되어야 한다.**
+> 
+> 이는 B2B 엔터프라이즈 서비스의 생명선이다. 기업 고객들은 정확한 통계와 대시보드를 통해 AI 투자의 가치를 평가한다. 통계 시스템이 불완전하면:
+> - 고객사 경영진은 AI 도입의 ROI를 증명할 수 없다
+> - 팀 관리자는 팀원들의 생산성을 측정할 수 없다
+> - 재무팀은 비용을 정확히 추적할 수 없다
+> - 결국 서비스 전체가 실패한다
+> 
+> **반복 강조**: DB에 통계 테이블이 없다고 해서 통계 API를 생략하지 마라. 실시간 집계를 위한 완벽한 API 스펙이 필수다. 아래의 모든 항목에 대해 빠짐없이 API와 DTO를 설계하라.
+
 **Chat Session 통계가 제공해야 할 정보**
 - 토큰 사용량 (입력/출력/캐시/추론별)
 - 비용 (토큰 사용량 × 모델별 단가)
@@ -1328,10 +1489,14 @@ model wrtn_ai_model_pricings {
 - 프로시저 종류별/AI 모델별/주기별/조직별로 조회 가능
 
 **권한별 접근 제한**
-- wrtn_moderators: 전체 기업의 집계 통계
-- enterprise employees (master): 자사 전체 통계
-- enterprise employees (manager): 자사 법인/팀 통계
-- enterprise employees (member): 본인 개인 통계만
+
+| 사용자 유형 | Chat Session 통계 | Procedure Session 통계 | 대시보드 | 감사 로그 |
+|-----------|-----------------|---------------------|----------|----------|
+| **내부 관리자 (master)** | • 시스템 전체<br>• 모든 기업별<br>• 모든 팀별<br>• 모든 개인별 | • 시스템 전체<br>• 모든 기업별<br>• 모든 프로시저별 | 시스템 전체 뷰 | 시스템 전체 |
+| **내부 관리자 (manager)** | • 시스템 전체<br>• 모든 기업별<br>• 모든 팀별 | • 시스템 전체<br>• 모든 기업별<br>• 모든 프로시저별 | 시스템 전체 뷰 | 시스템 전체 |
+| **기업 직원 (master)** | • 자사 전체<br>• 자사 모든 팀<br>• 자사 모든 개인<br>&nbsp;&nbsp;(전 직원 상세 조회) | • 자사 전체<br>• 자사 모든 팀<br>• 자사 모든 개인<br>• 자사 모든 프로시저 | 자사 전체 뷰<br>(모든 직원 포함) | 자사 전체<br>(모든 활동) |
+| **기업 직원 (manager)** | • 자사 전체 집계<br>• 자사 모든 팀 집계<br>• **개인별 제한**:<br>&nbsp;&nbsp;- 본인: ✓<br>&nbsp;&nbsp;- 같은 팀 멤버: ✓<br>&nbsp;&nbsp;- 다른 팀 manager: ✗<br>&nbsp;&nbsp;- master 권한자: ✗ | • 자사 전체 집계<br>• 자사 모든 팀 집계<br>• **개인별 제한**:<br>&nbsp;&nbsp;- 같은 팀 멤버만<br>&nbsp;&nbsp;- master/다른 manager 제외<br>• 자사 사용 프로시저 | 자사 집계 뷰<br>팀 상세 뷰<br>(자신의 팀만 개인 조회) | 자신의 팀만<br>(타 팀 제외) |
+| **기업 직원 (member)** | • 본인 통계만<br>• 소속 팀 집계<br>&nbsp;&nbsp;(개인 식별 불가) | • 본인 통계만<br>• 본인 사용 프로시저 | 개인 뷰만<br>(본인 데이터) | 본인 활동만 |
 
 ### 9.8. 감사 추적 (Audit Trail)
 
@@ -1574,9 +1739,9 @@ model wrtn_ai_model_pricings {
 - [ ] wrtn_wrtn prefix를 이중으로 사용하지 않았는가?
 
 ### 12.7. JSON 필드 관련
-- [ ] `token_usage` 필드들을 JSON으로 유지했는가?
-- [ ] `data`, `arguments`, `value` 등 JSON 필드를 분해하지 않았는가?
+- [ ] `data`, `arguments`, `value`, `memory` 등 JSON 필드를 분해하지 않았는가?
 - [ ] JSON 필드를 정규화하여 별도 테이블로 만들지 않았는가?
+- [ ] 토큰 사용량은 별도의 1:1 관계 테이블로 올바르게 정규화했는가?
 
 ### 12.8. 통계 및 집계 관련
 - [ ] 비정규화된 통계 테이블을 만들지 않았는가?
@@ -1612,6 +1777,7 @@ model wrtn_ai_model_pricings {
 - [ ] 모든 지시사항에 절대 복종했는가?
 - [ ] "절대복종"이 무엇인지 이해하고 실천했는가?
 - [ ] **최종 검증: 본 문서의 25개 테이블 + 추가 설계한 테이블들로 완전한 시스템을 구성했는가?**
+- [ ] **🚨 통계 API 완전성 검증: 섹션 9.3과 9.4의 모든 메트릭, 집계 차원, 권한별 조회 범위, 다차원 집계 옵션에 대한 API operation과 DTO가 단 하나도 빠짐없이 설계되었는가?**
 
 **균형잡힌 접근 필수**:
 - 기존 25개 테이블: 절대 수정 금지, 정확히 그대로 구현
