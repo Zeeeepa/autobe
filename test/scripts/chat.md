@@ -269,6 +269,12 @@ switch(actor) {
 
 **Relation 맵핑 원칙**
 - Response DTO에서 FK를 객체로 변환
+- **핵심 엔티티 참조 맵핑 (필수, 예외 없음)**: Response DTO (detail/summary 모두)에서 다음 FK 참조들은 반드시 객체로 맵핑해야 함
+  - **Actor 참조**: `IWrtnChatSession.wrtn_enterprise_employee_id` (X) → `IWrtnChatSession.employee` (O)
+  - **Actor 참조**: `IWrtnEnterprise.wrtn_moderator_id` (X) → `IWrtnEnterprise.moderator` (O)
+  - **Team 참조**: `IWrtnChatSession.wrtn_enterprise_team_id` (X) → `IWrtnChatSession.team` (O)
+  - **Enterprise 참조**: 통계 조회 시 `wrtn_enterprise_id` (X) → `enterprise` (O)
+  - Detail DTO든 Summary DTO든 관계없이 모든 Response DTO에 적용
 - Create DTO에서 관계 타입별로 적절히 구성 (Composition, Association, Aggregation)
 - Create DTO는 단일 API 호출로 완전한 엔티티 생성이 가능하도록 설계 (Atomic Operation Principle)
 - 관련 엔티티들이 함께 생성되어야 할 경우, 중첩된 객체 구조로 한 번에 처리
@@ -277,21 +283,21 @@ switch(actor) {
 //----
 // Relation 맵핑 예시
 //----
-// 아래 타입 정의는 참고사항이자 권유사항일 뿐이니 이 설계를 
-// 100% 따라야하는 것은 아니다. 다만 Read(Response) DTO 기준 
-// 맵핑을 어떻게 해야하는지 본 예제로부터 그 원리를 파악하여 
-// 도처에 응용하기 바란다
+// 아래 예시에서 명시된 relation 필드들(employee, team, persona 등)은
+// 반드시 포함되어야 한다. 다만 나머지 scalar 속성들(id, title 등)이나
+// 추가 relation을 정의하는 것은 자유롭게 해도 된다.
+// Read(Response) DTO 기준 맵핑 원리를 파악하여 도처에 응용하기 바란다.
 export interface IWrtnChatSession {
-  // 이하 FK 참조 관계를 객체로 맵핑
+  // 이하 FK 참조 관계를 객체로 맵핑 (필수)
   employee: IWrtnEnterpriseEmployee.ISummary;
   team: IWrtnEnterpriseTeam.ISummary | null;
   persona: IWrtnPersona.ISummary;
 
-  // 이하 has 관계를 객체 내지 배열로 맵핑
+  // 이하 has 관계를 객체 내지 배열로 맵핑 (필수)
   token_usage: IWrtnTokenUsage | null;
   connections: IWrtnChatSessionConnection[];
   histories: IWrtnChatSessionHistory[];
-  
+
   // 이후로 자유로이 나머지 속성들을 설계할 것...
   id: string & tags.Format<"uuid">;
   title: string | null;
@@ -299,7 +305,7 @@ export interface IWrtnChatSession {
 }
 
 export interface IWrtnEnterpriseEmployee {
-  // FK 참조관계 및 has 관계 맵핑
+  // FK 참조관계 및 has 관계 맵핑 (필수)
   enterprise: IWrtnEnterprise.ISummary;
   companions: IWrtnEnterpriseTeamCompanion[];
 
@@ -313,7 +319,7 @@ export interface IWrtnEnterpriseEmployee {
 }
 export namespace IWrtnEnterpriseEmployee {
   export interface ISummary {
-    // FK 참조관계 및 has 관계 맵핑
+    // FK 참조관계 및 has 관계 맵핑 (필수)
   enterprise: IWrtnEnterprise.ISummary;
 
   // 여기만큼은 예외적으로 1: M has relationship 이지만
@@ -332,6 +338,7 @@ export namespace IWrtnEnterpriseEmployee {
 }
 
 export interface IWrtnEnterpriseEmployeeAppointment {
+  // 명시된 relation들은 필수로 포함
   id: string & tags.Format<"uuid">;
   employee: IWrtnEnterpriseEmployee.ISummary; // 임명된 사람
   appointer: IWrtnEnterpriseEmployee.ISummary; // 임명한 사람
@@ -340,6 +347,7 @@ export interface IWrtnEnterpriseEmployeeAppointment {
 }
 
 export interface IWrtnEnterpriseEmployeeInvitation {
+  // 명시된 relation들은 필수로 포함
   id: string & tags.Format<"uuid">;
   employee: IWrtnEnterpriseEmployee.ISummary; // 초대한 사람
   email: string & tags.Format<"email">; // 초대받은 이메일
