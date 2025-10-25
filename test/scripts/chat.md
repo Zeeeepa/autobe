@@ -73,7 +73,24 @@
 
 #### 2.2.1. 수정 금지
 
+**절대 불변 원칙 - AI의 재해석 절대 금지**:
+
 - 테이블명, 컬럼명, 타입, DTO 인터페이스명, 속성명 변경 불가
+- **테이블명 재해석 절대 금지**: `wrtn_chat_sessions`를 `wrtn_chatbot_sessions`로 바꾸거나, 어떤 형태로든 변형하는 것은 절대 금지
+- **컬럼명 재해석 절대 금지**: 본 문서에서 지정한 컬럼명을 "더 명확하게" 또는 "더 일관되게" 한다는 명목으로 변경하는 것은 절대 금지
+- **AI의 "더 나은 명명" 판단 절대 금지**: AI가 주관적으로 판단하여 명명 규칙을 통일하거나 개선하려는 시도는 중대한 위반이다
+
+**위반 예시 (절대 금지)**:
+- ❌ `wrtn_chat_sessions` → `wrtn_chatbot_sessions` (AI가 "chatbot이 더 명확하다"고 판단)
+- ❌ `wrtn_enterprise_employee_id` → `employee_id` (AI가 "prefix 제거가 더 깔끔하다"고 판단)
+- ❌ `disclosure` → `visibility` (AI가 "더 일반적인 용어"라고 판단)
+- ❌ `vendor` → `ai_model_vendor` (AI가 "더 구체적"이라고 판단)
+
+**올바른 접근**:
+- ✅ 본 문서에 `wrtn_chat_sessions`라고 명시되어 있으면 **정확히 `wrtn_chat_sessions`**
+- ✅ 본 문서에 `disclosure`라고 명시되어 있으면 **정확히 `disclosure`**
+- ✅ 본 문서에 `vendor`라고 명시되어 있으면 **정확히 `vendor`**
+- ✅ **단 한 글자도 바꾸지 않고** 그대로 사용
 
 #### 2.2.2. 추가 금지
 
@@ -127,8 +144,15 @@
 
 #### 2.5.1. 정확한 구현
 
+**100% 정확성 원칙 - 단 한 글자도 바꾸지 마라**:
+
 - 본 문서에 명시된 모든 테이블과 컬럼을 **정확히 그대로** 구현해야 한다
 - 테이블명, 컬럼명, 타입을 임의로 변경하거나 재해석할 수 없다
+- **구체적 예시**:
+  - `wrtn_chat_sessions` → `wrtn_chatbot_sessions` 변경 절대 금지
+  - `vendor` → `ai_model_vendor` 변경 절대 금지
+  - `disclosure` → `visibility` 변경 절대 금지
+- AI가 "더 명확하다", "더 일관된다", "업계 표준이다" 등의 이유로 명명을 변경하는 것은 중대한 위반이다
 
 #### 2.5.2. 추가 제한
 
@@ -977,7 +1001,7 @@ AI Chatbot 서비스는 뤼튼 엔터프라이즈의 핵심 기능으로써, Ope
 ```typescript
 export namespace IWrtnChatSession {
   export interface ICreate {
-    vendor: string; // AI vendor model name
+    vendor: string; // AI vendor model name like "openai/gpt-4.1-mini"
     title?: string | null;
     disclosure: "private" | "protected" | "public";
     wrtn_enterprise_team_id?: string | null; // optional team ID
@@ -1006,44 +1030,46 @@ export namespace IWrtnChatSession {
 
 이를 통해 사용자는 매번 페르소나를 명시하지 않아도 자동으로 마지막 설정을 사용할 수 있으며, 필요시 다른 페르소나를 지정할 수도 있다.
 
-### 6.2. `IWrtnChatHistory`
+### 6.2. `IWrtnChatSessionHistory`
+
+> `IWrtnChatSessionHistory` 만큼은 예외적으로 reference (`session: IWrtnChatSession.ISummary`) 속성을 만들지 않는다. 이는 절대 준수사항이다.
 
 ```typescript
-export type IWrtnChatHistory =
-  | IWrtnChatUserMessageHistory
-  | IWrtnChatAssistantMessageHistory
-  | IWrtnChatFunctionCallHistory;
+export type IWrtnChatSessionHistory =
+  | IWrtnChatSessionUserMessageHistory
+  | IWrtnChatSessionAssistantMessageHistory
+  | IWrtnChatSessionExecuteHistory;
 
-export interface IWrtnChatUserMessageHistory {
+export interface IWrtnChatSessionUserMessageHistory {
   id: string & tags.Format<"uuid">;
   type: "userMessage";
-  contents: IWrtnChatUserMessageContent[];
+  contents: IWrtnChatSessionUserMessageHistoryContent[];
   created_at: string & tags.Format<"date-time">;
 }
 
-export type IWrtnChatUserMessageContent = 
-  | IWrtnChatUserMessageAudioContent
-  | IWrtnChatUserMessageFileContent
-  | IWrtnChatUserMessageImageContent
-  | IWrtnChatUserMessageTextContent
-export interface IWrtnChatUserMessageAudioContent {
+export type IWrtnChatSessionUserMessageHistoryContent = 
+  | IWrtnChatSessionUserMessageHistoryAudioContent
+  | IWrtnChatSessionUserMessageHistoryFileContent
+  | IWrtnChatSessionUserMessageHistoryImageContent
+  | IWrtnChatSessionUserMessageHistoryTextContent
+export interface IWrtnChatSessionUserMessageHistoryAudioContent {
   type: "audio";
   file: IWrtnAttachmentFile;
 }
-export interface IWrtnChatUserMessageFileContent {
+export interface IWrtnChatSessionUserMessageHistoryFileContent {
   type: "file";
   file: IWrtnAttachmentFile;
 }
-export interface IWrtnChatUserMessageImageContent {
+export interface IWrtnChatSessionUserMessageHistoryImageContent {
   type: "image";
   file: IWrtnAttachmentFile;
 }
-export interface IWrtnChatUserMessageTextContent {
+export interface IWrtnChatSessionUserMessageHistoryTextContent {
   type: "text";
   text: IWrtnAttachmentFile;
 }
 
-export interface IWrtnChatAssistantMessageHistory {
+export interface IWrtnChatSessionAssistantMessageHistory {
   id: string & tags.Format<"uuid">;
   type: "assistantMessage";
   text: string;
@@ -1052,9 +1078,9 @@ export interface IWrtnChatAssistantMessageHistory {
   completed_at: string & tags.Format<"date-time">;
 }
 
-export interface IWrtnChatFunctionCallHistory {
+export interface IWrtnChatSessionExecuteHistory {
   id: string & tags.Format<"uuid">;
-  type: "functionCall";
+  type: "execute";
   arguments: object;
   success: boolean;
   value: unknown;
@@ -1731,9 +1757,41 @@ model wrtn_ai_model_pricings {
 
 #### 12.1.1. 본 문서에서 직접 명시한 DTO
 
+**절대 불변 원칙 - AI의 자의적 판단 절대 금지**:
+
 - 인터페이스명과 속성은 정확히 그대로 구현해야 한다
 - 새로운 속성을 추가할 수 없다
+- 기존 속성의 타입, 이름, 구조를 절대 변경할 수 없다
+- **속성 분해 절대 금지**: `token_usage: IWrtnTokenUsage` 같은 복합 타입 속성을 `input_total: number`, `output_total: number` 등으로 분해하는 행위 절대 금지
+- **AI의 "더 나은 설계" 판단 절대 금지**: AI가 "이렇게 하는 게 더 낫다"고 판단하여 본 문서의 명시적 DTO 설계를 변경하는 것은 중대한 위반이다
 - 오직 주석(description)만 추가하여 각 속성의 의미를 설명할 수 있다
+
+**명시된 DTO 예시**:
+- `IWrtnTokenUsage` - 섹션 6.3에 정의됨. 이 타입은 절대 분해하거나 변형할 수 없다
+- `IWrtnChatSessionHistory` - 섹션 6.2에 정의됨. 모든 하위 타입과 속성을 그대로 유지해야 한다
+- `IWrtnChatSession.ICreate` - 섹션 6.1에 정의됨. 모든 속성을 그대로 유지해야 한다
+
+**위반 예시 (절대 금지)**:
+```typescript
+// ❌ 잘못된 예: token_usage 속성을 분해하여 평탄화
+export interface IWrtnChatSessionHistory {
+  id: string;
+  // 원래 설계: token_usage: IWrtnTokenUsage | null;
+  // AI가 임의로 분해한 잘못된 설계:
+  total_tokens: number;
+  input_total_tokens: number;
+  input_cached_tokens: number;
+  output_total_tokens: number;
+  output_reasoning_tokens: number;
+  // ... 이런 식으로 분해하는 것은 명백한 위반이다
+}
+
+// ✅ 올바른 예: 본 문서의 설계 그대로 유지
+export interface IWrtnChatSessionHistory {
+  id: string;
+  token_usage: IWrtnTokenUsage | null; // 정확히 이 형태로
+}
+```
 
 #### 12.1.2. 본 문서에 정의되지 않은 DTO
 
@@ -2066,10 +2124,22 @@ export interface IWrtnEnterpriseEmployeeInvitation {
 - [ ] 완전한 B2B SaaS 엔터프라이즈 시스템이라고 자신있게 말할 수 있는가?
 
 ### 14.5. 테이블 및 컬럼 관련
-- [ ] 본 문서에 정의된 모든 테이블명을 그대로 사용했는가?
-- [ ] 본 문서에 정의된 모든 컬럼명을 그대로 사용했는가?
+
+**테이블명 절대 준수**:
+- [ ] 본 문서에 정의된 모든 테이블명을 **단 한 글자도 바꾸지 않고** 그대로 사용했는가?
+- [ ] `wrtn_chat_sessions`를 `wrtn_chatbot_sessions`로 변경하지 않았는가?
+- [ ] 어떤 테이블명도 "더 명확하게" 또는 "더 일관되게" 한다는 이유로 변경하지 않았는가?
+- [ ] AI의 주관적 판단으로 테이블명을 "개선"하려는 시도를 하지 않았는가?
+
+**컬럼명 절대 준수**:
+- [ ] 본 문서에 정의된 모든 컬럼명을 **정확히** 그대로 사용했는가?
+- [ ] `vendor`를 `ai_model_vendor`로, `disclosure`를 `visibility`로 변경하지 않았는가?
+- [ ] 컬럼명을 "더 구체적으로" 만들거나 "더 일반적인 용어"로 바꾸지 않았는가?
+
+**변경 금지 확인**:
 - [ ] 기존 테이블에 새로운 컬럼을 추가하지 않았는가?
 - [ ] 테이블명이나 컬럼명을 변경하지 않았는가?
+- [ ] 본 문서의 명시적 지시사항을 AI가 재해석하여 변형하지 않았는가?
 
 ### 14.6. 영역 중복 및 서브타입 검증
 - [ ] 본 문서에 이미 정의된 테이블의 영역과 겹치는 새 테이블을 만들지 않았는가?
@@ -2098,13 +2168,25 @@ export interface IWrtnEnterpriseEmployeeInvitation {
 ### 14.10. DTO 관련
 
 **DTO 인터페이스 정합성 검증**:
-- [ ] 본 문서에 직접 명시한 DTO 인터페이스명을 그대로 사용했는가?
-- [ ] 본 문서에 직접 정의한 DTO 속성은 그대로 유지했는가?
+- [ ] 본 문서에 직접 명시한 DTO 인터페이스명을 **정확히** 그대로 사용했는가?
+- [ ] 본 문서에 직접 정의한 DTO 속성은 **단 하나도 변경하지 않고** 그대로 유지했는가?
 - [ ] AutoBE의 고유 interface 설계 원칙을 완벽하게 준수했는가?
 - [ ] Response DTO에서 Foreign Key를 적절히 객체로 변환했는가? (Relation 원칙)
 - [ ] Create DTO가 단일 API 호출로 완전한 엔티티 생성이 가능한가? (Atomic Operation Principle)
 - [ ] JWT 인증 컨텍스트 보안 원칙을 준수했는가? (현재 사용자 정보는 JWT에서, 대상 엔티티는 DTO에 포함)
 - [ ] DB 스키마를 그대로 따르지 않고 API 사용성에 맞게 설계했는가?
+
+**DTO 속성 절대 불변 검증 (섹션 12.1.1 참조)**:
+- [ ] `token_usage: IWrtnTokenUsage`를 `input_total: number, output_total: number` 등으로 분해하지 않았는가?
+- [ ] 본 문서에 명시된 복합 타입 속성을 평탄화(flatten)하지 않았는가?
+- [ ] 본 문서의 DTO 속성 타입을 "더 나은 설계"라는 이유로 변경하지 않았는가?
+- [ ] AI의 주관적 판단으로 DTO 구조를 재설계하지 않았는가?
+
+**명시된 DTO 100% 준수 확인**:
+- [ ] `IWrtnTokenUsage` (섹션 6.3): 정확히 `total`, `input`, `output` 구조로 정의했는가?
+- [ ] `IWrtnChatSessionHistory` (섹션 6.2): 모든 discriminated union 타입과 속성을 그대로 유지했는가?
+- [ ] `IWrtnChatSession.ICreate` (섹션 6.1): 모든 속성의 이름, 타입, optional 여부를 정확히 반영했는가?
+- [ ] 위 DTO들을 참조하는 다른 DTO에서도 정확히 동일한 타입으로 참조했는가?
 
 **DTO 타입 명명 규칙 검증 (섹션 2.9.3 참조)**:
 - [ ] 모든 DTO 타입명이 대응하는 테이블명의 **모든 단어**를 완전히 포함하는가?
@@ -2139,10 +2221,25 @@ export interface IWrtnEnterpriseEmployeeInvitation {
 
 
 ### 14.12. 최종 확인
+
+**AI 자의적 판단 절대 금지 확인**:
 - [ ] AI의 주관적 판단을 배제하고 문서 지시사항만 따랐는가?
 - [ ] "더 나은 설계"라는 생각으로 변경을 시도하지 않았는가?
+- [ ] "더 명확한 명명", "더 일관된 구조", "더 나은 정규화" 등의 명목으로 본 문서의 설계를 변경하지 않았는가?
 - [ ] 모든 지시사항에 절대 복종했는가?
 - [ ] "절대복종"이 무엇인지 이해하고 실천했는가?
+
+**테이블명/컬럼명 100% 일치 확인**:
+- [ ] `wrtn_chat_sessions`를 `wrtn_chatbot_sessions`로 바꾸지 않았는가?
+- [ ] 본 문서의 모든 테이블명을 단 한 글자도 바꾸지 않고 사용했는가?
+- [ ] 본 문서의 모든 컬럼명을 정확히 그대로 사용했는가?
+
+**DTO 속성 100% 일치 확인**:
+- [ ] `token_usage: IWrtnTokenUsage`를 분해하여 속성들로 펼치지 않았는가?
+- [ ] 본 문서에 명시된 모든 DTO 인터페이스를 그대로 구현했는가?
+- [ ] 본 문서에 명시된 모든 DTO 속성을 변경하지 않았는가?
+
+**시스템 완성도 확인**:
 - [ ] **최종 검증: 본 문서의 25개 테이블 + 추가 설계한 테이블들로 완전한 시스템을 구성했는가?**
 - [ ] **🚨 통계 API 완전성 검증: 섹션 9.3과 9.4의 모든 메트릭, 집계 차원, 권한별 조회 범위, 다차원 집계 옵션에 대한 API operation과 DTO가 단 하나도 빠짐없이 설계되었는가?**
 
