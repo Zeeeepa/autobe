@@ -86,6 +86,7 @@ export namespace JsonSchemaFactory {
   };
 
   const removeDuplicated = (document: AutoBeOpenApi.IDocument): void => {
+    // gather duplicated schemas
     const correct: Map<string, string> = new Map();
     for (const key of Object.keys(document.components.schemas)) {
       if (key.includes(".") === false) continue;
@@ -94,6 +95,7 @@ export namespace JsonSchemaFactory {
       correct.set(dotRemoved, key);
     }
 
+    // fix operations' references
     for (const op of document.operations) {
       if (op.requestBody && correct.has(op.requestBody.typeName))
         op.requestBody.typeName = correct.get(op.requestBody.typeName)!;
@@ -101,6 +103,7 @@ export namespace JsonSchemaFactory {
         op.responseBody.typeName = correct.get(op.responseBody.typeName)!;
     }
 
+    // fix schemas' references
     const $refChangers: Map<OpenApi.IJsonSchema, () => void> = new Map();
     for (const value of Object.values(document.components.schemas))
       OpenApiTypeChecker.visit({
@@ -119,6 +122,7 @@ export namespace JsonSchemaFactory {
       });
     for (const fn of $refChangers.values()) fn();
 
+    // remove duplicated schemas
     for (const key of correct.keys()) delete document.components.schemas[key];
   };
 
