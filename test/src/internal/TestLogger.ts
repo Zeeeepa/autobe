@@ -44,6 +44,8 @@ export namespace TestLogger {
         `  - arguments: ${event.arguments}`,
       );
     // VALIDATIONS
+    else if (event.type === "analyzeScenario")
+      content.push(`  - prefix: ${event.prefix}`);
     else if (event.type === "realizeValidate")
       content.push(
         ...printCompiled(event.result, Object.keys(event.files).length),
