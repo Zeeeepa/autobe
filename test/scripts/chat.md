@@ -362,7 +362,9 @@ switch(actor) {
 
 ## 4. Moderator (Internal Supporter)
 
-> **절대 준수사항**: 아래 정의된 모든 테이블과 컬럼을 정확히 그대로 구현하라. 어떠한 수정도 금지한다.
+> **🔴 CRITICAL - 아래 정의된 모든 테이블명과 컬럼명을 본 문서에 적힌 그대로 단 한 글자도 바꾸지 않고 복사하라 🔴**
+>
+> **어떠한 변경, 개선, 통일도 금지한다.**
 
 ```prisma
 // This table handles all internal member roles through the role field
@@ -611,7 +613,10 @@ master A가 master B를 강제 탈퇴시키고자 하는 경우, 다음과 같�
 
 ## 5. Enterprise
 
-> **절대 준수사항**: 아래 정의된 모든 테이블과 컬럼을 정확히 그대로 구현하라. 슈퍼타입/서브타입 생성 절대 금지.
+> **🔴 CRITICAL - 아래 정의된 모든 테이블명과 컬럼명을 본 문서에 적힌 그대로 단 한 글자도 바꾸지 않고 복사하라 🔴**
+>
+> **어떠한 변경, 개선, 통일도 금지한다.**
+> **슈퍼타입/서브타입 테이블 생성 절대 금지.**
 
 ```prisma
 model wrtn_enterprises {
@@ -871,7 +876,10 @@ model wrtn_enterprise_team_companion_invitations {
 
 ## 6. AI Chatbot
 
-**절대 준수사항**: 모든 JSON 필드는 반드시 JSON으로 유지하라. JSON 필드를 절대 분해하거나 정규화하지 마라.
+> **🔴 CRITICAL - 아래 정의된 모든 테이블명과 컬럼명을 본 문서에 적힌 그대로 단 한 글자도 바꾸지 않고 복사하라 🔴**
+>
+> **어떠한 변경, 개선, 통일도 금지한다.**
+> **절대 준수사항**: 모든 JSON 필드는 반드시 JSON으로 유지하라. JSON 필드를 절대 분해하거나 정규화하지 마라.
 
 ```prisma
 // Core chat session table - maintains conversation metadata
@@ -1175,6 +1183,9 @@ export interface IWrtnTokenUsageOutput {
 
 ## 7. AI Procedure
 
+> **🔴 CRITICAL - 아래 정의된 모든 테이블명과 컬럼명을 본 문서에 적힌 그대로 단 한 글자도 바꾸지 않고 복사하라 🔴**
+>
+> **어떠한 변경, 개선, 통일도 금지한다.**
 > **절대 준수사항**: JSON 필드는 절대 분해하지 마라. 정규화하지 마라. JSON으로 유지하라.
 
 ```prisma
@@ -1372,6 +1383,11 @@ Progress   | None    | Streaming
 토큰을 소비하지 않는 히스토리 엔트리의 경우, 해당하는 token_usages 테이블 레코드가 존재하지 않을 수 있다. 이 경우 API 레벨에서는 `IWrtnTokenUsage` 인터페이스의 모든 속성값을 0으로 채워서 반환한다.
 
 ## 8. Configurations
+
+> **🔴 CRITICAL - 아래 정의된 모든 테이블명과 컬럼명을 본 문서에 적힌 그대로 단 한 글자도 바꾸지 않고 복사하라 🔴**
+>
+> **어떠한 변경, 개선, 통일도 금지한다.**
+
 ### 8.1. Persona
 뤼튼의 모든 엔터프라이즈 유저들은 (`wrtn_enterprise_employees`) 페르소나를 설정할 수 있다. 여기서 말하는 페르소나란, AI chatbot 의 말투 및 태도에 관한 것을 뜻한다.
 
