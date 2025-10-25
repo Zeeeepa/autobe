@@ -154,8 +154,8 @@ export const orchestrateInterface =
         }),
       );
     if (missedOpenApiSchemas(document).length !== 0) await complement();
-    await orchestrateInterfaceSchemaRename(ctx, document);
 
+    await orchestrateInterfaceSchemaRename(ctx, document);
     JsonSchemaFactory.finalize({
       document,
       application: ctx.state().prisma!.result.data,
