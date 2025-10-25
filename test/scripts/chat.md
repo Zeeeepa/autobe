@@ -1099,9 +1099,9 @@ export interface IWrtnChatSessionAssistantMessageHistory {
 export interface IWrtnChatSessionExecuteHistory {
   id: string & tags.Format<"uuid">;
   type: "execute";
-  arguments: object;
+  arguments: {}; // no properties defined object
   success: boolean;
-  value: unknown;
+  value: {}; // no properties defined object
   created_at: string & tags.Format<"date-time">;
   completed_at: string & tags.Format<"date-time">;
 }
@@ -1110,6 +1110,24 @@ export interface IWrtnChatSessionExecuteHistory {
 위 인터페이스 타입들은 본인(사람)이 직접 `wrtn_chat_user_histories.data` 의 타입에 대하여 정의한 DTO 타입들이다.
 
 웹소켓에서 본격적으로 다루게 될 녀석들인데, AutoBE 는 이 타입 그대로 구현하되 각 타입마다 시의적절한 설명을 보충하여 사용할 것 (JSON schema 상 `description`).
+
+**🔴 절대 준수사항: `IWrtnChatSessionExecuteHistory`의 `arguments`와 `value` 타입**
+
+`IWrtnChatSessionExecuteHistory.arguments`와 `IWrtnChatSessionExecuteHistory.value`는 **반드시 아무런 속성이 없는 텅 빈 오브젝트 타입 `{}`** 로 정의해야 한다. 절대로 `any` 타입이 되어서는 안 된다.
+
+**이유**: AutoBE는 `any` 타입을 허용하지 않는다. 이 필드들은 암호화된 JSON 값을 담는 범용 컨테이너로서, 실행 시점의 동적 데이터를 저장한다. 만약 타입을 지정하지 않거나 잘못 추론하면 `any`로 처리되어 AutoBE의 타입 검증 단계에서 거절당한다.
+
+**올바른 타입 정의**:
+```typescript
+// ✅ 올바른 정의 - 빈 오브젝트 타입
+arguments: {}
+value: {}
+
+// ❌ 잘못된 정의들
+arguments: any           // any 타입 사용 금지
+value: Record<string, any>  // any 타입 사용 금지
+arguments: object        // object 타입 사용 금지 (any와 동일하게 처리될 수 있음)
+```
 
 ### 6.3. `IWrtnTokenUsage`
 
@@ -1283,6 +1301,31 @@ model wrtn_procedure_session_aggregate_token_usages {
 - `wrtn_procedure_session_histories.value` - JSON value, encrypted
 
 추가 필드를 달아도 된다는 것은 새로운 컬럼을 추가할 수 있다는 의미이지, 기존 JSON 필드를 분해하라는 의미가 절대 아니다.
+
+**🔴 절대 준수사항: `wrtn_procedure_session_histories` 테이블 DTO의 `arguments`와 `value` 타입**
+
+`wrtn_procedure_session_histories` 테이블을 DTO로 정의할 때, `arguments`와 `value` 속성은 **반드시 아무런 속성이 없는 텅 빈 오브젝트 타입 `{}`** 로 정의해야 한다. 절대로 `any` 타입이 되어서는 안 된다.
+
+**이유**: 이 필드들은 Prisma 스키마에서 `String` 타입으로 정의되어 암호화된 JSON 값을 저장한다. 하지만 API DTO 레벨에서는 이를 객체로 표현해야 하는데, 구체적인 타입이 없는 범용 컨테이너이므로 빈 오브젝트 타입을 사용한다. AutoBE는 `any` 타입을 허용하지 않으므로, 타입을 명시하지 않거나 잘못 추론하면 생성 단계에서 거절당한다.
+
+**올바른 DTO 타입 정의 예시**:
+```typescript
+// ✅ 올바른 정의
+export interface IWrtnProcedureSessionHistory {
+  id: string & tags.Format<"uuid">;
+  arguments: {};     // 빈 오브젝트 타입
+  success: boolean | null;
+  value: {} | null;  // 빈 오브젝트 타입 (nullable)
+  created_at: string & tags.Format<"date-time">;
+  completed: (string & tags.Format<"date-time">) | null;
+}
+
+// ❌ 잘못된 정의들
+arguments: any                    // any 타입 절대 금지
+value: Record<string, any>        // any 타입 절대 금지
+arguments: object                 // object 타입 금지 (any로 처리될 수 있음)
+arguments: Record<string, unknown> // unknown 사용도 권장하지 않음
+```
 
 뤼튼 엔터프라이즈에서 말하는 AI Procedure 란, 위 [4. AI Chatbot](#4-ai-chatbot) 과 같은 챗봇의 형태가 아닌, 지정된 형태의 인풋을 받아서 약속된 형태의 아웃풋을 반환하는 함수형 서비스이다. 문자 그대로 함수(프로시저) 형태의 AI 서비스로써, Stable Diffusion 으로 이미지를 생성하는게 AI Procedure 의 가장 대표적인 사례이다.
 
@@ -2047,6 +2090,186 @@ export interface IWrtnEnterpriseEmployeeInvitation {
 - 현재 사용자의 `wrtn_moderator_id`, `wrtn_moderator_session_id`, `wrtn_enterprise_employee_id`, `wrtn_enterprise_employee_session_id`는 JWT 토큰에서 자동 취득
 - 단, 대상 엔티티 지정이 필요한 경우 (예: 직원 임명 시 target_employee_id)는 반드시 포함해야 함
 - 클라이언트가 제공한 현재 사용자 identity를 신뢰하지 말고, 서버가 JWT에서 검증된 사용자 컨텍스트를 주입
+
+### 12.7. JSON Schema의 Discriminated Union 표현 규칙
+
+> **절대 준수사항**: TypeScript의 discriminated union 타입을 JSON Schema로 변환할 때, `oneOf` 내부에 object 타입을 인라인으로 정의하는 것을 절대 금지한다.
+
+#### 12.7.1. 핵심 원칙
+
+TypeScript의 union 타입을 JSON Schema의 `oneOf`로 표현할 때는 **반드시 `$ref` 참조들의 배열**로 정의해야 하며, **절대로 인라인 object 타입들의 배열을 사용하지 마라**.
+
+**올바른 방식 (MUST BE) - `$ref` 타입들에 대한 `oneOf`**:
+```json
+{
+  "components": {
+    "schemas": {
+      "IWrtnChatSessionHistory": {
+        "oneOf": [
+          { "$ref": "#/components/schemas/IWrtnChatSessionUserMessageHistory" },
+          { "$ref": "#/components/schemas/IWrtnChatSessionAssistantMessageHistory" },
+          { "$ref": "#/components/schemas/IWrtnChatSessionExecuteHistory" }
+        ],
+        "description": "Chat session history - union of user messages, assistant messages, and executions"
+      }
+    }
+  }
+}
+```
+
+**절대 금지 (NEVER BE) - object 타입들에 대한 `oneOf`**:
+```json
+{
+  "components": {
+    "schemas": {
+      "IWrtnChatSessionHistory": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "type": { "const": "userMessage" },
+              "contents": { ... }
+            }
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": { "const": "assistantMessage" },
+              "text": { ... }
+            }
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": { "const": "execute" },
+              "arguments": { ... }
+            }
+          }
+        ],
+        "description": "..."
+      }
+    }
+  }
+}
+```
+
+#### 12.7.2. 적용 대상
+
+이 규칙은 모든 discriminated union 타입에 적용된다:
+
+**`IWrtnChatSessionHistory` 예시** (섹션 6.2):
+```typescript
+export type IWrtnChatSessionHistory =
+  | IWrtnChatSessionUserMessageHistory
+  | IWrtnChatSessionAssistantMessageHistory
+  | IWrtnChatSessionExecuteHistory;
+```
+
+JSON Schema 표현:
+```json
+{
+  "IWrtnChatSessionHistory": {
+    "oneOf": [
+      { "$ref": "#/components/schemas/IWrtnChatSessionUserMessageHistory" },
+      { "$ref": "#/components/schemas/IWrtnChatSessionAssistantMessageHistory" },
+      { "$ref": "#/components/schemas/IWrtnChatSessionExecuteHistory" }
+    ],
+    "description": "채팅 세션 히스토리 - 사용자 메시지, 어시스턴트 메시지, 실행 기록의 유니언"
+  },
+  "IWrtnChatSessionUserMessageHistory": {
+    "type": "object",
+    "properties": {
+      "id": { "type": "string", "format": "uuid" },
+      "type": { "const": "userMessage" },
+      "contents": {
+        "$ref": "#/components/schemas/IWrtnChatSessionUserMessageHistoryContent"
+      },
+      "created_at": { "type": "string", "format": "date-time" }
+    },
+    "required": ["id", "type", "contents", "created_at"]
+  }
+}
+```
+
+**`IWrtnChatSessionUserMessageHistoryContent` 예시** (섹션 6.2):
+```typescript
+export type IWrtnChatSessionUserMessageHistoryContent =
+  | IWrtnChatSessionUserMessageHistoryAudioContent
+  | IWrtnChatSessionUserMessageHistoryFileContent
+  | IWrtnChatSessionUserMessageHistoryImageContent
+  | IWrtnChatSessionUserMessageHistoryTextContent;
+```
+
+JSON Schema 표현:
+```json
+{
+  "IWrtnChatSessionUserMessageHistoryContent": {
+    "oneOf": [
+      { "$ref": "#/components/schemas/IWrtnChatSessionUserMessageHistoryAudioContent" },
+      { "$ref": "#/components/schemas/IWrtnChatSessionUserMessageHistoryFileContent" },
+      { "$ref": "#/components/schemas/IWrtnChatSessionUserMessageHistoryImageContent" },
+      { "$ref": "#/components/schemas/IWrtnChatSessionUserMessageHistoryTextContent" }
+    ],
+    "description": "사용자 메시지 콘텐츠 - 오디오, 파일, 이미지, 텍스트의 유니언"
+  },
+  "IWrtnChatSessionUserMessageHistoryTextContent": {
+    "type": "object",
+    "properties": {
+      "type": { "const": "text" },
+      "text": { "type": "string" }
+    },
+    "required": ["type", "text"]
+  }
+}
+```
+
+#### 12.7.3. 위반 사례 및 수정 방법
+
+**잘못된 구현 (위반)**:
+```json
+{
+  "IWrtnChatSessionHistory": {
+    "oneOf": [
+      {
+        "type": "object",
+        "properties": {
+          "type": { "const": "userMessage" }
+        }
+      }
+    ]
+  }
+}
+```
+
+**올바른 수정**:
+1. 각 union member를 별도의 schema component로 정의
+2. `oneOf`에서는 `$ref`로만 참조
+
+```json
+{
+  "IWrtnChatSessionHistory": {
+    "oneOf": [
+      { "$ref": "#/components/schemas/IWrtnChatSessionUserMessageHistory" }
+    ]
+  },
+  "IWrtnChatSessionUserMessageHistory": {
+    "type": "object",
+    "properties": {
+      "type": { "const": "userMessage" }
+    }
+  }
+}
+```
+
+#### 12.7.4. 검증 체크리스트
+
+- [ ] 모든 `oneOf`가 `$ref` 배열로만 구성되어 있는가?
+- [ ] `oneOf` 내부에 `type: "object"`가 직접 포함되어 있지 않은가?
+- [ ] 각 union member가 별도의 schema component로 정의되어 있는가?
+- [ ] `IWrtnChatSessionHistory`와 `IWrtnChatSessionUserMessageHistoryContent`가 모두 올바르게 표현되었는가?
+
+> **중요**: 이 규칙을 위반하면 OpenAPI 문서의 가독성과 타입 안정성이 크게 저하된다. 반드시 준수해야 한다.
+
 ## 13. 요구사항 분석과 DB 설계 종합 실습
 
 > **핵심 과제**: 본 문서에 정의된 25개 테이블은 AI Chatbot과 AI Procedure 기능만 다룬다.
@@ -2263,8 +2486,54 @@ export interface IWrtnEnterpriseEmployeeInvitation {
 - [ ] 이들 테이블에 컬럼을 추가하거나 삭제하지 않았는가?
 - [ ] 이들 테이블의 이름을 변경하지 않았는가?
 
+### 14.12. JSON Schema oneOf 표현 규칙 검증 (섹션 12.7 참조)
 
-### 14.12. 최종 확인
+**핵심 원칙 준수 확인**:
+- [ ] 모든 `oneOf`가 `$ref` 참조들의 배열로만 구성되어 있는가?
+- [ ] `oneOf` 내부에 인라인 object 타입 정의가 포함되어 있지 않은가?
+- [ ] 각 discriminated union member가 별도의 schema component로 정의되어 있는가?
+
+**금지된 패턴 확인 (다음이 하나라도 발견되면 즉시 수정)**:
+- [ ] ❌ `oneOf` 내부에 `{ "type": "object", "properties": {...} }` 형태의 인라인 정의
+- [ ] ❌ union 타입을 하나의 schema에 모든 속성을 펼쳐서 정의
+- [ ] ❌ discriminator 없이 `anyOf`나 `allOf`로 union 표현
+
+**필수 적용 대상 검증**:
+- [ ] `IWrtnChatSessionHistory`: `$ref` 배열의 `oneOf`로 정의되었는가?
+- [ ] `IWrtnChatSessionUserMessageHistoryContent`: `$ref` 배열의 `oneOf`로 정의되었는가?
+- [ ] 기타 모든 TypeScript union 타입: `$ref` 배열의 `oneOf`로 정의되었는가?
+
+**올바른 구조 예시 확인**:
+```json
+// ✅ 올바른 구조
+{
+  "IWrtnChatSessionHistory": {
+    "oneOf": [
+      { "$ref": "#/components/schemas/IWrtnChatSessionUserMessageHistory" },
+      { "$ref": "#/components/schemas/IWrtnChatSessionAssistantMessageHistory" },
+      { "$ref": "#/components/schemas/IWrtnChatSessionExecuteHistory" }
+    ]
+  }
+}
+
+// ❌ 절대 금지
+{
+  "IWrtnChatSessionHistory": {
+    "oneOf": [
+      { "type": "object", "properties": {...} }
+    ]
+  }
+}
+```
+
+> **🚨 JSON Schema oneOf 검증 실패 시 즉시 조치**:
+> 1. Interface Phase를 중단하고 즉시 OpenAPI schema를 수정하라
+> 2. 섹션 12.7의 "JSON Schema의 Discriminated Union 표현 규칙"을 다시 읽어라
+> 3. 모든 union 타입이 `$ref` 배열의 `oneOf`로 표현되었는지 재확인하라
+> 4. 각 union member가 별도의 schema component로 정의되었는지 확인하라
+> 5. 수정 후 다시 이 체크리스트를 실행하여 모든 항목을 통과하라
+
+### 14.13. 최종 확인
 
 **AI 자의적 판단 절대 금지 확인**:
 - [ ] AI의 주관적 판단을 배제하고 문서 지시사항만 따랐는가?
