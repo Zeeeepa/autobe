@@ -16,7 +16,9 @@ export const transformRealizeCorrectCastingHistories = (
 ): Array<
   IAgenticaHistoryJson.IAssistantMessage | IAgenticaHistoryJson.ISystemMessage
 > => {
-  return [
+  const histories: Array<
+    IAgenticaHistoryJson.IAssistantMessage | IAgenticaHistoryJson.ISystemMessage
+  > = [
     {
       id: v7(),
       created_at: new Date().toISOString(),
@@ -41,4 +43,12 @@ export const transformRealizeCorrectCastingHistories = (
         }) satisfies IAgenticaHistoryJson.IAssistantMessage,
     ),
   ];
+  console.log("------------ REALIZE CASTING HISTORIES ------------");
+  console.log("number of failures", failures.length);
+  console.log(
+    "histories' sizes",
+    histories.map((h) => [h.type, h.text.length, h.text.slice(0, 100)]),
+  );
+  console.log("---------------------------------------------------");
+  return histories;
 };

@@ -21,7 +21,9 @@ export function transformRealizeCorrectHistories(props: {
 }): Array<
   IAgenticaHistoryJson.IAssistantMessage | IAgenticaHistoryJson.ISystemMessage
 > {
-  return [
+  const histories: Array<
+    IAgenticaHistoryJson.IAssistantMessage | IAgenticaHistoryJson.ISystemMessage
+  > = [
     ...transformRealizeWriteHistories(props),
     {
       id: v7(),
@@ -60,4 +62,12 @@ export function transformRealizeCorrectHistories(props: {
       created_at: new Date().toISOString(),
     },
   ];
+  console.log("------------ REALIZE CORRECT HISTORIES ------------");
+  console.log("number of failures", props.failures.length);
+  console.log(
+    "histories' sizes",
+    histories.map((h) => [h.type, h.text.length, h.text.slice(0, 100)]),
+  );
+  console.log("---------------------------------------------------");
+  return histories;
 }
