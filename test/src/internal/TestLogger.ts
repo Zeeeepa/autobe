@@ -19,6 +19,9 @@ export namespace TestLogger {
     if (typia.is<TokenUsageEvent>(event))
       content.push(
         `  - token usage: (input: ${event.tokenUsage.input.total.toLocaleString()}, cached: ${event.tokenUsage.input.cached.toLocaleString()}, output: ${event.tokenUsage.output.total.toLocaleString()})`,
+        `  - log10 of input token usage: ${Math.log10(
+          event.tokenUsage.input.total,
+        )}`,
       );
     // FUNCTION CALLING
     if (event.type === "consentFunctionCall")
@@ -46,10 +49,14 @@ export namespace TestLogger {
     // VALIDATIONS
     else if (event.type === "analyzeScenario")
       content.push(`  - prefix: ${event.prefix}`);
+    else if (event.type === "realizeCorrect")
+      content.push(`  - kind: ${event.kind}`);
     else if (event.type === "realizeValidate")
       content.push(
         ...printCompiled(event.result, Object.keys(event.files).length),
       );
+    else if (event.type === "testCorrect")
+      content.push(`  - kind: ${event.kind}`);
     else if (event.type === "interfaceComplement")
       content.push(
         `  - count: ${Object.keys(event.schemas).length}`,
