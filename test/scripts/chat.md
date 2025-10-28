@@ -2260,41 +2260,32 @@ model wrtn_ai_model_pricings {
 ### 12.2. 설계 수준의 차이
 
 **❌ 소극적 설계 (나쁜 예)**:
-```
-POST   /employees
-GET    /employees
-GET    /employees/{id}
-PATCH  /employees/{id}
-DELETE /employees/{id}
-```
+- 직원 생성
+- 직원 목록
+- 직원 상세 조회
+- 직원 수정
+- 직원 삭제
 
 **✅ 공격적 설계 (좋은 예)**:
-```
-POST   /employees                              # 직원 생성
-GET    /employees                              # 직원 목록 (필터링, 페이징, 정렬)
-GET    /employees/{id}                         # 직원 상세
-PATCH  /employees/{id}                         # 직원 정보 수정
-DELETE /employees/{id}                         # 직원 삭제
-
-GET    /employees/pending                      # 승인 대기 중인 직원 목록
-POST   /employees/{id}/approve                 # 직원 승인
-POST   /employees/{id}/reject                  # 직원 거부
-
-GET    /employees/{id}/appointments            # 직원 임명 이력
-POST   /employees/{id}/title                   # 직책 변경
-
-GET    /employees/{id}/teams                   # 소속 팀 목록
-GET    /employees/{id}/sessions                # 세션 이력
-GET    /employees/{id}/activities              # 활동 이력
-
-GET    /employees/masters                      # master 직책 직원만 조회
-GET    /employees/managers                     # manager 직책 직원만 조회
-GET    /employees/without-team                 # 팀 미소속 직원 조회
-
-GET    /employees/search                       # 이름, 이메일 등으로 검색
-GET    /employees/export                       # CSV/Excel 내보내기
-GET    /employees/{id}/statistics              # 개인 통계
-```
+- 직원 생성
+- 직원 목록 (필터링, 페이징, 정렬)
+- 직원 상세 조회
+- 직원 정보 수정
+- 직원 삭제
+- 승인 대기 중인 직원 목록
+- 직원 승인
+- 직원 거부
+- 직원 임명 이력 조회
+- 직책 변경
+- 소속 팀 목록 조회
+- 세션 이력 조회
+- 활동 이력 조회
+- master 직책 직원만 조회
+- manager 직책 직원만 조회
+- 팀 미소속 직원 조회
+- 이름, 이메일 등으로 검색
+- CSV/Excel 내보내기
+- 개인 통계 조회
 
 ### 12.3. Cross-Actor 관리 API
 
@@ -2304,12 +2295,12 @@ GET    /employees/{id}/statistics              # 개인 통계
 
 **예시: `wrtn_enterprise_employees` (기업 직원)**
 
-**Enterprise용 API** (`/enterprise/employees/*`):
+**Enterprise용 기능**:
 - 자신의 기업 직원들만 관리
 - 직원 생성, 수정, 삭제, 조회
 - 직책 변경, 팀 배정 등
 
-**Moderator용 API** (`/moderator/enterprises/{enterpriseId}/employees/*`):
+**Moderator용 기능**:
 - 모든 기업의 직원 정보 열람 (감독 목적)
 - 문제 발생 시 직원 계정 비활성화
 - 최초 master 직원 승인
@@ -2322,18 +2313,16 @@ GET    /employees/{id}/statistics              # 개인 통계
 
 **예시: Chat Session 조회**
 
-```
-GET /chat-sessions                              # 전체 목록
-GET /chat-sessions/my                           # 내가 만든 세션
-GET /chat-sessions/shared                       # 공유된 세션
-GET /chat-sessions/pinned                       # 고정된 세션
-GET /chat-sessions/archived                     # 아카이브된 세션
-GET /chat-sessions/by-team/{teamId}             # 팀별 세션
-GET /chat-sessions/by-vendor/{vendor}           # AI 모델별 세션
-GET /chat-sessions/recent                       # 최근 사용한 세션
-GET /chat-sessions/popular                      # 인기 세션 (조회수 높은)
-GET /chat-sessions/search                       # 제목, 내용 검색
-```
+- 전체 목록
+- 내가 만든 세션
+- 공유된 세션
+- 고정된 세션
+- 아카이브된 세션
+- 팀별 세션
+- AI 모델별 세션
+- 최근 사용한 세션
+- 인기 세션 (조회수 높은)
+- 제목, 내용 검색
 
 ### 12.5. 통계 및 집계 API
 
@@ -2341,16 +2330,14 @@ GET /chat-sessions/search                       # 제목, 내용 검색
 
 **예시: 사용량 통계**
 
-```
-GET /statistics/token-usage/daily               # 일별 토큰 사용량
-GET /statistics/token-usage/monthly             # 월별 토큰 사용량
-GET /statistics/token-usage/by-employee         # 직원별 사용량
-GET /statistics/token-usage/by-team             # 팀별 사용량
-GET /statistics/token-usage/by-vendor           # AI 모델별 사용량
-GET /statistics/token-usage/trend               # 사용량 추세
-GET /statistics/cost-projection                 # 비용 예측
-GET /statistics/quota-status                    # 할당량 대비 사용 현황
-```
+- 일별 토큰 사용량
+- 월별 토큰 사용량
+- 직원별 사용량
+- 팀별 사용량
+- AI 모델별 사용량
+- 사용량 추세
+- 비용 예측
+- 할당량 대비 사용 현황
 
 ### 12.6. Batch Operation API
 
@@ -2358,11 +2345,9 @@ GET /statistics/quota-status                    # 할당량 대비 사용 현황
 
 **예시: 팀원 관리**
 
-```
-POST /teams/{teamId}/members/batch              # 여러 직원 한 번에 초대
-DELETE /teams/{teamId}/members/batch            # 여러 직원 한 번에 제거
-PATCH /teams/{teamId}/members/batch/role        # 여러 직원 역할 일괄 변경
-```
+- 여러 직원 한 번에 초대
+- 여러 직원 한 번에 제거
+- 여러 직원 역할 일괄 변경
 
 ### 12.7. 관계 탐색 API
 
@@ -2370,14 +2355,12 @@ PATCH /teams/{teamId}/members/batch/role        # 여러 직원 역할 일괄 �
 
 **예시: 직원 관계 탐색**
 
-```
-GET /employees/{id}/teams                       # 소속 팀 목록
-GET /employees/{id}/chat-sessions               # 생성한 채팅 세션 목록
-GET /employees/{id}/procedure-sessions          # 실행한 프로시저 세션 목록
-GET /employees/{id}/invitations                 # 발송한 초대장 목록
-GET /employees/{id}/appointments                # 임명 이력
-GET /employees/{id}/audit-logs                  # 감사 로그
-```
+- 소속 팀 목록
+- 생성한 채팅 세션 목록
+- 실행한 프로시저 세션 목록
+- 발송한 초대장 목록
+- 임명 이력
+- 감사 로그
 
 ### 12.8. 액션 API (상태 변경)
 
@@ -2385,33 +2368,29 @@ GET /employees/{id}/audit-logs                  # 감사 로그
 
 **예시: 세션 관리**
 
-```
-POST /chat-sessions/{id}/pin                    # 고정
-DELETE /chat-sessions/{id}/pin                  # 고정 해제
-POST /chat-sessions/{id}/archive                # 아카이브
-POST /chat-sessions/{id}/unarchive              # 아카이브 해제
-POST /chat-sessions/{id}/share                  # 공유 설정 변경
-POST /chat-sessions/{id}/duplicate              # 복제
-POST /chat-sessions/{id}/export                 # 대화 내용 내보내기
-```
+- 고정
+- 고정 해제
+- 아카이브
+- 아카이브 해제
+- 공유 설정 변경
+- 복제
+- 대화 내용 내보내기
 
 ### 12.9. 관리자용 특수 API
 
 시스템 관리와 모니터링을 위한 API를 빠짐없이 설계하라.
 
-**Moderator용 특수 API 예시**:
+**Moderator용 특수 기능 예시**:
 
-```
-GET /moderator/dashboard/summary                # 대시보드 요약
-GET /moderator/enterprises/health               # 기업별 서비스 상태
-GET /moderator/enterprises/usage-ranking        # 사용량 랭킹
-GET /moderator/alert/anomalies                  # 이상 활동 감지
-GET /moderator/system/metrics                   # 시스템 메트릭
-POST /moderator/employees/{id}/suspend          # 직원 계정 정지
-POST /moderator/employees/{id}/restore          # 계정 복구
-GET /moderator/audit-logs                       # 전체 감사 로그
-GET /moderator/pending-approvals                # 승인 대기 항목 모아보기
-```
+- 대시보드 요약
+- 기업별 서비스 상태
+- 사용량 랭킹
+- 이상 활동 감지
+- 시스템 메트릭
+- 직원 계정 정지
+- 계정 복구
+- 전체 감사 로그
+- 승인 대기 항목 모아보기
 
 ### 12.10. 검증 및 미리보기 API
 
@@ -2419,12 +2398,10 @@ GET /moderator/pending-approvals                # 승인 대기 항목 모아보
 
 **예시**:
 
-```
-POST /employees/validate                        # 직원 정보 유효성 검증
-GET /teams/{id}/members/preview                 # 팀원 추가 시 미리보기
-GET /quota/simulation                           # 한도 설정 시뮬레이션
-POST /terms/check-agreement                     # 약관 동의 여부 확인
-```
+- 직원 정보 유효성 검증
+- 팀원 추가 시 미리보기
+- 한도 설정 시뮬레이션
+- 약관 동의 여부 확인
 
 ### 12.11. 내보내기 및 보고서 API
 
@@ -2432,13 +2409,11 @@ POST /terms/check-agreement                     # 약관 동의 여부 확인
 
 **예시**:
 
-```
-GET /employees/export/csv                       # CSV 다운로드
-GET /employees/export/excel                     # Excel 다운로드
-GET /statistics/report/monthly                  # 월간 리포트
-GET /chat-sessions/{id}/transcript/pdf          # 대화 내용 PDF 다운로드
-GET /audit-logs/export                          # 감사 로그 내보내기
-```
+- CSV 다운로드
+- Excel 다운로드
+- 월간 리포트
+- 대화 내용 PDF 다운로드
+- 감사 로그 내보내기
 
 ### 12.12. 절대 원칙: 너무 많은 API는 문제가 아니다
 
