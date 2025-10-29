@@ -148,33 +148,11 @@
 
 #### 2.5.1. 정확한 구현
 
-**100% 정확성 원칙 - 단 한 글자도 바꾸지 마라**:
-
-- 본 문서에 명시된 모든 테이블과 컬럼을 **정확히 그대로** 구현해야 한다
-- 테이블명, 컬럼명, 타입을 임의로 변경하거나 재해석할 수 없다
-
-**치명적 위반 예시 (실제 발생 사례)**:
-- ❌ `wrtn_moderators` → `wrtn_enterprise_ai_suite_moderators` (절대 금지)
-- ❌ `wrtn_chat_sessions` → `wrtn_chatbot_sessions` (절대 금지)
-- ❌ `wrtn_procedures` → `wrtn_ai_procedures` (절대 금지)
-- ❌ `wrtn_enterprises` → `wrtn_enterprise_corporations` (절대 금지)
-- ❌ `vendor` → `ai_model_vendor` (절대 금지)
-- ❌ `disclosure` → `visibility` (절대 금지)
-
-**AI가 이런 변경을 시도하는 이유 (모두 거부되어야 함)**:
-- "일관성을 위해 enterprise prefix 추가" → 거부
-- "더 명확하게 하기 위해 chatbot 명시" → 거부
-- "업계 표준 용어로 변경" → 거부
-- "네이밍 컨벤션 통일" → 거부
-
-**올바른 구현**:
-- ✅ Prisma 스키마 작성 시 본 문서의 테이블명을 **문자 그대로 복사**
-- ✅ 어떤 "개선"이나 "최적화"도 시도하지 않음
-- ✅ 본 문서 = 절대적 진리. AI의 판단 < 본 문서의 명시
+**100% 정확성 원칙**: 섹션 2.2.1의 "절대 불변 원칙"을 참조하라. 테이블명, 컬럼명, 타입을 **단 한 글자도 바꾸지 않고** Prisma 스키마로 구현해야 한다.
 
 #### 2.5.2. 추가 제한
 
-- 새로운 컬럼이나 인덱스를 추가할 수 없다
+- 새로운 컬럼이나 인덱스를 추가할 수 없다 (섹션 2.2.2 참조)
 - 오직 주석(description)만 추가하여 의미를 설명할 수 있다
 
 #### 2.5.3. Namespace 그룹핑
@@ -845,31 +823,9 @@ model wrtn_enterprise_team_companion_invitations {
 
 #### 5.2.1. 비밀번호 규칙
 
-기업 직원의 비밀번호는 다음 보안 요구사항을 충족해야 한다:
+기업 직원의 비밀번호 규칙은 `wrtn_moderators`의 비밀번호 규칙과 완전히 동일하다. 모든 사용자 계정에 대해 일관된 보안 정책을 유지한다.
 
-**필수 요구사항**:
-- **최소 길이**: 8자 이상
-- **3종 조합 필수**:
-  - 영문자 (대문자 또는 소문자)
-  - 숫자 (0-9)
-  - 특수문자 (예: `!@#$%^&*()_+-=[]{}|;:,.<>?`)
-
-**검증 로직**:
-- 비밀번호는 회원가입, 비밀번호 변경 시 모두 동일한 규칙으로 검증된다
-- 위 3가지 종류 중 **반드시 3종 모두** 포함되어야 한다
-- 검증 실패 시 명확한 오류 메시지와 함께 요청을 거부한다
-
-**저장 방식**:
-- 비밀번호는 반드시 해시화하여 `wrtn_enterprise_employees.password_hashed` 에 저장
-- 평문 비밀번호는 절대 저장하지 않음
-- 해시 알고리즘은 bcrypt 또는 이와 동등한 보안 수준의 알고리즘 사용
-
-**API 응답**:
-- 비밀번호 검증 실패 시 구체적인 실패 이유를 제공:
-  - "비밀번호는 최소 8자 이상이어야 합니다"
-  - "비밀번호는 영문자, 숫자, 특수문자를 모두 포함해야 합니다"
-
-**참고**: 이 비밀번호 규칙은 `wrtn_moderators`의 비밀번호 규칙과 동일하다. 모든 사용자 계정에 대해 일관된 보안 정책을 유지한다.
+자세한 비밀번호 규칙(필수 요구사항, 검증 로직, 저장 방식, API 응답)은 **섹션 4.3 비밀번호 규칙**을 참조하라. 단, 저장 시에는 `wrtn_enterprise_employees.password_hashed` 컬럼에 해시값을 저장한다.
 
 #### 5.2.2. 가입 방법
 
@@ -913,19 +869,7 @@ model wrtn_enterprise_team_companion_invitations {
 
 #### 5.2.3. 초대장 만료 정책
 
-**기본 만료 기한**: 초대장은 발행 시점으로부터 **7일** 후에 자동으로 만료된다.
-
-**만료 기한 설정 방식**:
-- API 호출 시 `expired_at` 파라미터를 통해 만료 시각을 직접 지정할 수 있다 (선택 사항)
-- `expired_at` 파라미터를 생략하면 기본값으로 현재 시각 + 7일이 자동 설정된다
-- 이는 초대장 **최초 발행** 시와 **연장** 시 모두 동일하게 적용된다
-
-**초대장 연장 규칙**:
-- 초대장이 아직 만료되지 않은 상태에서 만료 기한을 연장할 수 있다
-- 연장 시에도 새로운 `expired_at` 을 직접 지정하거나, 생략하면 연장 시점 + 7일이 설정된다
-- 연장 처리는 기존 `wrtn_enterprise_employee_invitations` 레코드의 `expired_at` 값을 업데이트하는 방식으로 이루어진다
-- 이미 만료된 초대장(`expired_at` < 현재 시각)은 연장할 수 없다
-- 이미 수락되어 가입이 완료된 초대장도 연장할 수 없다
+기업 직원 초대장의 만료 정책은 내부 관리자 초대장 정책과 동일하다. 자세한 내용은 **섹션 4.5 초대장 만료 정책**을 참조하라. 단, 테이블은 `wrtn_enterprise_employee_invitations`를 사용한다.
 
 #### 5.2.4. 직책 변경
 
@@ -975,25 +919,13 @@ model wrtn_enterprise_team_companion_invitations {
 
 ### 5.5. 비밀번호 관리
 
-기업 직원 역시 내부 관리자와 동일한 비밀번호 관리 체계를 따른다.
-
-#### 5.5.1. 비밀번호 변경
-
-로그인한 직원은 언제든 현재 비밀번호를 확인한 뒤 새로운 비밀번호로 갱신할 수 있다. 새 비밀번호는 섹션 5.2.1에 명시된 강도 규칙(8자 이상, 영문/숫자/특수문자 필수 포함)을 준수해야 한다.
-
-#### 5.5.2. 비밀번호 복구
-
-비밀번호를 분실한 직원을 위해, 등록된 이메일로 리셋 요청을 받아 임시 비밀번호를 생성하여 전송하는 메커니즘을 제공한다.
-
-임시 비밀번호로 로그인한 직원은 즉시 비밀번호 변경 화면으로 유도되어 자신만의 새 비밀번호를 설정하게 된다. 임시 비밀번호는 일회성이며 시간 제한이 있어 보안을 강화한다.
+기업 직원의 비밀번호 관리 체계는 내부 관리자와 완전히 동일하다. 비밀번호 변경 및 복구 절차는 **섹션 4.8 비밀번호 관리**를 참조하라.
 
 ### 5.6. 이메일 주소 변경
 
-기업 직원이 계정의 이메일 주소를 바꿀 때도 신원 확인을 위해 반드시 새 이메일 주소로 인증 코드를 받아 검증하는 과정을 거친다.
+기업 직원의 이메일 주소 변경 절차는 **섹션 4.9 이메일 주소 변경**과 유사하나, 중요한 차이점이 있다:
 
-인증이 완료되면 `wrtn_enterprise_employees.email` 필드가 새 주소로 업데이트되며, 계정 탈취를 방지하기 위해 기존 이메일 주소로도 "이메일이 변경되었습니다" 알림이 전송된다.
-
-**주의사항**: 기업 직원은 기업별로 단일 이메일 주소만 가지므로 (`@@unique([wrtn_enterprise_id, email])`), 변경 시 기존 컬럼을 업데이트하는 방식으로 처리한다. 내부 관리자처럼 복수 이메일을 가질 수 없다.
+**주요 차이점**: 기업 직원은 기업별로 단일 이메일 주소만 가지므로 (`@@unique([wrtn_enterprise_id, email])`), `wrtn_enterprise_employees.email` 필드를 직접 업데이트하는 방식으로 처리한다. 내부 관리자처럼 복수 이메일을 가질 수 없다.
 
 ### 5.7. LLM 사용량 한도 관리
 
@@ -2224,7 +2156,7 @@ model wrtn_ai_model_pricings {
 
 ## 11. 결제 정책 및 서비스 연속성
 
-### 13.1. B2B SaaS 후불 결제 시스템
+### 11.1. B2B SaaS 후불 결제 시스템
 
 본 서비스는 B2B SaaS 서비스로써 **후불제(Post-paid)** 방식을 채택한다:
 
@@ -2232,7 +2164,7 @@ model wrtn_ai_model_pricings {
 - **신용 기반 거래**: 기업 간 거래의 특성상 선결제가 아닌 후불 정산
 - **사용량 기반 과금**: 실제 사용한 토큰, 스토리지, API 호출량에 따른 과금
 
-### 13.2. 서비스 연속성 보장
+### 11.2. 서비스 연속성 보장
 
 > **절대 금지사항**: 잔고 부족을 이유로 서비스를 차단하지 마라
 > 
@@ -2487,9 +2419,9 @@ model wrtn_ai_model_pricings {
 
 > **🔴 핵심: 본 문서의 직접 지시사항 외에는 AutoBE 시스템 프롬프트의 DTO 설계 원칙을 따른다**
 
-### 12.1. 문서 명시 DTO와 자율 설계 DTO의 구분
+### 13.1. 문서 명시 DTO와 자율 설계 DTO의 구분
 
-#### 12.1.1. 본 문서에서 직접 명시한 DTO
+#### 13.1.1. 본 문서에서 직접 명시한 DTO
 
 **절대 불변 원칙 - AI의 자의적 판단 절대 금지**:
 
@@ -2527,13 +2459,13 @@ export interface IWrtnChatSessionHistory {
 }
 ```
 
-#### 12.1.2. 본 문서에 정의되지 않은 DTO
+#### 13.1.2. 본 문서에 정의되지 않은 DTO
 
 - 아래 원칙에 따라 자율적으로 설계한다
 - DB 스키마 지시사항은 DTO에 적용하지 않는다
 - API 사용성과 개발자 경험을 최우선으로 고려한다
 
-### 12.2. DB 스키마와 DTO의 분리 원칙
+### 13.2. DB 스키마와 DTO의 분리 원칙
 
 DB 스키마에 대한 지시사항은 DTO에 적용되지 않음:
 
@@ -2542,16 +2474,16 @@ DB 스키마에 대한 지시사항은 DTO에 적용되지 않음:
 - DB의 정규화된 구조를 그대로 노출하지 않고, 사용자 친화적으로 변환
 - FK 관계, 조인된 데이터 등을 적절히 구성하여 제공
 
-### 12.3. AutoBE Interface 설계 원칙 준수
+### 13.3. AutoBE Interface 설계 원칙 준수
 
 AutoBE의 고유 시스템 프롬프트에 정의된 interface 설계 원칙을 철저히 따라 DTO 설계 진행:
 
 - 아래 설명하는 "Relation 맵핑 원칙"과 "JWT 인증 컨텍스트 보안 원칙"은 AutoBE interface 설계 원칙의 일부를 발췌한 것임
 - **중요**: AutoBE의 interface (특히 DTO) 설계 원칙을 완벽하게 준수하여 설계해야 함
 
-### 12.4. Relation 맵핑 원칙
+### 13.4. Relation 맵핑 원칙
 
-#### 12.4.1. Response DTO의 FK 객체 변환
+#### 13.4.1. Response DTO의 FK 객체 변환
 
 Response DTO에서 FK를 객체로 변환해야 함:
 
@@ -2562,13 +2494,13 @@ Response DTO에서 FK를 객체로 변환해야 함:
   - **Enterprise 참조**: 통계 조회 시 `wrtn_enterprise_id` (X) → `enterprise` (O)
   - Detail DTO든 Summary DTO든 관계없이 모든 Response DTO에 적용
 
-#### 12.4.2. Create DTO의 Atomic Operation Principle
+#### 13.4.2. Create DTO의 Atomic Operation Principle
 
 - Create DTO에서 관계 타입별로 적절히 구성 (Composition, Association, Aggregation)
 - Create DTO는 단일 API 호출로 완전한 엔티티 생성이 가능하도록 설계 (Atomic Operation Principle)
 - 관련 엔티티들이 함께 생성되어야 할 경우, 중첩된 객체 구조로 한 번에 처리
 
-#### 12.4.3. Relation 맵핑 예시
+#### 13.4.3. Relation 맵핑 예시
 
 ```typescript
 //----
@@ -2690,85 +2622,18 @@ export interface IWrtnEnterpriseEmployeeInvitation {
 }
 ```
 
-### 12.5. DTO 타입 명명 규칙
-
-#### 12.5.1. 완전한 테이블명 반영 원칙
-
-**절대 규칙: 데이터베이스 테이블명의 모든 구성 요소를 DTO 타입명에 완전히 반영하라**
-
-- 테이블명에서 단어를 누락하거나 축약하지 마라
-- 테이블명의 모든 semantic component를 DTO 타입명에 그대로 포함시켜라
-- prefix/infix/suffix 등 모든 단어를 PascalCase로 정확히 변환하라
-
-#### 12.5.2. 올바른 명명 예시 및 잘못된 명명 예시
-
-**절대 규칙: 테이블명의 모든 단어를 완전히 포함하라. 중간 단어 생략 금지.**
-
-| Table Name | ✅ CORRECT Type | ❌ WRONG (Word Omitted) |
-|------------|----------------|------------------------|
-| `wrtn_enterprise_employees` | `IWrtnEnterpriseEmployee` | `IWrtnEmployee` (omits "Enterprise") |
-| `wrtn_enterprise_employees` | `IWrtnEnterpriseEmployee.ICreate` | `IWrtnEmployee.ICreate` (omits "Enterprise") |
-| `wrtn_enterprise_employees` | `IWrtnEnterpriseEmployee.IUpdate` | `IWrtnEmployee.IUpdate` (omits "Enterprise") |
-| `wrtn_enterprise_employees` | `IWrtnEnterpriseEmployee.ISummary` | `IWrtnEmployee.ISummary` (omits "Enterprise") |
-| `wrtn_enterprise_employee_personas` | `IWrtnEnterpriseEmployeePersona` | `IWrtnEmployeePersona` (omits "Enterprise") |
-| `wrtn_enterprise_employee_personas` | `IWrtnEnterpriseEmployeePersona.ICreate` | `IWrtnEmployeePersona.ICreate` (omits "Enterprise") |
-| `wrtn_enterprise_employee_personas` | `IWrtnEnterpriseEmployeePersona.IUpdate` | `IWrtnEmployeePersona.IUpdate` (omits "Enterprise") |
-| `wrtn_enterprise_teams` | `IWrtnEnterpriseTeam` | `IWrtnTeam` (omits "Enterprise") |
-| `wrtn_enterprise_team_companions` | `IWrtnEnterpriseTeamCompanion` | `IWrtnTeamCompanion` (omits "Enterprise") |
-| `wrtn_enterprise_employee_appointments` | `IWrtnEnterpriseEmployeeAppointment` | `IWrtnEmpAppointment` (omits "Enterprise", abbreviates "Employee") |
-| `wrtn_enterprise_employee_appointments` | `IWrtnEnterpriseEmployeeAppointment.ICreate` | `IWrtnEmpAppointment.ICreate` (omits "Enterprise", abbreviates "Employee") |
-| `wrtn_enterprise_employee_invitations` | `IWrtnEnterpriseEmployeeInvitation` | `IWrtnEmployeeInvitation` (omits "Enterprise") |
-| `wrtn_chat_sessions` | `IWrtnChatSession` | `IWrtnSession` (omits "Chat") |
-| `wrtn_chat_session_histories` | `IWrtnChatSessionHistory` | `IWrtnSessionHistory` (omits "Chat") |
-| `wrtn_chat_session_histories` | `IWrtnChatSessionHistory.ISummary` | `IWrtnSessionHistory.ISummary` (omits "Chat") |
-| `wrtn_procedure_executions` | `IWrtnProcedureExecution` | `IWrtnExecution` (omits "Procedure") |
-| `wrtn_procedure_executions` | `IWrtnProcedureExecution.ICreate` | `IWrtnExecution.ICreate` (omits "Procedure") |
-| `wrtn_procedure_executions` | `IWrtnProcedureExecution.IUpdate` | `IWrtnExecution.IUpdate` (omits "Procedure") |
-
-#### 12.5.3. 명명 규칙 위반의 심각성
-
-중간 단어를 생략한 타입명은 다음과 같은 치명적 문제를 야기한다:
-
-- **추적 불가능성**: `IWrtnEmployee`가 `wrtn_employees`인지 `wrtn_enterprise_employees`인지 구분 불가
-- **타입 충돌**: 서로 다른 테이블이 동일한 타입명을 가질 수 있음
-- **유지보수 악화**: 코드와 DB 스키마 간 매핑 관계가 모호해짐
-- **자동화 도구 실패**: 컴파일러와 생성 도구가 타입-테이블 매핑에 의존함
-- **도메인 컨텍스트 손실**: `IWrtnEmployee`는 비즈니스 컨텍스트(Enterprise)를 잃음
-
-**결론: 테이블명의 모든 단어는 타입명에 빠짐없이 포함되어야 한다. 예외 없음.**
-
-#### 12.5.4. 명명 변환 프로세스
-
-1. 테이블명에서 prefix를 식별: `wrtn_` → `IWrtn`
-2. 테이블명의 각 단어를 snake_case에서 PascalCase로 변환
-3. 복수형 테이블명은 단수형 DTO로 변환 (예: `employees` → `Employee`)
-4. **중요**: 변환 과정에서 어떤 단어도 제거하거나 축약하지 않음
-
-#### 12.5.5. 명명 규칙의 중요성
-
-- **일관성**: 테이블명과 DTO명의 명확한 1:1 매핑 관계 유지
-- **명확성**: 도메인 컨텍스트를 완전히 표현 (`IWrtnEmployee`는 어떤 Employee인지 불명확)
-- **충돌 방지**: 서로 다른 도메인의 동일한 개념 구분 (예: `enterprise_employees` vs `employees`)
-- **추적 가능성**: 코드에서 테이블로, 테이블에서 코드로의 역추적 용이
-
-#### 12.5.6. 특별 지침
-
-- 본 문서에 명시된 테이블명과 DTO명은 이미 올바르게 정의되어 있으므로, 정확히 그대로 사용하라
-- 새로운 테이블을 추가할 때도 동일한 명명 규칙을 철저히 따라라
-- DTO의 중첩 타입(Summary, Create, Update 등)도 동일한 원칙 적용
-
-### 12.6. JWT 인증 컨텍스트 보안 원칙
+### 13.5. JWT 인증 컨텍스트 보안 원칙
 
 - Create DTO에 **현재 인증된 사용자**의 actor_id나 actor_session_id를 포함하지 마라
 - 현재 사용자의 `wrtn_moderator_id`, `wrtn_moderator_session_id`, `wrtn_enterprise_employee_id`, `wrtn_enterprise_employee_session_id`는 JWT 토큰에서 자동 취득
 - 단, 대상 엔티티 지정이 필요한 경우 (예: 직원 임명 시 target_employee_id)는 반드시 포함해야 함
 - 클라이언트가 제공한 현재 사용자 identity를 신뢰하지 말고, 서버가 JWT에서 검증된 사용자 컨텍스트를 주입
 
-### 12.7. JSON Schema의 Discriminated Union 표현 규칙
+### 13.6. JSON Schema의 Discriminated Union 표현 규칙
 
 > **절대 준수사항**: TypeScript의 discriminated union 타입을 JSON Schema로 변환할 때, `oneOf` 내부에 object 타입을 인라인으로 정의하는 것을 절대 금지한다.
 
-#### 12.7.1. 핵심 원칙
+#### 13.6.1. 핵심 원칙
 
 TypeScript의 union 타입을 JSON Schema의 `oneOf`로 표현할 때는 **반드시 `$ref` 참조들의 배열**로 정의해야 하며, **절대로 인라인 object 타입들의 배열을 사용하지 마라**.
 
@@ -2826,7 +2691,7 @@ TypeScript의 union 타입을 JSON Schema의 `oneOf`로 표현할 때는 **반�
 }
 ```
 
-#### 12.7.2. 적용 대상
+#### 13.6.2. 적용 대상
 
 이 규칙은 모든 discriminated union 타입에 적용된다:
 
@@ -2896,7 +2761,7 @@ JSON Schema 표현:
 }
 ```
 
-#### 12.7.3. 위반 사례 및 수정 방법
+#### 13.6.3. 위반 사례 및 수정 방법
 
 **잘못된 구현 (위반)**:
 ```json
@@ -2934,7 +2799,7 @@ JSON Schema 표현:
 }
 ```
 
-#### 12.7.4. 검증 체크리스트
+#### 13.6.4. 검증 체크리스트
 
 - [ ] 모든 `oneOf`가 `$ref` 배열로만 구성되어 있는가?
 - [ ] `oneOf` 내부에 `type: "object"`가 직접 포함되어 있지 않은가?
@@ -2943,120 +2808,35 @@ JSON Schema 표현:
 
 > **중요**: 이 규칙을 위반하면 OpenAPI 문서의 가독성과 타입 안정성이 크게 저하된다. 반드시 준수해야 한다.
 
-## 13. 요구사항 분석과 DB 설계 종합 실습
-
-> **핵심 과제**: 본 문서에 정의된 25개 테이블은 AI Chatbot과 AI Procedure 기능만 다룬다.
-> 완전한 B2B SaaS 시스템을 위해서는 추가 기능과 테이블이 필수적이다.
-> AutoBE는 기존 테이블을 보호하면서, 새로운 영역에 대한 테이블을 적극 추가해야 한다.
-
-### 13.1. 기존 영역과 신규 영역의 명확한 구분
-
-**기존 영역 (추가 테이블 금지)**:
-- 내부 관리자 관리: `wrtn_moderators` 관련 테이블들이 담당
-- 기업/팀/직원 조직 구조: `wrtn_enterprise*` 테이블들이 담당  
-- AI 챗봇 세션과 메시지: `wrtn_chat*` 테이블들이 담당
-- AI 프로시저 실행: `wrtn_procedure*` 테이블들이 담당
-- 첨부파일: `wrtn_attachment_files`가 담당
-- 토큰 사용량: `wrtn_*_tokens` 테이블들이 담당
-
-**신규 영역 (반드시 새 테이블 추가)**:
-- 본 문서에 정의되지 않은 모든 B2B SaaS 필수 기능
-- 아래는 예시이며, 이외에도 필요한 모든 영역에 테이블 추가 필요
-
-### 13.2. 필수 추가 테이블 영역
-
-다음 영역들은 B2B SaaS에 필수적이므로 반드시 새 테이블을 설계하라:
-
-**청구 및 결제 추적**
-- 매월 사용량을 집계하여 청구서 발행
-- 후불제 B2B 특성상 서비스 차단 없이 미납 관리
-- AI 모델별 차등 요금과 팀별 비용 할당
-- 예산 설정과 초과 알림 (서비스 제한은 절대 금지)
-
-**고객 지원 체계**
-- 티켓 시스템으로 문의 추적과 우선순위 관리
-- 카테고리별 분류와 담당자 배정
-- 응답 스레드와 파일 첨부 지원
-- 내부 노트와 고객 공개 메시지 구분
-
-**알림과 공지사항**
-- 시스템 전체 공지와 기업별 공지 구분
-- 개인별 알림 선호 설정과 읽음 처리
-- 이메일/인앱 등 다중 채널 지원
-- 우선순위와 예약 발송
-
-**피드백과 개선 요청**
-- 버그 리포트와 기능 요청 분리 관리
-- 투표 시스템으로 우선순위 결정
-- 상태 추적과 응답 스레드
-- 로드맵 연계와 릴리즈 계획
-
-**위 영역들은 필수이며, 이외에도 B2B SaaS에 필요한 모든 기능을 추가하라.**
-
-### 13.3. 명확한 설계 지침
-
-**절대 규칙**:
-1. **기존 25개 테이블**: 수정, 컬럼 추가, 삭제 절대 금지
-2. **기존 영역 중복**: 위에 명시된 "기존 영역"에 대한 새 테이블 생성 금지
-3. **신규 영역 필수**: 위에 명시된 "신규 영역"에는 반드시 새 테이블 추가
-
-**추가 테이블 설계 원칙**:
-- 각 신규 기능마다 최소 3-5개의 관련 테이블 설계 권장
-- 테이블 간 관계와 외래 키를 명확히 정의
-- 감사 추적을 위한 created_at, updated_at 등 포함
-- 세션 기반 추적이 필요한 경우 적절한 세션 ID 참조
-
-### 13.4. AutoBE의 의무와 권한
-
-**의무**:
-- 본 문서의 25개 테이블을 정확히 구현
-- B2B SaaS 필수 기능들을 위한 추가 테이블 설계
-- 전체 시스템이 실제로 작동 가능하도록 완성
-
-**권한**:
-- 신규 영역에서는 필요한 만큼 자유롭게 테이블 추가
-- 각 기능의 최적 구현 방법 자율 결정
-- 기업 고객 성공을 위한 혁신적 기능 추가
-
-> **AutoBE에게**: 
-> 
-> 너는 이 시스템의 설계자다.
-> 기업 고객이 무엇을 필요로 할지 스스로 판단하라.
-> B2B SaaS가 무엇인지 스스로 이해하라.
-> 그리고 완전한 시스템을 만들어라.
-> 
-> 본 문서는 시작점일 뿐, 완성은 네가 하는 것이다.
-
-
-## 14. 절대 준수 체크리스트 - AI는 다음을 반드시 자가검증하라
+## 15. 절대 준수 체크리스트 - AI는 다음을 반드시 자가검증하라
 
 > **🔴 최우선 검증: AutoBE 시스템 프롬프트 준수 여부**
 > - [ ] 본 문서의 직접 지시사항만 그대로 따랐는가?
 > - [ ] 나머지 모든 설계와 구현은 AutoBE 시스템 프롬프트를 따랐는가?
 > - [ ] AutoBE의 기본 설계 원칙(DB, DTO, API, 테스트 등)을 완벽히 적용했는가?
 
-### 14.1. Actor 검증
+### 15.1. Actor 검증
 - [ ] `AutoBeAnalyzeRole`을 정확히 2개(`moderator`, `employee`)만 정의했는가?
 - [ ] role/title/position별로 별도의 actor를 만들지 않았는가?
 - [ ] API 설계 시 2개의 actor 기준으로만 분리했는가?
 
-### 14.2. 시스템 완성도 검증
+### 15.2. 시스템 완성도 검증
 - [ ] 본 문서의 약 25개 테이블 외에 필요한 만큼 추가 테이블을 설계했는가?
 - [ ] 완전한 엔터프라이즈 B2B SaaS 시스템으로 작동 가능한가?
 
-### 14.3. 세션 기반 감사 추적 검증
+### 15.3. 세션 기반 감사 추적 검증
 - [ ] 새로 설계하는 모든 테이블에서 사용자 행위 기록 시 세션 ID를 포함시켰는가?
 - [ ] 내부 관리자 작업 기록에 `wrtn_moderator_session_id`를 사용했는가?
 - [ ] 기업 직원 작업 기록에 `wrtn_enterprise_employee_session_id`를 사용했는가?
 - [ ] 모든 중요 행위에 대해 "누가 + 언제 + 어느 세션에서"를 추적 가능한가?
 
-### 14.4. B2B SaaS 완성도 검증
+### 15.4. B2B SaaS 완성도 검증
 - [ ] 본 문서의 핵심 기능(AI Chatbot, Procedure) 외에 추가 기능을 발굴했는가?
 - [ ] 기업 고객이 실제로 필요로 할 기능들을 스스로 판단하여 추가했는가?
 - [ ] 단순히 테이블만 나열한 것이 아니라 실제 작동하는 시스템을 설계했는가?
 - [ ] 완전한 B2B SaaS 엔터프라이즈 시스템이라고 자신있게 말할 수 있는가?
 
-### 14.5. 테이블 및 컬럼 관련
+### 15.5. 테이블 및 컬럼 관련
 
 **🚨 FIRST CHECK - 이것부터 확인하라 (하나라도 위반하면 즉시 실패)**:
 - [ ] `wrtn_moderators`를 `wrtn_enterprise_ai_suite_moderators`로 바꾸지 않았는가?
@@ -3081,31 +2861,31 @@ JSON Schema 표현:
 - [ ] 테이블명이나 컬럼명을 변경하지 않았는가?
 - [ ] 본 문서의 명시적 지시사항을 AI가 재해석하여 변형하지 않았는가?
 
-### 14.6. 영역 중복 및 서브타입 검증
+### 15.6. 영역 중복 및 서브타입 검증
 - [ ] 본 문서에 이미 정의된 테이블의 영역과 겹치는 새 테이블을 만들지 않았는가?
 - [ ] wrtn_moderators의 role별 서브타입 테이블을 만들지 않았는가?
 - [ ] wrtn_enterprise_employees의 title별 서브타입 테이블을 만들지 않았는가?
 - [ ] wrtn_enterprise_team_companions의 role별 서브타입 테이블을 만들지 않았는가?
 - [ ] wrtn_wrtn prefix를 이중으로 사용하지 않았는가?
 
-### 14.7. JSON 필드 관련
+### 15.7. JSON 필드 관련
 - [ ] `data`, `arguments`, `value`, `memory` 등 JSON 필드를 분해하지 않았는가?
 - [ ] JSON 필드를 정규화하여 별도 테이블로 만들지 않았는가?
 - [ ] 토큰 사용량은 별도의 1:1 관계 테이블로 올바르게 정규화했는가?
 
-### 14.8. 통계 및 집계 관련
+### 15.8. 통계 및 집계 관련
 - [ ] 비정규화된 통계 테이블을 만들지 않았는가?
 - [ ] 일별/월별 집계 테이블을 생성하지 않았는가?
 - [ ] 모든 통계를 SQL 쿼리로 처리하도록 설계했는가?
 - [ ] 성능 최적화보다 정규화를 우선시했는가?
 
-### 14.9. 결제 및 서비스 관련
+### 15.9. 결제 및 서비스 관련
 - [ ] 잔고 부족으로 서비스를 차단하는 로직을 만들지 않았는가?
 - [ ] 예산 초과 시에도 서비스가 계속되도록 설계했는가?
 - [ ] 후불제 정책을 반영한 설계를 했는가?
 - [ ] 사용량 추적과 서비스 제공을 분리했는가?
 
-### 14.10. DTO 관련
+### 15.10. DTO 관련
 
 **DTO 인터페이스 정합성 검증**:
 - [ ] 본 문서에 직접 명시한 DTO 인터페이스명을 **정확히** 그대로 사용했는가?
@@ -3116,7 +2896,7 @@ JSON Schema 표현:
 - [ ] JWT 인증 컨텍스트 보안 원칙을 준수했는가? (현재 사용자 정보는 JWT에서, 대상 엔티티는 DTO에 포함)
 - [ ] DB 스키마를 그대로 따르지 않고 API 사용성에 맞게 설계했는가?
 
-**DTO 속성 절대 불변 검증 (섹션 12.1.1 참조)**:
+**DTO 속성 절대 불변 검증**:
 - [ ] `token_usage: IWrtnTokenUsage`를 `input_total: number, output_total: number` 등으로 분해하지 않았는가?
 - [ ] 본 문서에 명시된 복합 타입 속성을 평탄화(flatten)하지 않았는가?
 - [ ] 본 문서의 DTO 속성 타입을 "더 나은 설계"라는 이유로 변경하지 않았는가?
@@ -3128,11 +2908,13 @@ JSON Schema 표현:
 - [ ] `IWrtnChatSession.ICreate` (섹션 6.1): 모든 속성의 이름, 타입, optional 여부를 정확히 반영했는가?
 - [ ] 위 DTO들을 참조하는 다른 DTO에서도 정확히 동일한 타입으로 참조했는가?
 
-**DTO 타입 명명 규칙 검증 (섹션 2.9.3 참조)**:
+**DTO 타입 명명 규칙 검증**:
 - [ ] 모든 DTO 타입명이 대응하는 테이블명의 **모든 단어**를 완전히 포함하는가?
 - [ ] 테이블명에서 어떤 단어도 누락되거나 축약되지 않았는가?
 - [ ] snake_case → PascalCase 변환이 정확한가?
 - [ ] 복수형 → 단수형 변환이 적절한가?
+- [ ] `wrtn_enterprise_employees` → `IWrtnEnterpriseEmployee` (올바름)
+- [ ] `wrtn_enterprise_employees` → `IWrtnEmployee` (잘못됨 - Enterprise 누락)
 
 **DTO 명명 안티패턴 검증 (다음이 하나라도 존재하면 즉시 수정)**:
 - [ ] ❌ `wrtn_enterprise_employees` → `IWrtnEmployee` (Enterprise 누락)
@@ -3149,17 +2931,18 @@ JSON Schema 표현:
 
 > **🚨 DTO 타입 명명 검증 실패 시 즉시 조치**:
 > 1. Interface Phase를 중단하고 즉시 DTO 타입명을 수정하라
-> 2. 섹션 2.9.3의 "DTO 타입 명명 규칙" 원칙을 다시 읽어라
-> 3. 테이블명의 모든 단어가 DTO 타입명에 반영되었는지 재확인하라
+> 2. 테이블명의 모든 단어(wrtn, enterprise, employee 등)가 DTO 타입명에 빠짐없이 포함되었는지 확인하라
+> 3. `wrtn_enterprise_employees` → `IWrtnEnterpriseEmployee` (올바름), `IWrtnEmployee` (잘못됨)
 > 4. 수정 후 다시 이 체크리스트를 실행하여 모든 항목을 통과하라
 
-### 14.11. 절대 변경 금지 테이블
+### 15.11. 절대 변경 금지 테이블
 - [ ] wrtn_chat_sessions 및 하위 테이블들을 수정하지 않았는가?
 - [ ] wrtn_procedure_sessions 및 하위 테이블들을 수정하지 않았는가?
+- [ ] wrtn_moderators, wrtn_enterprises, wrtn_procedures 등 본 문서의 모든 테이블을 수정하지 않았는가?
 - [ ] 이들 테이블에 컬럼을 추가하거나 삭제하지 않았는가?
 - [ ] 이들 테이블의 이름을 변경하지 않았는가?
 
-### 14.12. JSON Schema oneOf 표현 규칙 검증 (섹션 12.7 참조)
+### 15.12. JSON Schema oneOf 표현 규칙 검증
 
 **핵심 원칙 준수 확인**:
 - [ ] 모든 `oneOf`가 `$ref` 참조들의 배열로만 구성되어 있는가?
@@ -3176,9 +2959,9 @@ JSON Schema 표현:
 - [ ] `IWrtnChatSessionUserMessageHistoryContent`: `$ref` 배열의 `oneOf`로 정의되었는가?
 - [ ] 기타 모든 TypeScript union 타입: `$ref` 배열의 `oneOf`로 정의되었는가?
 
-**올바른 구조 예시 확인**:
+**올바른 방식**:
+TypeScript union → JSON Schema `oneOf`는 **반드시 `$ref` 참조들의 배열**로 정의
 ```json
-// ✅ 올바른 구조
 {
   "IWrtnChatSessionHistory": {
     "oneOf": [
@@ -3188,8 +2971,11 @@ JSON Schema 표현:
     ]
   }
 }
+```
 
-// ❌ 절대 금지
+**절대 금지 방식**:
+`oneOf` 내부에 인라인 object 정의 금지
+```json
 {
   "IWrtnChatSessionHistory": {
     "oneOf": [
@@ -3199,35 +2985,24 @@ JSON Schema 표현:
 }
 ```
 
-> **🚨 JSON Schema oneOf 검증 실패 시 즉시 조치**:
-> 1. Interface Phase를 중단하고 즉시 OpenAPI schema를 수정하라
-> 2. 섹션 12.7의 "JSON Schema의 Discriminated Union 표현 규칙"을 다시 읽어라
-> 3. 모든 union 타입이 `$ref` 배열의 `oneOf`로 표현되었는지 재확인하라
-> 4. 각 union member가 별도의 schema component로 정의되었는지 확인하라
-> 5. 수정 후 다시 이 체크리스트를 실행하여 모든 항목을 통과하라
 
-### 14.13. 최종 확인
+### 15.13. 최종 확인
 
 **AI 자의적 판단 절대 금지 확인**:
 - [ ] AI의 주관적 판단을 배제하고 문서 지시사항만 따랐는가?
 - [ ] "더 나은 설계"라는 생각으로 변경을 시도하지 않았는가?
 - [ ] "더 명확한 명명", "더 일관된 구조", "더 나은 정규화" 등의 명목으로 본 문서의 설계를 변경하지 않았는가?
-- [ ] 모든 지시사항에 절대 복종했는가?
-- [ ] "절대복종"이 무엇인지 이해하고 실천했는가?
 
-**테이블명/컬럼명 100% 일치 확인**:
-- [ ] `wrtn_chat_sessions`를 `wrtn_chatbot_sessions`로 바꾸지 않았는가?
+**핵심 검증**:
 - [ ] 본 문서의 모든 테이블명을 단 한 글자도 바꾸지 않고 사용했는가?
 - [ ] 본 문서의 모든 컬럼명을 정확히 그대로 사용했는가?
-
-**DTO 속성 100% 일치 확인**:
-- [ ] `token_usage: IWrtnTokenUsage`를 분해하여 속성들로 펼치지 않았는가?
 - [ ] 본 문서에 명시된 모든 DTO 인터페이스를 그대로 구현했는가?
 - [ ] 본 문서에 명시된 모든 DTO 속성을 변경하지 않았는가?
+- [ ] `token_usage: IWrtnTokenUsage`를 분해하여 속성들로 펼치지 않았는가?
 
 **시스템 완성도 확인**:
 - [ ] **최종 검증: 본 문서의 25개 테이블 + 추가 설계한 테이블들로 완전한 시스템을 구성했는가?**
-- [ ] **🚨 통계 API 완전성 검증: 섹션 9.3과 9.4의 모든 메트릭, 집계 차원, 권한별 조회 범위, 다차원 집계 옵션에 대한 API operation과 DTO가 단 하나도 빠짐없이 설계되었는가?**
+- [ ] **🚨 통계 API 완전성 검증**: Chat Session 통계(세션 수, 토큰 사용량, AI 모델별/직원별/팀별/기간별 집계), Procedure Session 통계(실행 수, 성공/실패율, 토큰 사용량, 다차원 집계), 권한별 조회 범위(Moderator: 전체/기업별, Employee master: 기업 전체, manager/member: 팀/개인) 모두 API operation과 DTO로 설계했는가?
 
 **균형잡힌 접근 필수**:
 - 기존 25개 테이블: 절대 수정 금지, 정확히 그대로 구현
