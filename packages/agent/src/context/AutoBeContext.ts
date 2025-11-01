@@ -10,9 +10,11 @@ import {
   AutoBeAssistantMessageHistory,
   AutoBeEvent,
   AutoBeEventSource,
+  AutoBeFunctionCallingMetric,
   AutoBeHistory,
   AutoBeInterfaceHistory,
   AutoBePrismaHistory,
+  AutoBeProcessAggregateCollection,
   AutoBeRealizeHistory,
   AutoBeTestHistory,
   IAutoBeCompiler,
@@ -31,6 +33,9 @@ export interface AutoBeContext<Model extends ILlmSchema.Model> {
   vendor: IAgenticaVendor;
   locale: string;
   retry: number;
+
+  // stack
+  aggregates: AutoBeProcessAggregateCollection;
 
   // accessors
   compilerListener: IAutoBeCompilerListener;
@@ -79,5 +84,6 @@ export namespace AutoBeContext {
   export interface IResult<Model extends ILlmSchema.Model> {
     histories: MicroAgenticaHistory<Model>[];
     tokenUsage: IAutoBeTokenUsageJson.IComponent;
+    metric: AutoBeFunctionCallingMetric;
   }
 }

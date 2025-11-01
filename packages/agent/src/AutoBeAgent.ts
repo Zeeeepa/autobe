@@ -9,6 +9,7 @@ import {
   AutoBeAssistantMessageHistory,
   AutoBeHistory,
   AutoBePhase,
+  AutoBeProcessAggregateCollection,
   AutoBeUserMessageContent,
   AutoBeUserMessageHistory,
   IAutoBeAgent,
@@ -23,6 +24,7 @@ import { AutoBeConfigConstant } from "./constants/AutoBeConfigConstant";
 import { AutoBeContext } from "./context/AutoBeContext";
 import { AutoBeState } from "./context/AutoBeState";
 import { AutoBeTokenUsage } from "./context/AutoBeTokenUsage";
+import { AutoBeProcessAggregateFactory } from "./factory/AutoBeProcessAggregateFactory";
 import { createAgenticaHistory } from "./factory/createAgenticaHistory";
 import { createAutoBeController } from "./factory/createAutoBeApplication";
 import { createAutoBeContext } from "./factory/createAutoBeContext";
@@ -71,7 +73,7 @@ export class AutoBeAgent<Model extends ILlmSchema.Model>
   private readonly histories_: AutoBeHistory[];
 
   /** @internal */
-  private readonly context_: AutoBeContext<Model>;
+  private readonly context_: Omit<AutoBeContext<Model>, "aggregates">;
 
   /** @internal */
   private readonly state_: AutoBeState;
@@ -132,6 +134,7 @@ export class AutoBeAgent<Model extends ILlmSchema.Model>
     this.context_ = createAutoBeContext({
       model: props.model,
       vendor: props.vendor,
+      aggregates: AutoBeProcessAggregateFactory.createCollection(),
       config: {
         backoffStrategy: randomBackoffStrategy,
         ...props.config,
@@ -161,7 +164,7 @@ export class AutoBeAgent<Model extends ILlmSchema.Model>
       controllers: [
         createAutoBeController({
           model: props.model,
-          context: this.context_,
+          context: this.getContext(),
         }),
       ],
     });
@@ -310,6 +313,15 @@ export class AutoBeAgent<Model extends ILlmSchema.Model>
     return this.usage_;
   }
 
+  public getAggregates(): AutoBeProcessAggregateCollection {
+    const state: AutoBeState = this.context_.state();
+    return AutoBeProcessAggregateFactory.reduce(
+      [state.analyze, state.prisma, state.interface, state.test, state.realize]
+        .filter((x) => x !== null)
+        .map((x) => x.aggregates),
+    );
+  }
+
   public getPhase(): AutoBePhase | null {
     if (this.state_.analyze === null) return null;
     else if (this.state_.realize?.step === this.state_.analyze.step)
@@ -324,6 +336,9 @@ export class AutoBeAgent<Model extends ILlmSchema.Model>
 
   /** @internal */
   public getContext(): AutoBeContext<Model> {
-    return this.context_;
+    return {
+      ...this.context_,
+      aggregates: AutoBeProcessAggregateFactory.createCollection(),
+    };
   }
 }

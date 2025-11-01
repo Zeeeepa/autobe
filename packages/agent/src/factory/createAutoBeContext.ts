@@ -5,6 +5,7 @@ import {
   AutoBeAnalyzeStartEvent,
   AutoBeAssistantMessageEvent,
   AutoBeEvent,
+  AutoBeFunctionCallingMetric,
   AutoBeHistory,
   AutoBeInterfaceCompleteEvent,
   AutoBeInterfaceHistory,
@@ -12,6 +13,7 @@ import {
   AutoBePrismaCompleteEvent,
   AutoBePrismaHistory,
   AutoBePrismaStartEvent,
+  AutoBeProcessAggregateCollection,
   AutoBeRealizeCompleteEvent,
   AutoBeRealizeHistory,
   AutoBeRealizeStartEvent,
@@ -55,6 +57,7 @@ export const createAutoBeContext = <Model extends ILlmSchema.Model>(props: {
   histories: () => AutoBeHistory[];
   usage: () => AutoBeTokenUsage;
   dispatch: (event: AutoBeEvent) => Promise<void>;
+  aggregates: AutoBeProcessAggregateCollection;
 }): AutoBeContext<Model> => {
   const config: Required<Omit<IAutoBeConfig, "backoffStrategy" | "timezone">> =
     {
@@ -68,6 +71,7 @@ export const createAutoBeContext = <Model extends ILlmSchema.Model>(props: {
     vendor: props.vendor,
     retry: config.retry,
     locale: config.locale,
+    aggregates: props.aggregates,
     compilerListener: props.compilerListener,
     compiler: async () => {
       const compiler = await props.compiler();
@@ -86,7 +90,14 @@ export const createAutoBeContext = <Model extends ILlmSchema.Model>(props: {
       return message;
     },
     conversate: async (next, closure) => {
-      const trial = {
+      const metric: AutoBeFunctionCallingMetric = {
+        total: 0,
+        success: 0,
+        consent: 0,
+        validationFailure: 0,
+        invalidJson: 0,
+      };
+      const progress = {
         request: 0,
         response: 0,
         timeout: 0,
@@ -113,6 +124,7 @@ export const createAutoBeContext = <Model extends ILlmSchema.Model>(props: {
 
         // ADD EVENT LISTENERS
         agent.on("request", async (event) => {
+          ++metric.total;
           if (next.enforceFunctionCall === true && event.body.tools)
             event.body.tool_choice = "required";
           if (event.body.parallel_tool_calls !== undefined)
@@ -123,7 +135,7 @@ export const createAutoBeContext = <Model extends ILlmSchema.Model>(props: {
             ...event,
             type: "vendorRequest",
             source: next.source,
-            retry: trial.request++,
+            retry: progress.request++,
           });
         });
         agent.on("response", async (event) => {
@@ -132,11 +144,12 @@ export const createAutoBeContext = <Model extends ILlmSchema.Model>(props: {
               ...event,
               type: "vendorResponse",
               source: next.source,
-              retry: trial.response++,
+              retry: progress.response++,
             })
             .catch(() => {});
         });
         agent.on("jsonParseError", (event) => {
+          ++metric.invalidJson;
           void props
             .dispatch({
               ...event,
@@ -145,6 +158,7 @@ export const createAutoBeContext = <Model extends ILlmSchema.Model>(props: {
             .catch(() => {});
         });
         agent.on("validate", (event) => {
+          ++metric.validationFailure;
           void props
             .dispatch({
               type: "jsonValidateError",
@@ -194,6 +208,17 @@ export const createAutoBeContext = <Model extends ILlmSchema.Model>(props: {
             STAGES.find((stage) => next.source.startsWith(stage)) ?? "analyze",
           ]);
 
+        const success = (
+          histories: MicroAgenticaHistory<Model>[],
+          tokenUsage: IAutoBeTokenUsageJson.IComponent,
+        ) => {
+          ++metric.success;
+          return {
+            histories: histories,
+            tokenUsage,
+            metric,
+          };
+        };
         if (result.type === "error") throw result.error;
         else if (result.type === "timeout") {
           void props
@@ -202,7 +227,7 @@ export const createAutoBeContext = <Model extends ILlmSchema.Model>(props: {
               id: v7(),
               source: next.source,
               timeout: config.timeout!,
-              retry: trial.timeout++,
+              retry: progress.timeout++,
               created_at: new Date().toISOString(),
             })
             .catch(() => {});
@@ -233,6 +258,7 @@ export const createAutoBeContext = <Model extends ILlmSchema.Model>(props: {
             last?.type === "assistantMessage" &&
             last.text.trim().length !== 0
           ) {
+            ++metric.consent;
             const consent: string | null = await consentFunctionCall({
               source: next.source,
               dispatch: (e) => {
@@ -265,18 +291,12 @@ export const createAutoBeContext = <Model extends ILlmSchema.Model>(props: {
                   (h) => h.type === "execute" && h.success === true,
                 )
               )
-                return {
-                  histories: newHistories,
-                  tokenUsage: newTokenUsage,
-                };
+                return success(newHistories, newTokenUsage);
             }
           }
           failure();
         }
-        return {
-          histories: result.histories,
-          tokenUsage,
-        };
+        return success(result.histories, tokenUsage);
       };
       if (next.enforceFunctionCall === true)
         return await forceRetry(execute, config.retry);
@@ -317,9 +337,10 @@ const createDispatch = (props: {
           prefix: event.prefix,
           actors: event.actors,
           files: event.files,
+          aggregates: event.aggregates,
+          step: event.step,
           created_at: analyzeStart?.created_at ?? new Date().toISOString(),
           completed_at: event.created_at,
-          step: event.step,
         } satisfies AutoBeAnalyzeHistory,
       }) as AutoBeContext.DispatchHistory<Event>;
     else if (event.type === "prismaComplete")
@@ -335,9 +356,10 @@ const createDispatch = (props: {
           schemas: event.schemas,
           result: event.result,
           compiled: event.compiled,
+          aggregates: event.aggregates,
+          step: event.step,
           created_at: prismaStart?.created_at ?? new Date().toISOString(),
           completed_at: event.created_at,
-          step: event.step,
         } satisfies AutoBePrismaHistory,
       }) as AutoBeContext.DispatchHistory<Event>;
     else if (event.type === "interfaceComplete")
@@ -353,9 +375,10 @@ const createDispatch = (props: {
           authorizations: event.authorizations,
           document: event.document,
           missed: event.missed,
+          aggregates: event.aggregates,
+          step: event.step,
           created_at: interfaceStart?.created_at ?? new Date().toISOString(),
           completed_at: new Date().toISOString(),
-          step: event.step,
         } satisfies AutoBeInterfaceHistory,
       }) as AutoBeContext.DispatchHistory<Event>;
     else if (event.type === "testComplete")
@@ -370,9 +393,10 @@ const createDispatch = (props: {
           instruction: testStart?.reason ?? "",
           files: event.files,
           compiled: event.compiled,
+          aggregates: event.aggregates,
+          step: event.step,
           created_at: testStart?.created_at ?? new Date().toISOString(),
           completed_at: new Date().toISOString(),
-          step: event.step,
         } satisfies AutoBeTestHistory,
       }) as AutoBeContext.DispatchHistory<Event>;
     else if (event.type === "realizeComplete")
@@ -389,9 +413,10 @@ const createDispatch = (props: {
           functions: event.functions,
           controllers: event.controllers,
           compiled: event.compiled,
+          aggregates: event.aggregates,
+          step: event.step,
           created_at: realizeStart?.created_at ?? new Date().toISOString(),
           completed_at: new Date().toISOString(),
-          step: event.step,
         } satisfies AutoBeRealizeHistory,
       }) as AutoBeContext.DispatchHistory<Event>;
     void props.dispatch(event).catch(() => {});
