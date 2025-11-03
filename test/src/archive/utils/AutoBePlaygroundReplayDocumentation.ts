@@ -98,24 +98,25 @@ export namespace AutoBePlaygroundReplayDocumentation {
   }): string => {
     const phase = (key: AutoBePhase): string => {
       const title: string = key.charAt(0).toUpperCase() + key.slice(1);
-      if (props.replay[key] === null)
-        return [`⚪ ${title}`, "", "", "", ""].join(" | ");
+      const state: IAutoBePlaygroundReplay.IPhaseState | null =
+        props.replay[key];
+      if (state === null) return [`⚪ ${title}`, "", "", "", ""].join(" | ");
       return [
-        `${props.replay[key].success === true ? "🟢" : "🔴"} ${title}`,
-        Object.entries(props.replay[key].commodity)
+        `${state.success === true ? "🟢" : "🔴"} ${title}`,
+        Object.entries(state.commodity)
           .map(([key, value]) => `\`${key}\`: ${value}`)
           .join(", "),
-        formatTokens(props.replay[key].aggregates.total.tokenUsage.total),
-        formatElapsedTime(props.replay[key].elapsed),
+        formatTokens(state.aggregates.total.tokenUsage.total),
+        formatElapsedTime(state.elapsed),
         Math.floor(
-          (props.replay.aggregates.total.metric.success /
-            props.replay.aggregates.total.metric.attempt) *
+          (state.aggregates.total.metric.success /
+            state.aggregates.total.metric.attempt) *
             100,
         ) + "%",
       ].join(" | ");
     };
     return StringUtil.trim`
-      ### \`${props.replay.vendor} - ${props.replay.project}\`
+      ### \`${props.replay.vendor}\` - \`${props.replay.project}\`
 
       - Source Code: ${`[\`${TestHistory.slugModel(
         props.replay.vendor,
