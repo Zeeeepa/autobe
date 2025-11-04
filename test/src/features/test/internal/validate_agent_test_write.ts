@@ -1,5 +1,6 @@
 import { orchestrateTestWrite } from "@autobe/agent/src/orchestrate/test/orchestrateTestWrite";
 import { IAutoBeTestWriteResult } from "@autobe/agent/src/orchestrate/test/structures/IAutoBeTestWriteResult";
+import { AutoBeExampleStorage } from "@autobe/benchmark";
 import { AutoBeCompilerInterfaceTemplate } from "@autobe/compiler/src/raw/AutoBeCompilerInterfaceTemplate";
 import { CompressUtil, FileSystemIterator } from "@autobe/filesystem";
 import {
@@ -8,37 +9,39 @@ import {
   IAutoBeCompiler,
   IAutoBeTypeScriptCompileResult,
 } from "@autobe/interface";
+import { AutoBeExampleProject } from "@autobe/interface";
 import fs from "fs";
 import typia from "typia";
 
 import { TestFactory } from "../../../TestFactory";
 import { TestGlobal } from "../../../TestGlobal";
-import { TestHistory } from "../../../internal/TestHistory";
-import { TestLogger } from "../../../internal/TestLogger";
-import { TestProject } from "../../../structures/TestProject";
+import { ArchiveLogger } from "../../../archive/utils/ArchiveLogger";
 import { prepare_agent_test } from "./prepare_agent_test";
 
-export const validate_agent_test_write = async (
-  factory: TestFactory,
-  project: TestProject,
-) => {
+export const validate_agent_test_write = async (props: {
+  factory: TestFactory;
+  vendor: string;
+  project: AutoBeExampleProject;
+}) => {
   if (TestGlobal.env.OPENAI_API_KEY === undefined) return false;
 
   // PREPARE ASSETS
-  const { agent } = await prepare_agent_test(factory, project);
-  const model: string = TestGlobal.vendorModel;
+  const { agent } = await prepare_agent_test(props);
   const scenarios: AutoBeTestScenario[] = JSON.parse(
     await CompressUtil.gunzip(
       await fs.promises.readFile(
-        `${TestGlobal.ROOT}/assets/histories/${model}/${project}.test.scenarios.json.gz`,
+        `${AutoBeExampleStorage.getDirectory({
+          vendor: props.vendor,
+          project: props.project,
+        })}/test.scenarios.json.gz`,
       ),
     ),
   );
 
   const start: Date = new Date();
   for (const type of typia.misc.literals<AutoBeEventOfSerializable.Type>())
-    agent.on(type, (event) => TestLogger.event(start, event));
-  agent.on("vendorResponse", (e) => TestLogger.event(start, e));
+    agent.on(type, (event) => ArchiveLogger.event(start, event));
+  agent.on("vendorResponse", (e) => ArchiveLogger.event(start, e));
 
   // GENERATE TEST FUNCTIONS
   const writes: IAutoBeTestWriteResult[] = await orchestrateTestWrite(
@@ -76,7 +79,7 @@ export const validate_agent_test_write = async (
       ),
     });
   await FileSystemIterator.save({
-    root: `${TestGlobal.ROOT}/results/${model}/${project}/test/write`,
+    root: `${TestGlobal.ROOT}/results/${props.vendor}/${props.project}/test/write`,
     files: {
       ...files,
       "test/tsconfig.json":
@@ -86,7 +89,11 @@ export const validate_agent_test_write = async (
     },
   });
   if (TestGlobal.archive)
-    await TestHistory.save({
-      [`${project}.test.writes.json`]: JSON.stringify(writes),
+    await AutoBeExampleStorage.save({
+      vendor: props.vendor,
+      project: props.project,
+      files: {
+        [`test.writes.json`]: JSON.stringify(writes),
+      },
     });
 };

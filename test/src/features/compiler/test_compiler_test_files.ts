@@ -1,14 +1,21 @@
 import { AutoBeAgent } from "@autobe/agent";
+import { AutoBeExampleStorage } from "@autobe/benchmark";
 import { AutoBeCompiler } from "@autobe/compiler";
 import { FileSystemIterator } from "@autobe/filesystem";
 import cp from "child_process";
 import OpenAI from "openai";
 
 import { TestGlobal } from "../../TestGlobal";
-import { TestHistory } from "../../internal/TestHistory";
 
 export const test_compiler_test_files = async () => {
-  if (TestHistory.has("todo", "test") === false) return false;
+  if (
+    (await AutoBeExampleStorage.has({
+      vendor: TestGlobal.vendorModel,
+      project: "todo",
+      phase: "test",
+    })) === false
+  )
+    return false;
 
   const agent: AutoBeAgent<"chatgpt"> = new AutoBeAgent({
     model: "chatgpt",
@@ -17,7 +24,11 @@ export const test_compiler_test_files = async () => {
       model: "gpt-4.1",
     },
     compiler: (listener) => new AutoBeCompiler(listener),
-    histories: await TestHistory.getHistories("todo", "test"),
+    histories: await AutoBeExampleStorage.getHistories({
+      vendor: TestGlobal.vendorModel,
+      project: "todo",
+      phase: "test",
+    }),
   });
   const files: Record<string, string> = await agent.getFiles();
   const root: string = `${TestGlobal.ROOT}/results/compiler.test.files`;

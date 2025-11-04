@@ -1,3 +1,4 @@
+import { AutoBeExampleStorage } from "@autobe/benchmark";
 import { AutoBePrismaCompiler } from "@autobe/compiler";
 import { FileSystemIterator } from "@autobe/filesystem";
 import {
@@ -8,15 +9,22 @@ import {
 import { TestValidator } from "@nestia/e2e";
 
 import { TestGlobal } from "../../TestGlobal";
-import { TestHistory } from "../../internal/TestHistory";
 
 export const test_compiler_prisma_sqlite = async () => {
-  if (TestHistory.has("todo", "prisma") === false) return false;
+  if (
+    (await AutoBeExampleStorage.has({
+      vendor: TestGlobal.vendorModel,
+      project: "todo",
+      phase: "prisma",
+    })) === false
+  )
+    return false;
 
-  const histories: AutoBeHistory[] = await TestHistory.getHistories(
-    "todo",
-    "prisma",
-  );
+  const histories: AutoBeHistory[] = await AutoBeExampleStorage.getHistories({
+    vendor: TestGlobal.vendorModel,
+    project: "todo",
+    phase: "prisma",
+  });
   const prisma: AutoBePrismaHistory | undefined = histories.find(
     (h) => h.type === "prisma",
   );

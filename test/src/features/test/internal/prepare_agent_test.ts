@@ -1,25 +1,28 @@
 import { AutoBeAgent, AutoBeTokenUsage } from "@autobe/agent";
 import { AutoBeState } from "@autobe/agent/src/context/AutoBeState";
+import { AutoBeExampleStorage } from "@autobe/benchmark";
 import { AutoBeHistory } from "@autobe/interface";
+import { AutoBeExampleProject } from "@autobe/interface";
 import { ILlmSchema } from "@samchon/openapi";
 
 import { TestFactory } from "../../../TestFactory";
 import { TestGlobal } from "../../../TestGlobal";
-import { TestHistory } from "../../../internal/TestHistory";
-import { TestProject } from "../../../structures/TestProject";
 
-export const prepare_agent_test = async (
-  factory: TestFactory,
-  project: TestProject,
-) => {
+export const prepare_agent_test = async (props: {
+  factory: TestFactory;
+  vendor: string;
+  project: AutoBeExampleProject;
+}) => {
   if (TestGlobal.env.OPENAI_API_KEY === undefined)
     throw new Error("No OpenAI API key provided");
 
-  const histories: AutoBeHistory[] = await TestHistory.getHistories(
-    project,
-    "interface",
-  );
-  const agent: AutoBeAgent<ILlmSchema.Model> = factory.createAgent(histories);
+  const histories: AutoBeHistory[] = await AutoBeExampleStorage.getHistories({
+    project: props.project,
+    phase: "interface",
+    vendor: props.vendor,
+  });
+  const agent: AutoBeAgent<ILlmSchema.Model> =
+    props.factory.createAgent(histories);
   const state: AutoBeState = agent.getContext().state();
 
   return {
@@ -27,17 +30,22 @@ export const prepare_agent_test = async (
     analyze: state.analyze!,
     prisma: state.prisma!,
     interface: state.interface!,
-    zero: await getZeroTokenUsage(factory, project),
+    zero: await getZeroTokenUsage(props),
   };
 };
 
-const getZeroTokenUsage = async (
-  factory: TestFactory,
-  project: TestProject,
-): Promise<AutoBeTokenUsage> => {
+const getZeroTokenUsage = async (props: {
+  factory: TestFactory;
+  vendor: string;
+  project: AutoBeExampleProject;
+}): Promise<AutoBeTokenUsage> => {
   const zero: AutoBeTokenUsage = new AutoBeTokenUsage(
-    await TestHistory.getTokenUsage(project, "interface"),
+    await AutoBeExampleStorage.getTokenUsage({
+      vendor: props.vendor,
+      project: props.project,
+      phase: "interface",
+    }),
   );
-  zero.decrement(factory.getTokenUsage());
+  zero.decrement(props.factory.getTokenUsage());
   return zero;
 };

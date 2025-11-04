@@ -1,4 +1,5 @@
 import { AutoBeAgent } from "@autobe/agent";
+import { AutoBeExampleStorage } from "@autobe/benchmark";
 import { AutoBeCompiler } from "@autobe/compiler";
 import {
   AutoBeHistory,
@@ -9,15 +10,23 @@ import { TestValidator } from "@nestia/e2e";
 import OpenAI from "openai";
 import typia from "typia";
 
-import { TestHistory } from "../../internal/TestHistory";
+import { TestGlobal } from "../../TestGlobal";
 
 export const test_compiler_test_build = async () => {
-  if (TestHistory.has("todo", "test") === false) return false;
+  if (
+    (await AutoBeExampleStorage.has({
+      vendor: TestGlobal.vendorModel,
+      project: "todo",
+      phase: "test",
+    })) === false
+  )
+    return false;
 
-  const histories: AutoBeHistory[] = await TestHistory.getHistories(
-    "todo",
-    "test",
-  );
+  const histories: AutoBeHistory[] = await AutoBeExampleStorage.getHistories({
+    vendor: TestGlobal.vendorModel,
+    project: "todo",
+    phase: "test",
+  });
   const testHistory: AutoBeTestHistory = typia.assert<AutoBeTestHistory>(
     histories.at(-1),
   );

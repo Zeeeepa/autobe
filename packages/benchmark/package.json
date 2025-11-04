@@ -1,0 +1,50 @@
+{
+  "name": "@autobe/benchmark",
+  "version": "0.26.0",
+  "description": "AI backend server code generator",
+  "main": "src/index.ts",
+  "scripts": {
+    "prepare": "ts-patch install",
+    "build": "rimraf lib && tsc",
+    "postbuild": "node ../../internals/config/assertBuild.js",
+    "dev": "rimraf lib && tsc --watch",
+    "prepack": "pnpm run build"
+  },
+  "keywords": [],
+  "author": "Wrtn Technologies",
+  "license": "AGPL-3.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wrtnlabs/autobe"
+  },
+  "bugs": {
+    "url": "https://github.com/wrtnlabs/autobe/issues"
+  },
+  "files": [
+    "lib",
+    "src",
+    "package.json",
+    "LICENSE",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "main": "lib/index.js",
+    "typings": "lib/index.d.ts"
+  },
+  "dependencies": {
+    "@autobe/agent": "workspace:^",
+    "@autobe/filesystem": "workspace:^",
+    "@autobe/interface": "workspace:^",
+    "@autobe/utils": "workspace:^",
+    "tstl": "catalog:samchon",
+    "typia": "catalog:samchon",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "@types/uuid": "^10.0.0",
+    "rimraf": "^6.0.1",
+    "ts-patch": "catalog:typescript",
+    "typescript": "catalog:typescript"
+  }
+}

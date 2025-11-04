@@ -1,33 +1,33 @@
 import { orchestrateTestScenario } from "@autobe/agent/src/orchestrate/test/orchestrateTestScenario";
+import { AutoBeExampleStorage } from "@autobe/benchmark";
 import { FileSystemIterator } from "@autobe/filesystem";
 import {
   AutoBeEventOfSerializable,
   AutoBeOpenApi,
   AutoBeTestScenario,
 } from "@autobe/interface";
+import { AutoBeExampleProject } from "@autobe/interface";
 import { AutoBeOpenApiEndpointComparator } from "@autobe/utils";
 import { HashMap, Pair } from "tstl";
 import typia from "typia";
 
 import { TestFactory } from "../../../TestFactory";
 import { TestGlobal } from "../../../TestGlobal";
-import { TestHistory } from "../../../internal/TestHistory";
-import { TestLogger } from "../../../internal/TestLogger";
-import { TestProject } from "../../../structures/TestProject";
+import { ArchiveLogger } from "../../../archive/utils/ArchiveLogger";
 import { prepare_agent_test } from "./prepare_agent_test";
 
-export const validate_agent_test_scenario = async (
-  factory: TestFactory,
-  project: TestProject,
-) => {
+export const validate_agent_test_scenario = async (props: {
+  factory: TestFactory;
+  vendor: string;
+  project: AutoBeExampleProject;
+}) => {
   if (TestGlobal.env.OPENAI_API_KEY === undefined) return false;
 
   // PREPARE ASSETS
-  const { agent } = await prepare_agent_test(factory, project);
-
+  const { agent } = await prepare_agent_test(props);
   const start: Date = new Date();
   for (const type of typia.misc.literals<AutoBeEventOfSerializable.Type>())
-    agent.on(type, (event) => TestLogger.event(start, event));
+    agent.on(type, (event) => ArchiveLogger.event(start, event));
 
   // GENERATE TEST SCENARIOS
   const result: AutoBeTestScenario[] = await orchestrateTestScenario(
@@ -59,16 +59,19 @@ export const validate_agent_test_scenario = async (
   }
 
   // REPORT RESULT
-  const model: string = TestGlobal.vendorModel;
   await FileSystemIterator.save({
-    root: `${TestGlobal.ROOT}/results/${model}/${project}/test/scenario`,
+    root: `${TestGlobal.ROOT}/results/${props.vendor}/${props.project}/test/scenario`,
     files: {
       ...(await agent.getFiles()),
       "logs/scenarios.json": JSON.stringify(result),
     },
   });
   if (TestGlobal.archive)
-    await TestHistory.save({
-      [`${project}.test.scenarios.json`]: JSON.stringify(result),
+    await AutoBeExampleStorage.save({
+      vendor: props.vendor,
+      project: props.project,
+      files: {
+        [`test.scenarios.json`]: JSON.stringify(result),
+      },
     });
 };

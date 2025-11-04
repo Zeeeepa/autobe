@@ -1,7 +1,9 @@
 import { AutoBeAgent } from "@autobe/agent";
+import { AutoBeExampleStorage } from "@autobe/benchmark";
 import { AutoBeCompiler } from "@autobe/compiler";
 import { FileSystemIterator } from "@autobe/filesystem";
 import { AutoBeHistory, AutoBePhase } from "@autobe/interface";
+import { AutoBeExampleProject } from "@autobe/interface";
 import { StringUtil } from "@autobe/utils";
 import fs from "fs";
 import OpenAI from "openai";
@@ -9,8 +11,6 @@ import path from "path";
 import typia from "typia";
 
 import { TestGlobal } from "../TestGlobal";
-import { TestHistory } from "../internal/TestHistory";
-import { TestProject } from "../structures/TestProject";
 
 const main = async (): Promise<void> => {
   if (fs.existsSync(`${TestGlobal.ROOT}/results`) === true)
@@ -33,15 +33,23 @@ const main = async (): Promise<void> => {
   ] as const satisfies AutoBePhase[];
 
   for (const vendor of typia.misc.literals<VendorModel>())
-    for (const project of typia.misc.literals<TestProject>())
+    for (const project of typia.misc.literals<AutoBeExampleProject>())
       for (const phase of phaseSequence) {
-        TestGlobal.vendorModel = vendor;
-        if ((await TestHistory.has(project, phase)) === false) continue;
+        if (
+          (await AutoBeExampleStorage.has({
+            project,
+            vendor,
+            phase,
+          })) === false
+        )
+          continue;
 
-        const histories: AutoBeHistory[] = await TestHistory.getHistories(
-          project,
-          phase,
-        );
+        const histories: AutoBeHistory[] =
+          await AutoBeExampleStorage.getHistories({
+            project,
+            phase,
+            vendor,
+          });
         const last: AutoBeHistory | undefined = histories.at(-1);
         if (last === undefined) continue;
         else if (
@@ -59,8 +67,8 @@ const main = async (): Promise<void> => {
         console.log("=======================================================");
         console.log(StringUtil.trim`
           \`\`\`bash
-          code results/${TestHistory.slugModel(vendor, false)}/${project}/${phase}
-          pnpm run archive --vendor ${vendor} --project ${project} --from ${phase} > archive.${TestHistory.slugModel(vendor, true)}.${project}.log
+          code results/${AutoBeExampleStorage.slugModel(vendor, false)}/${project}/${phase}
+          pnpm run archive --vendor ${vendor} --project ${project} --from ${phase} > archive.${AutoBeExampleStorage.slugModel(vendor, true)}.${project}.log
           \`\`\`
         `);
         console.log("\n");

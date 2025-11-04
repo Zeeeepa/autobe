@@ -1,28 +1,28 @@
 import { orchestrateInterfaceSchemas } from "@autobe/agent/src/orchestrate/interface/orchestrateInterfaceSchemas";
+import { AutoBeExampleStorage } from "@autobe/benchmark";
 import { CompressUtil, FileSystemIterator } from "@autobe/filesystem";
 import { AutoBeOpenApi } from "@autobe/interface";
+import { AutoBeExampleProject } from "@autobe/interface";
 import fs from "fs";
 import typia from "typia";
 
 import { TestFactory } from "../../../TestFactory";
 import { TestGlobal } from "../../../TestGlobal";
-import { TestHistory } from "../../../internal/TestHistory";
-import { TestProject } from "../../../structures/TestProject";
 import { prepare_agent_interface } from "./prepare_agent_interface";
 
-export const validate_agent_interface_schemas = async (
-  factory: TestFactory,
-  project: TestProject,
-) => {
+export const validate_agent_interface_schemas = async (props: {
+  factory: TestFactory;
+  vendor: string;
+  project: AutoBeExampleProject;
+}) => {
   if (TestGlobal.env.OPENAI_API_KEY === undefined) return false;
 
   // PREPARE ASSETS
-  const { agent } = await prepare_agent_interface(factory, project);
-  const model: string = TestGlobal.vendorModel;
+  const { agent } = await prepare_agent_interface(props);
   const operations: AutoBeOpenApi.IOperation[] = JSON.parse(
     await CompressUtil.gunzip(
       await fs.promises.readFile(
-        `${TestGlobal.ROOT}/assets/histories/${model}/${project}.interface.operations.json.gz`,
+        `${AutoBeExampleStorage.getDirectory(props)}/interface.operations.json.gz`,
       ),
     ),
   );
@@ -36,7 +36,7 @@ export const validate_agent_interface_schemas = async (
     });
   typia.assert(schemas);
   await FileSystemIterator.save({
-    root: `${TestGlobal.ROOT}/results/${model}/${project}/interface/schemas`,
+    root: `${TestGlobal.ROOT}/results/${props.vendor}/${props.project}/interface/schemas`,
     files: {
       ...(await agent.getFiles()),
       "logs/endpoints.json": JSON.stringify(
@@ -52,7 +52,11 @@ export const validate_agent_interface_schemas = async (
     },
   });
   if (process.argv.includes("--archive"))
-    await TestHistory.save({
-      [`${project}.interface.schemas.json`]: JSON.stringify(schemas),
+    await AutoBeExampleStorage.save({
+      vendor: props.vendor,
+      project: props.project,
+      files: {
+        [`interface.schemas.json`]: JSON.stringify(schemas),
+      },
     });
 };

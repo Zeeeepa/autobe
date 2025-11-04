@@ -5,6 +5,7 @@ import {
 } from "@agentica/core";
 import { AutoBeSystemPromptConstant } from "@autobe/agent/src/constants/AutoBeSystemPromptConstant";
 import { IAutoBeFacadeApplication } from "@autobe/agent/src/orchestrate/facade/histories/IAutoBeFacadeApplication";
+import { AutoBeExampleStorage } from "@autobe/benchmark";
 import { FileSystemIterator } from "@autobe/filesystem";
 import { AutoBePhase, AutoBeUserMessageHistory } from "@autobe/interface";
 import { StringUtil } from "@autobe/utils";
@@ -13,7 +14,6 @@ import { IPointer } from "tstl";
 import typia from "typia";
 
 import { TestGlobal } from "../TestGlobal";
-import { TestHistory } from "../internal/TestHistory";
 
 const SEQUENCE = ["analyze", "prisma", "interface", "test", "realize"] as const;
 
@@ -107,11 +107,12 @@ const main = async (): Promise<void> => {
     event.body.tool_choice = "required";
   });
 
-  for (const s of SEQUENCE) {
-    const message: AutoBeUserMessageHistory = await TestHistory.getUserMessage(
-      "chat",
-      s,
-    );
+  for (const phase of SEQUENCE) {
+    const message: AutoBeUserMessageHistory =
+      await AutoBeExampleStorage.getUserMessage({
+        project: "chat",
+        phase,
+      });
     console.log(
       "userMessage",
       message.contents[0].type === "text"
