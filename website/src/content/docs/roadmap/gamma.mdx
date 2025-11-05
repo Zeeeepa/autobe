@@ -1,0 +1,358 @@
+---
+title: AutoBE > Guide Documents > Roadmap > Gamma Release (active)
+---
+import { Tabs } from "nextra/components";
+
+import AutoBeDemoModelMovie from "../../../movies/demo/AutoBeDemoModelMovie";
+
+## Preface
+```mermaid
+gantt
+  dateFormat YYYY-MM-DD
+  title AutoBE Gamma Roadmap Timeline
+
+  section Production Testing
+  Hackathon Contest     : done  , 2025-09-16,  7d
+  Open Source Contest   : done  , 2025-09-16, 50d
+  Enterprise Development: done  , 2025-10-01, 31d
+  Performance Benchmark : active, 2025-11-01, 14d
+  
+  section Lessons Learned
+  Direct Instruction     : done   , 2025-10-15, 14d
+  Interface Schema Review: done   , 2025-10-20, 16d
+  JSON Schema Guideline  : done   , 2025-10-29,  7d
+  Image Understanding    : planned, 2025-11-17, 13d
+
+  section RAG Optimization
+  Prisma   : planned, 2025-11-10,  7d
+  Interface: planned, 2025-11-17, 13d
+  Test     : planned, 2025-11-24, 13d
+  Realize  : planned, 2025-11-24, 13d
+
+  section Modularization
+  (Test) Authorization    : planned, 2025-11-10, 14d
+  (Test) Data Creation    : planned, 2025-11-17, 14d
+  (Realize) Transformation: planned, 2025-11-17, 20d
+  (Realize) Collector     : planned, 2025-11-24, 13d
+
+  section Complementation
+  Analyze  : planned, 2025-11-17,  7d
+  Prisma   : planned, 2025-11-17, 14d
+  Interface: planned, 2025-11-17, 14d
+  Test     : planned, 2025-11-24, 13d
+  Realize  : planned, 2025-11-24, 13d
+
+  section Recruitment
+  AutoBE Developer: planned, 2025-11-10, 20d
+```
+
+The AutoBE Gamma roadmap represents a strategic pivot from the [v1.0 legacy roadmap](./v1.0-legacy). Based on lessons learned from real-world field testing during the Enterprise Development phase, we have restructured the roadmap toward a more pragmatic and accelerated development direction.
+
+**Strategic Shift**: While the v1.0 roadmap pursued 100% completion for each feature (100% compilation success rate, 100% runtime success rate), the Gamma release significantly shortens development cycles and covers more features, focusing on foundational design and prototype implementation for each ticket. We prioritize delivering practical value over perfection, with quality improvements following in subsequent phases.
+
+**Team Expansion Plan**: Core features built in Gamma will be broken down into granular tickets, with newly recruited AutoBE developers responsible for quality enhancement and production stabilization. This parallel development strategy ensures we secure both speed and quality.
+
+## 1. Production Testing
+### 1.1. Hackathon Contest
+We co-hosted an open-source hackathon centered around Agentica, the foundational framework of AutoBE. Participants utilized AutoBE to generate backend applications, review them, and provide diverse feedback.
+
+Participants successfully generated complete backend applications using only natural language interfaces, but critical feedback was limited due to the competitive nature of the prize-based environment. Additionally, given the massive scale of the generated codebase exceeding 100,000 lines, participants often relied on AI assistance to write evaluation reports rather than conducting thorough manual reviews.
+
+Therefore, while this hackathon demonstrated AutoBE's code generation capabilities, we recognized the need for more in-depth critical evaluation in realistic development environments.
+
+### 1.2. Open Source Contest
+We hosted an Agentica open-source contest in partnership with the Korean government. Agentica is an agentic AI framework specialized in function calling that serves as AutoBE's core engine. It particularly handles critical functions such as generating compiler AST structures like [`AutoBePrisma.IApplication`](https://github.com/wrtnlabs/autobe/blob/main/packages/interface/src/prisma/AutoBePrisma.ts), [`AutoBeOpenApi.IDocument`](https://github.com/wrtnlabs/autobe/blob/main/packages/interface/src/openapi/AutoBeOpenApi.ts), and [`AutoBeTest.IFunction`](https://github.com/wrtnlabs/autobe/blob/main/packages/interface/src/test/AutoBeTest.ts) through function calling, and automatically correcting type errors.
+
+The contest was conducted as a competition for developing AI chatbots and agent applications utilizing Agentica, with numerous teams participating and a total of 10 teams advancing to the finals. While collecting real-world use cases and feedback to explore Agentica's development direction, we plan to recommend participants who demonstrated exceptional capabilities in schema design for function calling and agent utilization to the Wrtn Technologies AX development team.
+
+Thus, the contest functions not merely as feedback collection, but as a talent pipeline for discovering professionals with expertise in schema design and function calling architecture.
+
+### 1.3. Enterprise Development
+We built Wrtn Technologies' B2B enterprise backend with AutoBE and deployed it in a real production environment for approximately one month, conducting the first real-world validation at enterprise scale. Wrtn Technologies operates a large-scale AI chatbot service ([https://wrtn.ai](https://wrtn.ai)) with 7 million monthly active users, and tested the platform's practical capabilities through AutoBE-powered backend development during the expansion from existing B2C services to the B2B market.
+
+Operating AutoBE in an enterprise environment revealed both strengths and clear limitations, and this real-world experience became the decisive catalyst for determining the direction of the Gamma roadmap. Particularly, the need for functionality to provide DB design and API specifications through direct technical specifications rather than natural language became prominent, and the requirement to significantly strengthen data integrity and security in Interface phase DTO design became clear.
+
+Additionally, important challenges emerged: automatically extracting requirements from visual artifacts like Figma, RAG optimization for token efficiency, and having Test and Realize agents generate reusable modular code to improve developer modification convenience. Above all, the incremental update capability to progressively improve generated backends rather than regenerating from scratch was desperately needed.
+
+This month of practical experience provided more valuable insights than months of theoretical planning, and became the direct basis for establishing the Gamma release plan.
+
+### 1.4. Performance Benchmark
+We are building a comprehensive performance benchmark system that measures, evaluates, and optimizes AutoBE's operational efficiency across multiple dimensions. We will measure completion time for each pipeline stage and token consumption per task to understand generation speed and token efficiency, particularly to quantitatively verify improvement effects during RAG optimization.
+
+We track the rate at which generated code passes TypeScript, OpenAPI, and Prisma compiler validation on the first attempt, as well as the rate of passing E2E tests without human intervention, while also monitoring quality metrics such as code maintainability, test coverage, and adherence to best practices.
+
+Benchmark data is directly reflected in agent system prompt improvements and orchestration optimization to form a continuous improvement loop. Performance regressions are investigated immediately, and improvements are used as validation metrics for architectural decisions. During the Gamma period, while expanding functionality, systematic performance monitoring enables objective judgment of whether new features enhance or degrade user experience.
+
+## 2. Lessons Learned
+### 2.1. Direct Instruction
+In situations requiring precise technical specifications, users must be able to provide DB schemas or API specifications through direct instruction rather than natural language. While AutoBE has maintained backend generation through natural language interfaces as a core value, enterprise field testing confirmed the existence of situations where direct specification is essential.
+
+However, table schemas shared with existing systems (e.g., AI chatbot-related tables), mandatory API specifications for B2B integration, data structures that must be precisely defined for regulatory compliance, and legacy system compatibility constraints are difficult to express adequately through natural language. This is because AutoBE currently has a structure that extracts requirements from user conversations and passes them only to the Analyze agent. The Prisma (DB design) and Interface (API design) agents only receive Analyze's output and cannot receive users' direct technical specifications.
+
+In Gamma, we plan to implement a specification extraction system to bridge this gap.
+
+We will analyze direct technical instructions from user conversations, routing natural language requirements to the Analyze agent as before, while extracting and organizing DB/API specifications for direct delivery to Prisma and Interface agents.
+
+This enables a hybrid workflow where users can specify both high-level intent and low-level technical constraints simultaneously, maintaining accessibility while allowing users to directly control essential architectural decisions in business contexts.
+
+### 2.2. Interface Schema Review
+We plan to split the Interface phase DTO design process into specialized review agents to deeply verify relational integrity, security enhancement, and content completeness in each area.
+
+Currently, a single Review Agent handles all validation of DTO design, but enterprise field testing revealed that this monolithic approach has limitations in simultaneously addressing the competing requirements of relationship modeling, security constraints, and content accuracy. In Gamma, we will build a three-stage review pipeline.
+
+First, the Relation Review Agent verifies foreign key relationships and nested object structures, confirming that DTO variations (Create, Update, Read) correctly represent entity associations such as composition, aggregation, and association. It detects and corrects relationship mismatches between Prisma models and OpenAPI schemas, and handles complex scenarios such as optional/required relationships, cascade updates, and circular dependencies.
+
+The Security Review Agent enforces separation of authentication boundaries between client-provided data and server-managed data, and prevents critical vulnerabilities such as exposing hashed password fields in request DTOs. It verifies that actor identity fields like `user_id` and `member_id` are removed from authenticated request bodies, and ensures that response DTOs do not leak sensitive system fields like tokens, salts, or internal IDs.
+
+The Content Review Agent ensures field completeness through cross-referencing with Prisma schemas, validates data type mapping from Prisma to OpenAPI JSON Schema, enforces required/optional field settings based on business logic, and ensures comprehensive documentation for all properties.
+
+Through this separation of concerns, each agent can deeply specialize in its respective area, dramatically improving DTO quality. We expect to systematically catch currently missed security vulnerabilities, detect relationship modeling errors before code generation, and ensure field completeness through automatic cross-referencing.
+
+### 2.3. JSON Schema Guideline
+We plan to sophisticatedly specialize the Interface schema review agents, which brings an anticipated challenge: many LLM models struggle to consistently generate syntactically valid and semantically correct JSON Schema structures.
+
+Commercial models like `openai/gpt-4.1` handle JSON Schema generation reliably, but open-source alternatives may frequently generate incorrect schemas. This problem could be amplified when introducing the three-stage review pipeline. When relationship, security, and content review agents apply interdependent modifications, even minor JSON Schema errors can cascade into compilation failures.
+
+> **`qwen/qwen3-next-80b-a3b-instruct` - `todo`**
+> 
+> - Source Code: [`qwen/qwen3-next-80b-a3b-instruct/todo`](https://github.com/wrtnlabs/autobe-examples/tree/main/qwen/qwen3-next-80b-a3b-instruct/todo)
+> - Score: 100
+> - Elapsed Time: 1h 8m 53s
+> - Token Usage: 8.34M
+> - Function Calling Success Rate: 72.86%
+> 
+> Phase | Generated | Token Usage | Elapsed Time | FCSR
+> :-----|:----------|------------:|-------------:|------:
+> 🟢 Analyze | `actors`: 1, `documents`: 3 | 111.6K | 32s | 100%
+> 🟢 Prisma | `namespaces`: 2, `models`: 3 | 114.5K | 8m 34s | 29%
+> 🟢 Interface | `operations`: 8, `schemas`: 12 | 3.95M | 45m 3s | 65%
+> 🟢 Test | `functions`: 2 | 2.39M | 7m 31s | 77%
+> 🟢 Realize | `functions`: 8 | 1.78M | 7m 11s | 97%
+
+Analyzing the root cause reveals that LLMs lack explicit structural guidance for the nuanced requirements of JSON Schema. The correct nesting methods for `properties`, `required`, and `additionalProperties`, precise usage of `$ref` for schema composition, valid `type` constraints and format specifiers, appropriate application of validation keywords like `minLength`, `pattern`, and `enum`, and the distinction between OpenAPI-specific extensions and core JSON Schema are all communicated ambiguously.
+
+In Gamma, we will develop comprehensive JSON Schema authoring guidelines embedded directly into agent system prompts. We will provide pre-validated structural templates for common DTO scenarios (Create, Update, Read variations), define clear constraint specifications for when to use specific validation keywords, establish standard reference patterns for entity relationships and nested objects, and explicitly document common mistakes and their corrections to prevent anti-patterns.
+
+By providing agents with clear and prescriptive JSON Schema composition rules, we expect to dramatically reduce incorrect schema generation even in less capable models. This will expand AutoBE's model compatibility, leading to reduced operational costs while maintaining generation quality.
+
+### 2.4. Image Understanding
+Requirements do not arrive as clean text documents. Real software development operates at the messy intersection of Figma mockups, whiteboard diagrams, and annotated wireframes. AutoBE must be able to extract and interpret requirements from visual artifacts as well as conversations.
+
+During enterprise field testing, we frequently discovered core requirements existing only in design files. In Figma designs, UI layouts implicitly define data models (e.g., form fields become DTO properties), navigation flows in wireframes expose API endpoint structure, and hand-drawn or tool-generated ERD diagrams contain database schemas. Flowcharts show business logic sequences requiring specific API operations, and existing system screenshots provide migration specifications. Even within Wrtn Technologies, official requirement documents were often incomplete, and the "source of truth" existed in design artifacts rather than specification documents.
+
+In Gamma, we will develop agents with visual understanding capabilities. We will implement structural information extraction that parses visual layouts to infer data models and entity relationships, and detect requirements inherent in design decisions (e.g., the presence of pagination controls implies the need for offset-based API design). We will combine image analysis with conversational context for holistic understanding, and produce formal requirement specifications from visual inputs.
+
+We plan to implement delivery of requirements derived from images to the existing Analyze agent pipeline, merging them with text requirements for holistic analysis. This multimodal approach will capture the full spectrum through which product teams actually communicate intent.
+
+As multimodal LLM capabilities advance, AutoBE will increasingly rely on visual understanding, ultimately aiming to accept Figma links or screenshot uploads as primary requirement sources.
+
+## 3. RAG Optimization
+<br/>
+<AutoBeDemoModelMovie model="openai/gpt-4.1" />
+
+We are transitioning to a next-generation architecture that maximizes token efficiency and improves generation quality through intelligent iterative workflows.
+
+Each of AutoBE's agents currently operates as a single monolithic function call that receives upstream artifacts all at once. The Test Agent receives all documents, all Prisma models, and all API operations simultaneously, and the Realize Agent collects the complete OpenAPI specification and all test scenarios in one go. Token consumption increases exponentially with project complexity, and agents cannot selectively explore or iterate on specific components.
+
+This "batch processing" approach was effective for initial validation but creates insurmountable barriers for implementing modularization and maintenance/complementation features. Without selective context, agents cannot analyze relationships between code modules, incremental updates still require regenerating full context, and large-scale projects exceed context window limits.
+
+Gamma introduces an iterative, retrieval-augmented generation workflow where agents actively query and selectively load only the information they need. Agents become active explorers rather than passive consumers. They first review available artifacts (file lists, model names, API endpoints) to perform initial assessment, selectively request specific documents, models, and operations based on current tasks, load additional context as needed but never more than necessary, and generate output once sufficient information is collected.
+
+**New Function Calling Interfaces**:
+
+<Tabs
+  items={["Interface Agent", "Test Agent"]}
+  defaultIndex={1}>
+  <Tabs.Tab>
+```typescript showLineNumbers
+interface IAutoBeInterfaceOperationApplication {
+  getDocuments(filenames: string[]): Record<string, string>;
+  getModels(names: string[]): AutoBePrisma.IModel[];
+  complete(operations: AutoBeOpenApi.IOperation[]): void;
+  halt(reason: string): void;
+}
+```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```typescript showLineNumbers
+interface IAutoBeTestScenarioApplication {
+  getDocuments(filenames: string[]): Record<string, string>;
+  getModels(names: string[]): AutoBePrisma.IModel[];
+  getOperation(endpoints: AutoBeOpenApi.IEndpoint[]): {
+    operations: AutoBeOpenApi.IOperation[];
+    schemas: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive>;
+  };
+  complete(scenario: IAutoBeTestScenario): void;
+  halt(reason: string): void;
+}
+```
+  </Tabs.Tab>
+</Tabs>
+
+This iterative workflow achieves 70% reduction in token consumption by eliminating unnecessary context through selective information loading, and provides memory efficiency that enables stable processing even for large-scale projects. Focused context enables more accurate code generation, and realizes incremental improvement that immediately reflects feedback at each step.
+
+Most importantly, agents can analyze code structure and identify common patterns to extract reusable modules (§4), and support maintenance by loading only affected components during incremental updates (§5). Tokens increase linearly rather than exponentially with project size, securing enterprise scalability. This evolves AutoBE into a smarter and more efficient system, enabling cost-effective operations even for large-scale enterprise projects.
+
+RAG optimization is not merely a performance improvement, but an architectural prerequisite for modularization (§4) and complementation (§5). Without selective context loading, agents cannot infer code relationships or perform targeted updates.
+
+## 4. Modularization
+Real developers need to modify generated code. Enterprise field testing revealed that AutoBE's current output is functionally accurate but structurally hostile to human maintenance due to extensive code duplication across test and implementation files.
+
+During B2B backend development, developers frequently needed to customize generated code: integrating company-specific security policies, adding third-party payment gateway connectors, interfacing with existing AI chatbot systems, implementing WebSocket streaming functionality, and applying organization-wide error handling conventions.
+
+AutoBE targeted 100% compilation and runtime success rates, having agents generate self-contained standalone implementations. The Test Agent included inline authentication, data generation, and validation logic in each E2E test function, and the Realize Agent had each API endpoint implement transformation and database operations from scratch. This "copy-paste" pattern guaranteed correctness but created a maintenance nightmare. Hundreds of duplicated authentication flows existed across test files, identical data generation logic was scattered across dozens of test functions, and duplicated Prisma-to-DTO transformation code in all API handlers required manual updates in numerous locations to fix bugs.
+
+However, this was not a mistake but intentional. AutoBE's early development correctly prioritized proving functional correctness before pursuing code elegance. Modularization requires understanding patterns across successful implementations, which only emerged after extensive generation testing.
+
+Once RAG optimization enables selective code analysis (§3), we plan to develop agents that analyze generated code to identify common operations, create reusable utility functions and classes, and replace duplicated code with module invocations while preserving 100% compilation and runtime success rates.
+
+### 4.1. (Test) Authorization
+
+```typescript
+export const test_api_shopping_sale_pause = async (
+  connection: api.IConnection,
+): Promise<void> => {
+  const customerConnection = { ... };
+  const sellerConnection = { ... };
+  const adminConnection = { ... };
+
+  await test_api_shopping_actor_admin_login(adminConnection);
+  await test_api_shopping_actor_customer_create(customerConnection);
+  await test_api_shopping_actor_seller_join(sellerConnection);
+
+  ...
+};
+```
+
+We will modularize the authentication and authorization logic that repeats across all test functions requiring user context.
+
+Centralizing authentication logic enables global customizations like switching from JWT to session-based authentication through single-point modification.
+
+### 4.2. (Test) Data Creation
+```typescript
+export const test_api_shopping_sale_pause = async (
+  connection: api.IConnection,
+): Promise<void> => {
+  ...
+
+  const sale: IShoppingSale = await generate_random_sale(sellerConnection);
+  await ShoppingApi.functional.shoppings.sellers.sales.pause(
+    sellerConnection,
+    sale.id,
+  );
+};
+```
+
+We plan to modularize Create endpoint API calls for test fixture setup.
+
+Making fixture generation consistent and maintainable ensures that when adding required fields to DTOs, updating only the factory function makes all tests automatically comply with new requirements.
+
+### 4.3. (Realize) Transformation
+```typescript
+export namespace ShoppingSaleSnapshotUnitStockTransformer {
+  export const transform = (
+    input: Prisma.shopping_sale_snapshot_unit_stocksGetPayload<
+      ReturnType<typeof select>
+    >
+  ): IShoppingSaleUnitStock => {
+    if (input.mv_inventory === null)
+      throw ErrorProvider.internal("No inventory status exists.");
+    return {
+      id: input.id,
+      name: input.name,
+      choices: input.choices
+        .sort((a, b) => a.sequence - b.sequence)
+        .map(ShoppingSaleSnapshotUnitStockChoiceProvider.json.transform),
+      inventory: {
+        income: input.mv_inventory.income,
+        outcome: input.mv_inventory.outcome,
+      },
+      price: {
+        nominal: input.nominal_price,
+        real: input.real_price,
+      },
+    };
+  };
+  export const select = () =>
+    ({
+      include: {
+        choices: ShoppingSaleSnapshotUnitStockChoiceProvider.json.select(),
+        mv_inventory: true,
+      },
+    }) satisfies Prisma.shopping_sale_snapshot_unit_stocksFindManyArgs;
+}
+```
+
+We will modularize Prisma model to Read DTO transformation logic duplicated across all GET endpoints.
+
+Enabling changes to adding calculated fields, applying data sanitization, and adjusting DTO structure from a single location ensures custom business logic like sensitive field redaction is consistently applied across all endpoints.
+
+### 4.4. (Realize) Collection
+```typescript
+export namespace ShoppingSaleSnapshotUnitStockCollector {
+  export const collect = (props: {
+    options: ReturnType<
+      typeof ShoppingSaleSnapshotUnitOptionCollector.collect
+    >[];
+    input: IShoppingSaleUnitStock.ICreate;
+    sequence: number;
+  }) =>
+    ({
+      id: v4(),
+      name: props.input.name,
+      sequence: props.sequence,
+      choices: {
+        create: props.input.choices.map((value, i) =>
+          ShoppingSaleSnapshotUnitStockChoiceProvider.collect({
+            options: props.options,
+            input: value,
+            sequence: i,
+          })
+        ),
+      },
+      real_price: props.input.price.real,
+      nominal_price: props.input.price.nominal,
+      quantity: props.input.quantity,
+      mv_inventory: {
+        create: {
+          income: props.input.quantity,
+          outcome: 0,
+        },
+      },
+    }) satisfies Prisma.shopping_sale_snapshot_unit_stocksCreateWithoutUnitInput;
+}
+```
+
+We will develop modularized Prisma input preparation logic from Create DTOs to handle nested relationships and data validation.
+
+Centralizing relationship handling logic like connect, create, and disconnect into reusable modules makes adding organization-specific data transformations or custom validations straightforward.
+
+---
+
+The success criteria for modularization are clear. Developers must be able to modify cross-cutting concerns like authentication, logging, error handling, and data transformation by editing utility modules instead of hunting through hundreds of generated files. This transforms AutoBE's output from "accurate but unmaintainable" to "accurate and developer-friendly."
+
+## 5. Complementation
+The most critically missing feature from field testing is the ability to incrementally improve generated backends instead of regenerating from scratch. Humans cannot perfectly review over 100,000 lines of code at once.
+
+During enterprise field testing, every discovered issue triggered a full regeneration cycle. When developers found incomplete APIs or incorrect DTOs, they provided feedback to AutoBE, and AutoBE regenerated the entire backend from scratch. Then developers discovered new issues they had previously missed during re-review. This was because the code was too vast for complete review. This cycle repeated endlessly.
+
+This regeneration loop was the most frustrating aspect of using AutoBE in production. Developers need iterative improvement, not all-or-nothing regeneration.
+
+In Gamma, we leverage RAG optimization (§3) to provide targeted maintenance capabilities across all pipeline stages. We identify only specific models, DTOs, and endpoints requiring updates, selectively load only related existing code and specifications, and produce minimal diffs rather than complete rewrites. We automatically verify consistency to ensure changes do not break dependencies.
+
+The success criteria are clear. When developers request specific changes like "add email validation to `User.ICreate`" or "add `view_count` to Article model," we must be able to provide surgical updates affecting only related components. The goal is to end the era of "burn it all down and start over."
+
+## 6. Recruitment
+AutoBE's accelerated development pace requires team expansion. We are recruiting dedicated AutoBE developers to transform Gamma prototypes into production-grade features.
+
+While the v1.0 roadmap focused on achieving 100% compilation and runtime success for each feature before progressing to the next stage, Gamma prioritizes breadth over perfection, providing foundational implementations across more features. We rapidly build core architecture and workflows through prototype-first development, intentionally accept initial quality trade-offs for faster validation, and dedicate subsequent cycles to hardening and optimization.
+
+Enterprise field testing taught us that developer experience and practical utility matter more than theoretical perfection. Users gain more from systems that have incremental update capabilities even if initially unstable, apply code modularization even if patterns are suboptimal, and enable direct specification control even if error handling is incomplete—rather than perfectly compiling systems requiring full regeneration for every change.
+
+Gamma builds the architectural foundation: RAG infrastructure, modularization patterns, complementation workflows, and multimodal requirement handling. Recruited AutoBE developers will decompose Gamma implementations into granular improvement tickets, strengthen quality by achieving production-grade stability, error handling, and edge case coverage, optimize performance by refining prompt engineering, caching strategies, and orchestration efficiency, expand coverage by addressing long-tail scenarios discovered during Gamma usage, and maintain momentum to enable continuous feature development beyond Gamma.
+
+Recruitment proceeds in parallel with Gamma development, onboarding developers to refine the system while building foundational systems. This overlap ensures productivity immediately upon Gamma prototype completion.
+
+We seek developers with deep TypeScript, NestJS, and Prisma expertise, understanding of LLM capabilities and limitations, and experience with function calling and agentic AI systems (Agentica background ideal). Ideal candidates have passion for developer tools and code generation, and comfort with rapid iteration and prototype refinement.
+
+With expanded team capacity, AutoBE transitions from hero-driven prototype development to sustainable community-driven evolution. The Gamma roadmap is not an ending but the foundation for AutoBE's next chapter.
