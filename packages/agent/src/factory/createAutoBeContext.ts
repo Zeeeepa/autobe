@@ -33,7 +33,6 @@ import typia from "typia";
 import { v7 } from "uuid";
 
 import { AutoBeConfigConstant } from "../constants/AutoBeConfigConstant";
-import { AutoBeSystemPromptConstant } from "../constants/AutoBeSystemPromptConstant";
 import { AutoBeContext } from "../context/AutoBeContext";
 import { AutoBeState } from "../context/AutoBeState";
 import { AutoBeTokenUsage } from "../context/AutoBeTokenUsage";
