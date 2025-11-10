@@ -163,10 +163,9 @@ const divideAndConquer = async <Model extends ILlmSchema.Model>(
         ctx.model,
         (value) => (pointer.value = value),
       ),
-      histories: transformInterfaceSchemaRenameHistories(props),
       enforceFunctionCall: true,
       promptCacheKey: props.promptCacheKey,
-      message: "Rename DTO type names for consistency and clarity.",
+      ...transformInterfaceSchemaRenameHistories(props),
     });
     if (pointer.value === null) {
       props.progress.completed += props.typeNames.length;
@@ -244,11 +243,7 @@ const createController = <Model extends ILlmSchema.Model>(
 ): IAgenticaController.IClass<Model> => {
   assertSchemaModel(model);
   const application: ILlmApplication<Model> = collection[
-    model === "chatgpt"
-      ? "chatgpt"
-      : model === "gemini"
-        ? "gemini"
-        : "claude"
+    model === "chatgpt" ? "chatgpt" : model === "gemini" ? "gemini" : "claude"
   ] satisfies ILlmApplication<any> as unknown as ILlmApplication<Model>;
   return {
     protocol: "class",
