@@ -1,5 +1,9 @@
 import { IAgenticaController } from "@agentica/core";
-import { AutoBeOpenApi, AutoBeProgressEventBase } from "@autobe/interface";
+import {
+  AutoBeEventSource,
+  AutoBeOpenApi,
+  AutoBeProgressEventBase,
+} from "@autobe/interface";
 import { AutoBeInterfaceSchemaReviewEvent } from "@autobe/interface/src/events/AutoBeInterfaceSchemaReviewEvent";
 import { ILlmApplication, ILlmSchema, IValidation } from "@samchon/openapi";
 import { OpenApiV3_1Emender } from "@samchon/openapi/lib/converters/OpenApiV3_1Emender";
@@ -12,7 +16,8 @@ import { AutoBeContext } from "../../context/AutoBeContext";
 import { assertSchemaModel } from "../../context/assertSchemaModel";
 import { divideArray } from "../../utils/divideArray";
 import { executeCachedBatch } from "../../utils/executeCachedBatch";
-import { transformInterfaceSchemaReviewHistories } from "./histories/transformInterfaceSchemaReviewHistories";
+import { AutoBePreliminaryController } from "../common/AutoBePreliminaryController";
+import { transformInterfaceSchemaReviewHistory } from "./histories/transformInterfaceSchemaReviewHistory";
 import { IAutoBeInterfaceSchemaContentReviewApplication } from "./structures/IAutoBeInterfaceSchemaContentReviewApplication";
 import { JsonSchemaFactory } from "./utils/JsonSchemaFactory";
 import { JsonSchemaNamingConvention } from "./utils/JsonSchemaNamingConvention";
@@ -43,7 +48,7 @@ export async function orchestrateInterfaceSchemaReview<
   const x: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive> = {};
   for (const y of await executeCachedBatch(
     matrix.map((it) => async (promptCacheKey) => {
-      const operations: AutoBeOpenApi.IOperation[] =
+      const reviewOperations: AutoBeOpenApi.IOperation[] =
         props.document.operations.filter(
           (op) =>
             (op.requestBody && it.includes(op.requestBody.typeName)) ||
@@ -52,8 +57,8 @@ export async function orchestrateInterfaceSchemaReview<
       const row: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive> =
         await divideAndConquer(ctx, config, {
           instruction: props.instruction,
-          operations,
-          everySchemas: props.document.components.schemas,
+          document: props.document,
+          reviewOperations,
           reviewSchemas: it.reduce(
             (acc, cur) => {
               acc[cur] = props.document.components.schemas[cur];
@@ -78,71 +83,115 @@ async function divideAndConquer<Model extends ILlmSchema.Model>(
   config: IConfig,
   props: {
     instruction: string;
-    operations: AutoBeOpenApi.IOperation[];
-    everySchemas: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive>;
+    document: AutoBeOpenApi.IDocument;
+    reviewOperations: AutoBeOpenApi.IOperation[];
     reviewSchemas: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive>;
     progress: AutoBeProgressEventBase;
     promptCacheKey: string;
   },
 ): Promise<Record<string, AutoBeOpenApi.IJsonSchemaDescriptive>> {
   try {
-    const pointer: IPointer<IAutoBeInterfaceSchemaContentReviewApplication.IProps | null> =
-      {
-        value: null,
-      };
-    const { metric, tokenUsage } = await ctx.conversate({
-      source: "interfaceSchemaReview",
-      controller: createController({
-        model: ctx.model,
-        pointer,
-      }),
-      enforceFunctionCall: true,
-      promptCacheKey: props.promptCacheKey,
-      ...transformInterfaceSchemaReviewHistories({
-        state: ctx.state(),
-        systemPrompt: config.systemPrompt,
-        instruction: props.instruction,
-        operations: props.operations,
-        everySchemas: props.everySchemas,
-        reviewSchemas: props.reviewSchemas,
-      }),
-    });
-    if (pointer.value === null) {
-      ++props.progress.completed;
-      return {};
-    }
-
-    const content: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive> = ((
-      OpenApiV3_1Emender.convertComponents({
-        schemas: pointer.value.content,
-      }) as AutoBeOpenApi.IComponents
-    ).schemas ?? {}) as Record<string, AutoBeOpenApi.IJsonSchemaDescriptive>;
-
-    ctx.dispatch({
-      type: "interfaceSchemaReview",
-      kind: config.kind,
-      id: v7(),
-      schemas: props.reviewSchemas,
-      review: pointer.value.think.review,
-      plan: pointer.value.think.plan,
-      content,
-      metric,
-      tokenUsage,
-      step: ctx.state().analyze?.step ?? 0,
-      total: props.progress.total,
-      completed: ++props.progress.completed,
-      created_at: new Date().toISOString(),
-    });
-    return content;
+    return await process(ctx, config, props);
   } catch {
     ++props.progress.completed;
     return {};
   }
 }
 
+async function process<Model extends ILlmSchema.Model>(
+  ctx: AutoBeContext<Model>,
+  config: IConfig,
+  props: {
+    instruction: string;
+    document: AutoBeOpenApi.IDocument;
+    reviewOperations: AutoBeOpenApi.IOperation[];
+    reviewSchemas: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive>;
+    progress: AutoBeProgressEventBase;
+    promptCacheKey: string;
+  },
+): Promise<Record<string, AutoBeOpenApi.IJsonSchemaDescriptive>> {
+  const preliminary: AutoBePreliminaryController<
+    | "analyzeFiles"
+    | "prismaSchemas"
+    | "interfaceOperations"
+    | "interfaceSchemas"
+  > = new AutoBePreliminaryController({
+    source: "interfaceSchemaReview",
+    kinds: [
+      "analyzeFiles",
+      "prismaSchemas",
+      "interfaceOperations",
+      "interfaceSchemas",
+    ],
+    state: ctx.state(),
+    all: {
+      interfaceOperations: props.document.operations,
+      interfaceSchemas: props.document.components.schemas,
+    },
+    local: {
+      interfaceOperations: props.reviewOperations,
+      interfaceSchemas: props.reviewSchemas,
+    },
+  });
+  return await preliminary.orchestrate(ctx, async (out) => {
+    const pointer: IPointer<IAutoBeInterfaceSchemaContentReviewApplication.IProps | null> =
+      {
+        value: null,
+      };
+    const result: AutoBeContext.IResult<Model> = await ctx.conversate({
+      source: "interfaceSchemaReview",
+      controller: createController({
+        preliminary,
+        pointer,
+        model: ctx.model,
+      }),
+      enforceFunctionCall: true,
+      promptCacheKey: props.promptCacheKey,
+      ...transformInterfaceSchemaReviewHistory({
+        state: ctx.state(),
+        systemPrompt: config.systemPrompt,
+        instruction: props.instruction,
+        reviewOperations: props.reviewOperations,
+        reviewSchemas: props.reviewSchemas,
+        preliminary,
+      }),
+    });
+    if (pointer.value !== null) {
+      const content: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive> = ((
+        OpenApiV3_1Emender.convertComponents({
+          schemas: pointer.value.content,
+        }) as AutoBeOpenApi.IComponents
+      ).schemas ?? {}) as Record<string, AutoBeOpenApi.IJsonSchemaDescriptive>;
+      ctx.dispatch({
+        type: "interfaceSchemaReview",
+        kind: config.kind,
+        id: v7(),
+        schemas: props.reviewSchemas,
+        review: pointer.value.think.review,
+        plan: pointer.value.think.plan,
+        content,
+        metric: result.metric,
+        tokenUsage: result.tokenUsage,
+        step: ctx.state().analyze?.step ?? 0,
+        total: props.progress.total,
+        completed: ++props.progress.completed,
+        created_at: new Date().toISOString(),
+      });
+      return out(result)(content);
+    }
+    return out(result)(null);
+  });
+}
+
 function createController<Model extends ILlmSchema.Model>(props: {
   model: Model;
   pointer: IPointer<IAutoBeInterfaceSchemaContentReviewApplication.IProps | null>;
+  preliminary: AutoBePreliminaryController<
+    | "analyzeFiles"
+    | "prismaSchemas"
+    | "interfaceOperations"
+    | "interfaceSchemas"
+  >;
 }): IAgenticaController.IClass<Model> {
   assertSchemaModel(props.model);
 
@@ -181,47 +230,55 @@ function createController<Model extends ILlmSchema.Model>(props: {
       : props.model === "gemini"
         ? "gemini"
         : "claude"
-  ](
+  ]({
     validate,
-  ) satisfies ILlmApplication<any> as unknown as ILlmApplication<Model>;
+    preliminary: props.preliminary,
+  }) satisfies ILlmApplication<any> as unknown as ILlmApplication<Model>;
   return {
     protocol: "class",
-    name: "ContentReviewer",
+    name: "interfaceSchemaReview" satisfies AutoBeEventSource,
     application,
     execute: {
       review: (input) => {
         props.pointer.value = input;
       },
+      analyzeFiles: () => {},
+      prismaSchemas: () => {},
+      interfaceOperations: () => {},
+      interfaceSchemas: () => {},
     } satisfies IAutoBeInterfaceSchemaContentReviewApplication,
   };
 }
 
 const collection = {
-  chatgpt: (validate: Validator) =>
+  chatgpt: (props: CustomValidateProps) =>
     typia.llm.application<
       IAutoBeInterfaceSchemaContentReviewApplication,
       "chatgpt"
     >({
       validate: {
-        review: validate,
+        review: props.validate,
+        ...props.preliminary.createValidate(),
       },
     }),
-  claude: (validate: Validator) =>
+  claude: (props: CustomValidateProps) =>
     typia.llm.application<
       IAutoBeInterfaceSchemaContentReviewApplication,
       "claude"
     >({
       validate: {
-        review: validate,
+        review: props.validate,
+        ...props.preliminary.createValidate(),
       },
     }),
-  gemini: (validate: Validator) =>
+  gemini: (props: CustomValidateProps) =>
     typia.llm.application<
       IAutoBeInterfaceSchemaContentReviewApplication,
       "gemini"
     >({
       validate: {
-        review: validate,
+        review: props.validate,
+        ...props.preliminary.createValidate(),
       },
     }),
 };
@@ -229,3 +286,13 @@ const collection = {
 type Validator = (
   input: unknown,
 ) => IValidation<IAutoBeInterfaceSchemaContentReviewApplication.IProps>;
+
+interface CustomValidateProps {
+  validate: Validator;
+  preliminary: AutoBePreliminaryController<
+    | "analyzeFiles"
+    | "prismaSchemas"
+    | "interfaceOperations"
+    | "interfaceSchemas"
+  >;
+}

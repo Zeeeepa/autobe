@@ -1,5 +1,6 @@
 import { IAgenticaController } from "@agentica/core";
 import {
+  AutoBeEventSource,
   AutoBeInterfaceSchemaRefactor,
   AutoBeInterfaceSchemaRenameEvent,
   AutoBeOpenApi,
@@ -20,7 +21,7 @@ import { AutoBeContext } from "../../context/AutoBeContext";
 import { assertSchemaModel } from "../../context/assertSchemaModel";
 import { divideArray } from "../../utils/divideArray";
 import { executeCachedBatch } from "../../utils/executeCachedBatch";
-import { transformInterfaceSchemaRenameHistories } from "./histories/transformInterfaceSchemaRenameHistories";
+import { transformInterfaceSchemaRenameHistory } from "./histories/transformInterfaceSchemaRenameHistory";
 import { IAutoBeInterfaceSchemaRenameApplication } from "./structures/IAutoBeInterfaceSchemaRenameApplication";
 
 export async function orchestrateInterfaceSchemaRename<
@@ -165,7 +166,7 @@ const divideAndConquer = async <Model extends ILlmSchema.Model>(
       ),
       enforceFunctionCall: true,
       promptCacheKey: props.promptCacheKey,
-      ...transformInterfaceSchemaRenameHistories(props),
+      ...transformInterfaceSchemaRenameHistory(props),
     });
     if (pointer.value === null) {
       props.progress.completed += props.typeNames.length;
@@ -247,7 +248,7 @@ const createController = <Model extends ILlmSchema.Model>(
   ] satisfies ILlmApplication<any> as unknown as ILlmApplication<Model>;
   return {
     protocol: "class",
-    name: "SchemaRenamer",
+    name: "interfaceSchemaRename" satisfies AutoBeEventSource,
     application,
     execute: {
       rename: (props) => {

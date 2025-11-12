@@ -1,5 +1,5 @@
 import { IAgenticaController } from "@agentica/core";
-import { AutoBeOpenApi } from "@autobe/interface";
+import { AutoBeEventSource, AutoBeOpenApi } from "@autobe/interface";
 import { missedOpenApiSchemas } from "@autobe/utils";
 import { ILlmApplication, ILlmSchema, IValidation } from "@samchon/openapi";
 import { OpenApiV3_1Emender } from "@samchon/openapi/lib/converters/OpenApiV3_1Emender";
@@ -9,7 +9,8 @@ import { v7 } from "uuid";
 
 import { AutoBeContext } from "../../context/AutoBeContext";
 import { assertSchemaModel } from "../../context/assertSchemaModel";
-import { transformInterfaceComplementHistories } from "./histories/transformInterfaceComplementHistories";
+import { AutoBePreliminaryController } from "../common/AutoBePreliminaryController";
+import { transformInterfaceComplementHistory } from "./histories/transformInterfaceComplementHistory";
 import { IAutoBeInterfaceComplementApplication } from "./structures/IAutoBeInterfaceComplementApplication";
 import { JsonSchemaFactory } from "./utils/JsonSchemaFactory";
 import { JsonSchemaNamingConvention } from "./utils/JsonSchemaNamingConvention";
@@ -44,83 +45,108 @@ async function step<Model extends ILlmSchema.Model>(
   if (missed.length === 0) return props.document.components.schemas;
   else if (progress.life === 0) return props.document.components.schemas;
 
-  const pointer: IPointer<Record<
-    string,
-    AutoBeOpenApi.IJsonSchemaDescriptive
-  > | null> = {
-    value: null,
-  };
-  const { metric, tokenUsage } = await ctx.conversate({
+  console.log("MISSED DTO SCHEMA TYPE NAMES", missed);
+
+  const preliminary: AutoBePreliminaryController<
+    | "analyzeFiles"
+    | "prismaSchemas"
+    | "interfaceOperations"
+    | "interfaceSchemas"
+  > = new AutoBePreliminaryController({
     source: "interfaceComplement",
-    controller: createController({
-      model: ctx.model,
-      build: (next) => {
-        pointer.value ??= {};
-        Object.assign(
-          pointer.value,
-          (OpenApiV3_1Emender.convertComponents({
-            schemas: next,
-          }).schemas ?? {}) as Record<
-            string,
-            AutoBeOpenApi.IJsonSchemaDescriptive
-          >,
-        );
-      },
-    }),
-    enforceFunctionCall: true,
-    ...transformInterfaceComplementHistories({
-      state: ctx.state(),
-      instruction: props.instruction,
-      document: props.document,
-      missed,
-    }),
+    kinds: [
+      "analyzeFiles",
+      "prismaSchemas",
+      "interfaceOperations",
+      "interfaceSchemas",
+    ],
+    state: ctx.state(),
   });
-  if (pointer.value === null)
-    // unreachable
-    throw new Error(
-      "Failed to fill missing schema types. No response from agentica.",
-    );
-  ctx.dispatch({
-    type: "interfaceComplement",
-    id: v7(),
-    missed,
-    schemas: pointer.value,
-    metric,
-    tokenUsage,
-    step: ctx.state().analyze?.step ?? 0,
-    created_at: new Date().toISOString(),
-  });
-
-  const empty: boolean = Object.keys(pointer.value).length === 0;
-  if (empty === true && progress.wasEmpty === true)
-    return props.document.components.schemas;
-
-  const newSchemas: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive> = {
-    ...pointer.value,
-    ...props.document.components.schemas,
-  };
-  JsonSchemaNamingConvention.schemas(props.document.operations, newSchemas);
-  return step(
-    ctx,
-    {
-      instruction: props.instruction,
-      document: {
-        ...props.document,
-        components: {
-          ...props.document.components,
-          schemas: newSchemas,
+  return await preliminary.orchestrate(ctx, async (out) => {
+    const pointer: IPointer<Record<
+      string,
+      AutoBeOpenApi.IJsonSchemaDescriptive
+    > | null> = {
+      value: null,
+    };
+    const result: AutoBeContext.IResult<Model> = await ctx.conversate({
+      source: "interfaceComplement",
+      controller: createController({
+        model: ctx.model,
+        build: (next) => {
+          pointer.value ??= {};
+          Object.assign(
+            pointer.value,
+            (OpenApiV3_1Emender.convertComponents({
+              schemas: next,
+            }).schemas ?? {}) as Record<
+              string,
+              AutoBeOpenApi.IJsonSchemaDescriptive
+            >,
+          );
         },
-      },
-    },
-    {
-      wasEmpty: empty,
-      life: progress.life - 1,
-    },
-  );
+        preliminary,
+      }),
+      enforceFunctionCall: true,
+      ...transformInterfaceComplementHistory({
+        state: ctx.state(),
+        instruction: props.instruction,
+        preliminary,
+        missed,
+      }),
+    });
+    if (pointer.value !== null) {
+      ctx.dispatch({
+        type: "interfaceComplement",
+        id: v7(),
+        missed,
+        schemas: pointer.value,
+        metric: result.metric,
+        tokenUsage: result.tokenUsage,
+        step: ctx.state().analyze?.step ?? 0,
+        created_at: new Date().toISOString(),
+      });
+      const empty: boolean = Object.keys(pointer.value).length === 0;
+      if (empty === true && progress.wasEmpty === true)
+        return out(result)(props.document.components.schemas);
+
+      const newSchemas: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive> = {
+        ...pointer.value,
+        ...props.document.components.schemas,
+      };
+      JsonSchemaNamingConvention.schemas(props.document.operations, newSchemas);
+      return out(result)(
+        await step(
+          ctx,
+          {
+            instruction: props.instruction,
+            document: {
+              ...props.document,
+              components: {
+                ...props.document.components,
+                schemas: newSchemas,
+              },
+            },
+          },
+          {
+            wasEmpty: empty,
+            life: progress.life - 1,
+          },
+        ),
+      );
+    }
+    return out(result)(null);
+  });
 }
 
 function createController<Model extends ILlmSchema.Model>(props: {
   model: Model;
+  preliminary: AutoBePreliminaryController<
+    | "analyzeFiles"
+    | "prismaSchemas"
+    | "interfaceOperations"
+    | "interfaceSchemas"
+  >;
   build: (
     schemas: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive>,
   ) => void;
@@ -160,38 +186,46 @@ function createController<Model extends ILlmSchema.Model>(props: {
       : props.model === "gemini"
         ? "gemini"
         : "claude"
-  ](
+  ]({
+    preliminary: props.preliminary,
     validate,
-  ) satisfies ILlmApplication<any> as unknown as ILlmApplication<Model>;
+  }) satisfies ILlmApplication<any> as unknown as ILlmApplication<Model>;
   return {
     protocol: "class",
-    name: "interface",
+    name: "interfaceComplement" satisfies AutoBeEventSource,
     application,
     execute: {
       complementComponents: (next) => {
         props.build(next.schemas);
       },
+      analyzeFiles: () => {},
+      prismaSchemas: () => {},
+      interfaceOperations: () => {},
+      interfaceSchemas: () => {},
     } satisfies IAutoBeInterfaceComplementApplication,
   };
 }
 
 const collection = {
-  chatgpt: (validate: Validator) =>
+  chatgpt: (props: CustomValidateProps) =>
     typia.llm.application<IAutoBeInterfaceComplementApplication, "chatgpt">({
       validate: {
-        complementComponents: validate,
+        complementComponents: props.validate,
+        ...props.preliminary.createValidate(),
       },
     }),
-  claude: (validate: Validator) =>
+  claude: (props: CustomValidateProps) =>
     typia.llm.application<IAutoBeInterfaceComplementApplication, "claude">({
       validate: {
-        complementComponents: validate,
+        complementComponents: props.validate,
+        ...props.preliminary.createValidate(),
       },
     }),
-  gemini: (validate: Validator) =>
+  gemini: (props: CustomValidateProps) =>
     typia.llm.application<IAutoBeInterfaceComplementApplication, "gemini">({
       validate: {
-        complementComponents: validate,
+        complementComponents: props.validate,
+        ...props.preliminary.createValidate(),
       },
     }),
 };
@@ -199,3 +233,13 @@ const collection = {
 type Validator = (
   input: unknown,
 ) => IValidation<IAutoBeInterfaceComplementApplication.IProps>;
+
+interface CustomValidateProps {
+  validate: Validator;
+  preliminary: AutoBePreliminaryController<
+    | "analyzeFiles"
+    | "prismaSchemas"
+    | "interfaceOperations"
+    | "interfaceSchemas"
+  >;
+}
