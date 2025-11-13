@@ -1,38 +1,50 @@
 import { CamelCasePattern, PascalCasePattern } from "@autobe/interface";
 
+import { IAutoBePreliminaryGetPrismaSchemas } from "../../common/structures/IAutoBePreliminaryGetPrismaSchemas";
+
 export interface IAutoBeRealizeAuthorizationApplication {
   /**
-   * Generates authentication provider, decorator, and payload type for
-   * role-based authorization.
+   * Process authentication component generation task or preliminary data requests.
    *
-   * This method creates a complete authentication infrastructure for a specific
-   * role in the NestJS application. It generates three interconnected
-   * components that work together to provide JWT-based authentication and
-   * authorization.
+   * Generates JWT-based authentication infrastructure (provider, decorator,
+   * payload) for role-based authorization. Integrates with NestJS patterns
+   * and jwtAuthorize utility.
    *
-   * The generated components include:
-   *
-   * - **Provider Function**: Handles JWT verification and user validation from
-   *   database
-   * - **Decorator**: NestJS parameter decorator for injecting authenticated user
-   *   data
-   * - **Payload Type**: TypeScript interface defining the authenticated user
-   *   structure
-   *
-   * All components follow strict naming conventions and integrate with the
-   * existing authentication architecture using the shared jwtAuthorize
-   * function.
-   *
-   * @param next Properties containing provider, decorator, and payload type
-   *   configurations
+   * @param next Request containing either preliminary data request or complete task
    */
-  createDecorator: (
-    next: IAutoBeRealizeAuthorizationApplication.IProps,
-  ) => void;
+  process(next: IAutoBeRealizeAuthorizationApplication.IProps): void;
 }
 
 export namespace IAutoBeRealizeAuthorizationApplication {
   export interface IProps {
+    /**
+     * Type discriminator for the request.
+     *
+     * Determines which action to perform: preliminary data retrieval
+     * (getPrismaSchemas) or final authentication generation (complete). When
+     * preliminary returns empty array, that type is removed from the union,
+     * physically preventing repeated calls.
+     */
+    request: IComplete | IAutoBePreliminaryGetPrismaSchemas;
+  }
+
+  /**
+   * Request to generate authentication components.
+   *
+   * Executes authentication generation to create provider function, decorator,
+   * and payload type for the specified role. All components work together to
+   * provide JWT-based authentication and authorization.
+   */
+  export interface IComplete {
+    /**
+     * Type discriminator for the request.
+     *
+     * Determines which action to perform: preliminary data retrieval or actual
+     * task execution. Value "complete" indicates this is the final task
+     * execution request.
+     */
+    type: "complete";
+
     /**
      * Authentication Provider function configuration containing the function
      * name and implementation code. The Provider handles JWT token

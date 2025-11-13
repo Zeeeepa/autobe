@@ -10,6 +10,7 @@ import { AutoBeSystemPromptConstant } from "../../../constants/AutoBeSystemPromp
 import { AutoBeContext } from "../../../context/AutoBeContext";
 import { AutoBeState } from "../../../context/AutoBeState";
 import { IAutoBeOrchestrateHistory } from "../../../structures/IAutoBeOrchestrateHistory";
+import { AutoBePreliminaryController } from "../../common/AutoBePreliminaryController";
 import { transformPreviousAndLatestCorrectHistory } from "../../common/histories/transformPreviousAndLatestCorrectHistory";
 import { IAutoBeRealizeFunctionFailure } from "../structures/IAutoBeRealizeFunctionFailure";
 import { IAutoBeRealizeScenarioResult } from "../structures/IAutoBeRealizeScenarioResult";
@@ -28,6 +29,7 @@ export function transformRealizeCorrectHistories<
     totalAuthorizations: AutoBeRealizeAuthorization[];
     dto: Record<string, string>;
     failures: IAutoBeRealizeFunctionFailure[];
+    preliminary: AutoBePreliminaryController<"prismaSchemas">;
   },
 ): IAutoBeOrchestrateHistory {
   const writeHistories = transformRealizeWriteHistories(props);
