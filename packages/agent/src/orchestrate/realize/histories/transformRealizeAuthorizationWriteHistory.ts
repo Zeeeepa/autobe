@@ -7,7 +7,7 @@ import { AutoBeSystemPromptConstant } from "../../../constants/AutoBeSystemPromp
 import { AutoBeContext } from "../../../context/AutoBeContext";
 import { IAutoBeOrchestrateHistory } from "../../../structures/IAutoBeOrchestrateHistory";
 
-export const transformRealizeAuthorizationHistories = <
+export const transformRealizeAuthorizationWriteHistory = <
   Model extends ILlmSchema.Model,
 >(
   ctx: AutoBeContext<Model>,

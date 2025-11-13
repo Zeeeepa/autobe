@@ -17,9 +17,7 @@ import { IAutoBeRealizeScenarioResult } from "../structures/IAutoBeRealizeScenar
 import { getRealizeWriteCodeTemplate } from "../utils/getRealizeWriteCodeTemplate";
 import { transformRealizeWriteHistories } from "./transformRealizeWriteHistories";
 
-export function transformRealizeCorrectHistories<
-  Model extends ILlmSchema.Model,
->(
+export function transformRealizeCorrectHistory<Model extends ILlmSchema.Model>(
   ctx: AutoBeContext<Model>,
   props: {
     state: AutoBeState;

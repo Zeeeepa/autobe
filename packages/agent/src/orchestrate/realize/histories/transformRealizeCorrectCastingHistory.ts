@@ -14,7 +14,7 @@ import { IAutoBeRealizeFunctionFailure } from "../structures/IAutoBeRealizeFunct
 import { IAutoBeRealizeScenarioResult } from "../structures/IAutoBeRealizeScenarioResult";
 import { getRealizeWriteCodeTemplate } from "../utils/getRealizeWriteCodeTemplate";
 
-export const transformRealizeCorrectCastingHistories = <
+export const transformRealizeCorrectCastingHistory = <
   Model extends ILlmSchema.Model,
 >(
   ctx: AutoBeContext<Model>,

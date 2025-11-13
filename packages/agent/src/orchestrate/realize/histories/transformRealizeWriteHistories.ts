@@ -10,7 +10,7 @@ import { AutoBePreliminaryController } from "../../common/AutoBePreliminaryContr
 import { IAutoBeRealizeScenarioResult } from "../structures/IAutoBeRealizeScenarioResult";
 import { getRealizeWriteCodeTemplate } from "../utils/getRealizeWriteCodeTemplate";
 import { getRealizeWriteInputType } from "../utils/getRealizeWriteInputType";
-import { transformRealizeWriteAuthorizationsHistories } from "./transformRealizeWriteAuthorizationsHistories";
+import { transformRealizeWriteMembershipHistory } from "./transformRealizeWriteMembershipHistory";
 
 export const transformRealizeWriteHistories = (props: {
   state: AutoBeState;
@@ -112,7 +112,7 @@ export const transformRealizeWriteHistories = (props: {
   const operation: AutoBeOpenApi.IOperation = props.scenario.operation;
   const authorizationHistories: IMicroAgenticaHistoryJson[] =
     operation.authorizationType
-      ? transformRealizeWriteAuthorizationsHistories(operation, payloads)
+      ? transformRealizeWriteMembershipHistory(operation, payloads)
       : [];
   const document: AutoBeOpenApi.IDocument = props.state.interface.document;
 
@@ -124,7 +124,7 @@ export const transformRealizeWriteHistories = (props: {
         type: "systemMessage",
         text: AutoBeSystemPromptConstant.REALIZE_WRITE,
       },
-      ...props.preliminary.createHistories(),
+      ...props.preliminary.getHistories(),
       ...authorizationHistories,
       {
         id: v7(),

@@ -17,7 +17,7 @@ import { executeCachedBatch } from "../../utils/executeCachedBatch";
 import { predicateStateMessage } from "../../utils/predicateStateMessage";
 import { IAutoBeFacadeApplicationProps } from "../facade/histories/IAutoBeFacadeApplicationProps";
 import { compileRealizeFiles } from "./internal/compileRealizeFiles";
-import { orchestrateRealizeAuthorization } from "./orchestrateRealizeAuthorization";
+import { orchestrateRealizeAuthorizationWrite } from "./orchestrateRealizeAuthorizationWrite";
 import { orchestrateRealizeCorrect } from "./orchestrateRealizeCorrect";
 import { orchestrateRealizeCorrectCasting } from "./orchestrateRealizeCorrectCasting";
 import { orchestrateRealizeWrite } from "./orchestrateRealizeWrite";
@@ -59,7 +59,7 @@ export const orchestrateRealize =
     // PREPARE ASSETS
     const compiler: IAutoBeCompiler = await ctx.compiler();
     const authorizations: AutoBeRealizeAuthorization[] =
-      await orchestrateRealizeAuthorization(ctx);
+      await orchestrateRealizeAuthorizationWrite(ctx);
 
     const writeProgress: AutoBeProgressEventBase = {
       total: document.operations.length,
