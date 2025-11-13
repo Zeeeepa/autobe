@@ -104,7 +104,10 @@ async function process<Model extends ILlmSchema.Model>(
       }),
       enforceFunctionCall: true,
       promptCacheKey: props.promptCacheKey,
-      ...transformRealizeAuthorizationWriteHistory(ctx, props.actor),
+      ...transformRealizeAuthorizationWriteHistory({
+        actor: props.actor,
+        preliminary,
+      }),
     });
     if (pointer.value === null) return out(result)(null);
 

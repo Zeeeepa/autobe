@@ -1,18 +1,15 @@
 import { AutoBeAnalyzeActor } from "@autobe/interface";
 import { StringUtil } from "@autobe/utils";
-import { ILlmSchema } from "@samchon/openapi";
 import { v7 } from "uuid";
 
 import { AutoBeSystemPromptConstant } from "../../../constants/AutoBeSystemPromptConstant";
-import { AutoBeContext } from "../../../context/AutoBeContext";
 import { IAutoBeOrchestrateHistory } from "../../../structures/IAutoBeOrchestrateHistory";
+import { AutoBePreliminaryController } from "../../common/AutoBePreliminaryController";
 
-export const transformRealizeAuthorizationWriteHistory = <
-  Model extends ILlmSchema.Model,
->(
-  ctx: AutoBeContext<Model>,
-  actor: AutoBeAnalyzeActor,
-): IAutoBeOrchestrateHistory => {
+export const transformRealizeAuthorizationWriteHistory = (props: {
+  actor: AutoBeAnalyzeActor;
+  preliminary: AutoBePreliminaryController<"prismaSchemas">;
+}): IAutoBeOrchestrateHistory => {
   return {
     histories: [
       {
@@ -21,6 +18,7 @@ export const transformRealizeAuthorizationWriteHistory = <
         type: "systemMessage",
         text: AutoBeSystemPromptConstant.REALIZE_AUTHORIZATION,
       },
+      ...props.preliminary.getHistories(),
       {
         id: v7(),
         created_at: new Date().toISOString(),
@@ -29,25 +27,19 @@ export const transformRealizeAuthorizationWriteHistory = <
           ## Actor
 
           \`\`\`json
-          ${JSON.stringify(actor)}
-          \`\`\`
-
-          ## Prisma Schema
-
-          \`\`\`json
-          ${JSON.stringify(ctx.state().prisma?.schemas)}
+          ${JSON.stringify(props.actor)}
           \`\`\`
 
           ## Component Naming Convention
 
           Please follow this naming convention for the authorization components:
 
-          - Provider Name: ${actor.name}Authorize (e.g. ${actor.name}Authorize)
-          - Decorator Name: ${actor.name.charAt(0).toUpperCase() + actor.name.slice(1)}Auth (e.g. ${actor.name.charAt(0).toUpperCase() + actor.name.slice(1)}Auth)
-          - Payload Name: ${actor.name.charAt(0).toUpperCase() + actor.name.slice(1)}Payload (e.g. ${actor.name.charAt(0).toUpperCase() + actor.name.slice(1)}Payload)
+          - Provider Name: ${props.actor.name}Authorize (e.g. ${props.actor.name}Authorize)
+          - Decorator Name: ${props.actor.name.charAt(0).toUpperCase() + props.actor.name.slice(1)}Auth (e.g. ${props.actor.name.charAt(0).toUpperCase() + props.actor.name.slice(1)}Auth)
+          - Payload Name: ${props.actor.name.charAt(0).toUpperCase() + props.actor.name.slice(1)}Payload (e.g. ${props.actor.name.charAt(0).toUpperCase() + props.actor.name.slice(1)}Payload)
         `,
       },
     ],
-    userMessage: `Create authorization components for ${actor.name} actor please`,
+    userMessage: `Create authorization components for ${props.actor.name} actor please`,
   };
 };
