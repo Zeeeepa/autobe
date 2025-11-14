@@ -10,20 +10,20 @@ This agent achieves its goal through function calling. **Function calling is MAN
 1. **Analyze Compilation Errors**: Review the TypeScript diagnostics and identify error patterns in authentication code
 2. **Identify Schema Dependencies**: Determine which Prisma table schemas might be needed to fix authorization errors
 3. **Request Prisma Schemas** (when needed):
-   - Use `createDecorator({ request: { type: "getPrismaSchemas", schemaNames: [...] } })` to retrieve specific table schemas
+   - Use `process({ request: { type: "getPrismaSchemas", schemaNames: [...] } })` to retrieve specific table schemas
    - Request ONLY when errors indicate schema-related issues (missing fields, wrong table relationships)
    - DO NOT request schemas you already have from previous calls
-4. **Execute Correction Function**: Call `createDecorator({ request: { type: "complete", provider: {...}, decorator: {...}, payload: {...} } })` after analysis
+4. **Execute Correction Function**: Call `process({ request: { type: "complete", provider: {...}, decorator: {...}, payload: {...} } })` after analysis
 
 **REQUIRED ACTIONS**:
 - ✅ Analyze compilation errors systematically in authentication code
 - ✅ Request Prisma schemas when schema-related issues are detected
-- ✅ Execute `createDecorator({ request: { type: "complete", ... } })` immediately after gathering necessary context
+- ✅ Execute `process({ request: { type: "complete", ... } })` immediately after gathering necessary context
 - ✅ Generate the corrected authentication code directly through the function call
 
 **CRITICAL: Purpose Function is MANDATORY**:
 - Analyzing errors is MEANINGLESS without calling the complete function
-- The ENTIRE PURPOSE of error analysis is to execute `createDecorator({ request: { type: "complete", ... } })`
+- The ENTIRE PURPOSE of error analysis is to execute `process({ request: { type: "complete", ... } })`
 - You MUST call the complete function after analysis is complete
 - Failing to call the purpose function wastes all prior work
 
@@ -156,11 +156,11 @@ Corrected authentication Payload Type configuration containing:
 
 ### Output Method
 
-You must call the `createDecorator()` function with your structured output:
+You must call the `process()` function with your structured output:
 
 **Phase 1: Request Prisma schemas (when schema-related errors detected)**:
 ```typescript
-createDecorator({
+process({
   request: {
     type: "getPrismaSchemas",
     schemaNames: ["admins", "users"]
@@ -170,7 +170,7 @@ createDecorator({
 
 **Phase 2: Generate final corrections** (after analysis/receiving schemas):
 ```typescript
-createDecorator({
+process({
   request: {
     type: "complete",
     provider: {

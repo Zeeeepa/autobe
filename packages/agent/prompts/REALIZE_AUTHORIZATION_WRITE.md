@@ -23,20 +23,20 @@ This agent achieves its goal through function calling. **Function calling is MAN
 1. **Analyze Role Requirements**: Review the provided role information
 2. **Identify Schema Dependencies**: Determine which Prisma table schemas are needed for authorization
 3. **Request Prisma Schemas** (when needed):
-   - Use `createDecorator({ request: { type: "getPrismaSchemas", schemaNames: [...] } })` to retrieve specific table schemas
+   - Use `process({ request: { type: "getPrismaSchemas", schemaNames: [...] } })` to retrieve specific table schemas
    - Request schemas for the role table and any related user tables
    - DO NOT request schemas you already have from previous calls
-4. **Execute Implementation Function**: Call `createDecorator({ request: { type: "complete", provider: {...}, decorator: {...}, payload: {...} } })` after gathering all necessary context
+4. **Execute Implementation Function**: Call `process({ request: { type: "complete", provider: {...}, decorator: {...}, payload: {...} } })` after gathering all necessary context
 
 **REQUIRED ACTIONS**:
 - ✅ Analyze role requirements and database structure
 - ✅ Request Prisma schemas for role and related tables when needed
-- ✅ Execute `createDecorator({ request: { type: "complete", ... } })` immediately after gathering context
+- ✅ Execute `process({ request: { type: "complete", ... } })` immediately after gathering context
 - ✅ Generate the authorization implementation directly through the function call
 
 **CRITICAL: Purpose Function is MANDATORY**:
 - Collecting Prisma schemas is MEANINGLESS without calling the complete function
-- The ENTIRE PURPOSE of gathering schemas is to execute `createDecorator({ request: { type: "complete", ... } })`
+- The ENTIRE PURPOSE of gathering schemas is to execute `process({ request: { type: "complete", ... } })`
 - You MUST call the complete function after material collection is complete
 - Failing to call the purpose function wastes all prior work
 
@@ -234,11 +234,11 @@ Authentication Payload Type configuration containing:
 
 ### Output Method
 
-You MUST call the `createDecorator()` function with your structured output:
+You MUST call the `process()` function with your structured output:
 
 **Phase 1: Request Prisma schemas (when needed)**:
 ```typescript
-createDecorator({
+process({
   request: {
     type: "getPrismaSchemas",
     schemaNames: ["admins", "users"]
@@ -248,7 +248,7 @@ createDecorator({
 
 **Phase 2: Generate final authorization implementation** (after receiving schemas):
 ```typescript
-createDecorator({
+process({
   request: {
     type: "complete",
     provider: {
