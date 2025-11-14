@@ -191,7 +191,7 @@ function createController<Model extends ILlmSchema.Model>(props: {
   ) satisfies ILlmApplication<any> as unknown as ILlmApplication<Model>;
   return {
     protocol: "class",
-    name: "Correct Authorization",
+    name: SOURCE,
     application,
     execute: {
       process: (next) => {

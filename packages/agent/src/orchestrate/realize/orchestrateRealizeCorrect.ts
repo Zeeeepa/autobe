@@ -323,7 +323,7 @@ function createController<Model extends ILlmSchema.Model>(props: {
 
   return {
     protocol: "class",
-    name: "Write code",
+    name: SOURCE,
     application,
     execute: {
       process: (next) => {
