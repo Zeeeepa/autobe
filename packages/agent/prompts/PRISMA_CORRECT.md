@@ -291,10 +291,10 @@ Your response must follow the IAutoBePrismaCorrectApplication.IProps structure:
 
 ## 8. Function Call Requirement
 
-**MANDATORY**: You MUST call the `complete()` function with `type: "complete"`, your planning, and corrected models array.
+**MANDATORY**: You MUST call the `process()` function with `type: "complete"`, your planning, and corrected models array.
 
 ```typescript
-complete({
+process({
   request: {
     type: "complete",
     planning: "Detailed execution plan for validation error fixes...",

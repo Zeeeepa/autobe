@@ -2,20 +2,22 @@ import { CamelCasePattern, PascalCasePattern } from "@autobe/interface";
 
 import { IAutoBePreliminaryGetPrismaSchemas } from "../../common/structures/IAutoBePreliminaryGetPrismaSchemas";
 
-export interface IAutoBeRealizeAuthorizationApplication {
+export interface IAutoBeRealizeAuthorizationWriteApplication {
   /**
-   * Process authentication component generation task or preliminary data requests.
+   * Process authentication component generation task or preliminary data
+   * requests.
    *
    * Generates JWT-based authentication infrastructure (provider, decorator,
-   * payload) for role-based authorization. Integrates with NestJS patterns
-   * and jwtAuthorize utility.
+   * payload) for role-based authorization. Integrates with NestJS patterns and
+   * jwtAuthorize utility.
    *
-   * @param next Request containing either preliminary data request or complete task
+   * @param next Request containing either preliminary data request or complete
+   *   task
    */
-  process(next: IAutoBeRealizeAuthorizationApplication.IProps): void;
+  process(next: IAutoBeRealizeAuthorizationWriteApplication.IProps): void;
 }
 
-export namespace IAutoBeRealizeAuthorizationApplication {
+export namespace IAutoBeRealizeAuthorizationWriteApplication {
   export interface IProps {
     /**
      * Type discriminator for the request.
@@ -51,7 +53,7 @@ export namespace IAutoBeRealizeAuthorizationApplication {
      * verification, role validation, and database queries to authenticate
      * users.
      */
-    provider: IAutoBeRealizeAuthorizationApplication.IProvider;
+    provider: IAutoBeRealizeAuthorizationWriteApplication.IProvider;
 
     /**
      * Authentication Decorator configuration containing the decorator name and
@@ -59,7 +61,7 @@ export namespace IAutoBeRealizeAuthorizationApplication {
      * decorators to automatically inject authenticated user data into
      * Controller methods.
      */
-    decorator: IAutoBeRealizeAuthorizationApplication.IDecorator;
+    decorator: IAutoBeRealizeAuthorizationWriteApplication.IDecorator;
 
     /**
      * Authentication Payload Type configuration containing the payload type
@@ -68,7 +70,7 @@ export namespace IAutoBeRealizeAuthorizationApplication {
      * Controller methods when using the decorator. It serves as the TypeScript
      * type for the parameter in Controller method signatures.
      */
-    payload: IAutoBeRealizeAuthorizationApplication.IPayloadType;
+    payload: IAutoBeRealizeAuthorizationWriteApplication.IPayloadType;
   }
 
   export interface IProvider {

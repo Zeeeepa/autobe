@@ -1,15 +1,17 @@
 import { IAutoBePreliminaryGetPrismaSchemas } from "../../common/structures/IAutoBePreliminaryGetPrismaSchemas";
-import { IAutoBeRealizeAuthorizationApplication } from "./IAutoBeRealizeAuthorizationApplication";
+import { IAutoBeRealizeAuthorizationWriteApplication } from "./IAutoBeRealizeAuthorizationWriteApplication";
 
 export interface IAutoBeRealizeAuthorizationCorrectApplication {
   /**
-   * Process authentication component correction task or preliminary data requests.
+   * Process authentication component correction task or preliminary data
+   * requests.
    *
    * Fixes TypeScript compilation errors in authentication components through
-   * systematic error diagnosis. Provides error analysis, solution guidance,
-   * and corrected versions while preserving authentication logic.
+   * systematic error diagnosis. Provides error analysis, solution guidance, and
+   * corrected versions while preserving authentication logic.
    *
-   * @param next Request containing either preliminary data request or complete task
+   * @param next Request containing either preliminary data request or complete
+   *   task
    */
   process(next: IAutoBeRealizeAuthorizationCorrectApplication.IProps): void;
 }
@@ -20,9 +22,9 @@ export namespace IAutoBeRealizeAuthorizationCorrectApplication {
      * Type discriminator for the request.
      *
      * Determines which action to perform: preliminary data retrieval
-     * (getPrismaSchemas) or final error correction (complete). When
-     * preliminary returns empty array, that type is removed from the union,
-     * physically preventing repeated calls.
+     * (getPrismaSchemas) or final error correction (complete). When preliminary
+     * returns empty array, that type is removed from the union, physically
+     * preventing repeated calls.
      */
     request: IComplete | IAutoBePreliminaryGetPrismaSchemas;
   }
@@ -71,7 +73,7 @@ export namespace IAutoBeRealizeAuthorizationCorrectApplication {
      * verification, role validation, and database queries to authenticate
      * users.
      */
-    provider: IAutoBeRealizeAuthorizationApplication.IProvider;
+    provider: IAutoBeRealizeAuthorizationWriteApplication.IProvider;
 
     /**
      * Authentication Decorator configuration containing the decorator name and
@@ -79,7 +81,7 @@ export namespace IAutoBeRealizeAuthorizationCorrectApplication {
      * decorators to automatically inject authenticated user data into
      * Controller methods.
      */
-    decorator: IAutoBeRealizeAuthorizationApplication.IDecorator;
+    decorator: IAutoBeRealizeAuthorizationWriteApplication.IDecorator;
 
     /**
      * Authentication Payload Type configuration containing the payload type
@@ -88,6 +90,6 @@ export namespace IAutoBeRealizeAuthorizationCorrectApplication {
      * Controller methods when using the decorator. It serves as the TypeScript
      * type for the parameter in Controller method signatures.
      */
-    payload: IAutoBeRealizeAuthorizationApplication.IPayloadType;
+    payload: IAutoBeRealizeAuthorizationWriteApplication.IPayloadType;
   }
 }

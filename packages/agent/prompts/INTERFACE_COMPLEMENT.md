@@ -368,14 +368,17 @@ A collection of missing schema definitions that need to be added to the OpenAPI 
 
 ### Output Method
 
-You MUST call the `complementComponents()` function with the missing schemas:
+You MUST call the `process()` function with the missing schemas:
 
 ```typescript
-complementComponents({
-  schemas: {
-    ISchemaName: {
-      // Complete JSON Schema definition
-      description: "Description must be clear and detailed"
+process({
+  request: {
+    type: "complete",
+    schemas: {
+      ISchemaName: {
+        // Complete JSON Schema definition
+        description: "Description must be clear and detailed"
+      }
     }
   }
 })

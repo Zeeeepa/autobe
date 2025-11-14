@@ -19,7 +19,7 @@ import { executeCachedBatch } from "../../utils/executeCachedBatch";
 import { AutoBePreliminaryController } from "../common/AutoBePreliminaryController";
 import { transformRealizeAuthorizationWriteHistory } from "./histories/transformRealizeAuthorizationWriteHistory";
 import { orchestrateRealizeAuthorizationCorrect } from "./orchestrateRealizeAuthorizationCorrect";
-import { IAutoBeRealizeAuthorizationApplication } from "./structures/IAutoBeRealizeAuthorizationApplication";
+import { IAutoBeRealizeAuthorizationWriteApplication } from "./structures/IAutoBeRealizeAuthorizationWriteApplication";
 import { AuthorizationFileSystem } from "./utils/AuthorizationFileSystem";
 import { InternalFileSystem } from "./utils/InternalFileSystem";
 
@@ -84,12 +84,12 @@ async function process<Model extends ILlmSchema.Model>(
     new AutoBePreliminaryController<"prismaSchemas">({
       source: SOURCE,
       application:
-        typia.json.application<IAutoBeRealizeAuthorizationApplication>(),
+        typia.json.application<IAutoBeRealizeAuthorizationWriteApplication>(),
       kinds: ["prismaSchemas"],
       state: ctx.state(),
     });
   return await preliminary.orchestrate(ctx, async (out) => {
-    const pointer: IPointer<IAutoBeRealizeAuthorizationApplication.IComplete | null> =
+    const pointer: IPointer<IAutoBeRealizeAuthorizationWriteApplication.IComplete | null> =
       {
         value: null,
       };
@@ -166,14 +166,14 @@ async function process<Model extends ILlmSchema.Model>(
 
 function createController<Model extends ILlmSchema.Model>(props: {
   model: Model;
-  build: (next: IAutoBeRealizeAuthorizationApplication.IComplete) => void;
+  build: (next: IAutoBeRealizeAuthorizationWriteApplication.IComplete) => void;
   preliminary: AutoBePreliminaryController<"prismaSchemas">;
 }): IAgenticaController.IClass<Model> {
   assertSchemaModel(props.model);
 
   const validate: Validator = (input) => {
-    const result: IValidation<IAutoBeRealizeAuthorizationApplication.IProps> =
-      typia.validate<IAutoBeRealizeAuthorizationApplication.IProps>(input);
+    const result: IValidation<IAutoBeRealizeAuthorizationWriteApplication.IProps> =
+      typia.validate<IAutoBeRealizeAuthorizationWriteApplication.IProps>(input);
     if (result.success === false || result.data.request.type === "complete")
       return result;
     return props.preliminary.validate({
@@ -198,25 +198,34 @@ function createController<Model extends ILlmSchema.Model>(props: {
       process: (next) => {
         if (next.request.type === "complete") props.build(next.request);
       },
-    } satisfies IAutoBeRealizeAuthorizationApplication,
+    } satisfies IAutoBeRealizeAuthorizationWriteApplication,
   };
 }
 
 const collection = {
   chatgpt: (validate: Validator) =>
-    typia.llm.application<IAutoBeRealizeAuthorizationApplication, "chatgpt">({
+    typia.llm.application<
+      IAutoBeRealizeAuthorizationWriteApplication,
+      "chatgpt"
+    >({
       validate: {
         process: validate,
       },
     }),
   claude: (validate: Validator) =>
-    typia.llm.application<IAutoBeRealizeAuthorizationApplication, "claude">({
+    typia.llm.application<
+      IAutoBeRealizeAuthorizationWriteApplication,
+      "claude"
+    >({
       validate: {
         process: validate,
       },
     }),
   gemini: (validate: Validator) =>
-    typia.llm.application<IAutoBeRealizeAuthorizationApplication, "gemini">({
+    typia.llm.application<
+      IAutoBeRealizeAuthorizationWriteApplication,
+      "gemini"
+    >({
       validate: {
         process: validate,
       },
@@ -225,6 +234,6 @@ const collection = {
 
 type Validator = (
   input: unknown,
-) => IValidation<IAutoBeRealizeAuthorizationApplication.IProps>;
+) => IValidation<IAutoBeRealizeAuthorizationWriteApplication.IProps>;
 
 const SOURCE = "realizeAuthorizationWrite" satisfies AutoBeEventSource;

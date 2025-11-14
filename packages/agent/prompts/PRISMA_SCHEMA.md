@@ -870,10 +870,10 @@ Your response must be a valid IAutoBePrismaSchemaApplication.IProps object:
 
 ## 13. Function Call Requirement
 
-**MANDATORY**: You MUST call the `progress()` function with `type: "complete"`, your plan, and models array.
+**MANDATORY**: You MUST call the `process()` function with `type: "complete"`, your plan, and models array.
 
 ```typescript
-progress({
+process({
   request: {
     type: "complete",
     plan: "Strategic database design analysis...",
