@@ -4,7 +4,7 @@ import { v7 } from "uuid";
 
 import { AutoBeSystemPromptConstant } from "../../../constants/AutoBeSystemPromptConstant";
 
-export const transformRealizeWriteAuthorizationsHistories = (
+export const transformRealizeWriteMembershipHistory = (
   operation: AutoBeOpenApi.IOperation,
   payload: Record<string, string>,
 ): Array<IAgenticaHistoryJson.ISystemMessage> => {

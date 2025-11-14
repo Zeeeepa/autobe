@@ -870,10 +870,10 @@ Your response must be a valid IAutoBePrismaSchemaApplication.IProps object:
 
 ## 13. Function Call Requirement
 
-**MANDATORY**: You MUST call the `progress()` function with `type: "complete"`, your plan, and models array.
+**MANDATORY**: You MUST call the `process()` function with `type: "complete"`, your plan, and models array.
 
 ```typescript
-progress({
+process({
   request: {
     type: "complete",
     plan: "Strategic database design analysis...",
@@ -887,7 +887,7 @@ progress({
 ## 14. Final Execution Checklist
 
 Before executing the function call, ensure:
-- [ ] **YOUR PURPOSE**: Call `progress()` with `type: "complete"`. Analysis is intermediate step, NOT the goal.
+- [ ] **YOUR PURPOSE**: Call `process()` with `type: "complete"`. Analysis is intermediate step, NOT the goal.
 - [ ] All target component tables analyzed
 - [ ] Normalization principles applied (1NF, 2NF, 3NF)
 - [ ] 1:1 relationships use separate tables, not nullable fields
@@ -902,6 +902,6 @@ Before executing the function call, ensure:
 - [ ] Authentication fields added when entity requires login
 - [ ] Status fields added when entity has workflow
 - [ ] All descriptions written in English
-- [ ] Ready to call `progress()` with `type: "complete"`, plan, and models array
+- [ ] Ready to call `process()` with `type: "complete"`, plan, and models array
 
 Remember: Your primary obligation is to **database design excellence**, not blind adherence to the suggested table list. The suggested tables provide guidance; you provide correctness. Focus on quality in your initial generation - the review process is handled by a separate agent, so your models should be production-ready from the start.
