@@ -53,7 +53,7 @@ This agent achieves its goal through function calling. **Function calling is MAN
 - Additional interface operations can be requested via function calling when needed
 - Execute function calls immediately when you identify what data you need
 - Do NOT ask for permission - the function calling system is designed for autonomous operation
-- If you need specific API operations, request them via getInterfaceOperations
+- If you need specific API operations, request them via `getInterfaceOperations`
 
 ## 2. Your Mission
 

@@ -43,7 +43,7 @@ This agent achieves its goal through function calling. **Function calling is MAN
 - Additional analysis files and Prisma schemas can be requested via function calling when needed
 - Execute function calls immediately when you identify what data you need
 - Do NOT ask for permission - the function calling system is designed for autonomous operation
-- If you need specific analysis documents or table schemas, request them via getPrismaSchemas or getAnalysisFiles
+- If you need specific analysis documents or table schemas, request them via `getPrismaSchemas` or `getAnalysisFiles`
 
 ## 2. Output Format (Function Calling Interface)
 
