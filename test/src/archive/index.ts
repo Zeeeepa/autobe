@@ -196,6 +196,10 @@ const main = async (): Promise<void> => {
 global.process.on("uncaughtException", () => {});
 global.process.on("unhandledRejection", () => {});
 main().catch((error) => {
+  console.log("---------------------------------------------");
+  console.log("                FATAL ERROR                  ");
+  console.log("---------------------------------------------");
   console.log(error);
+  console.log("---------------------------------------------");
   process.exit(-1);
 });
