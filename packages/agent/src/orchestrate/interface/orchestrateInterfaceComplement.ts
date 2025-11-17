@@ -1,5 +1,9 @@
 import { IAgenticaController } from "@agentica/core";
-import { AutoBeEventSource, AutoBeOpenApi } from "@autobe/interface";
+import {
+  AutoBeEventSource,
+  AutoBeOpenApi,
+  AutoBeProgressEventBase,
+} from "@autobe/interface";
 import { missedOpenApiSchemas } from "@autobe/utils";
 import { ILlmApplication, ILlmSchema, IValidation } from "@samchon/openapi";
 import { OpenApiV3_1Emender } from "@samchon/openapi/lib/converters/OpenApiV3_1Emender";
@@ -7,8 +11,10 @@ import { IPointer } from "tstl";
 import typia from "typia";
 import { v7 } from "uuid";
 
+import { AutoBeConfigConstant } from "../../constants/AutoBeConfigConstant";
 import { AutoBeContext } from "../../context/AutoBeContext";
 import { assertSchemaModel } from "../../context/assertSchemaModel";
+import { divideArray } from "../../utils/divideArray";
 import { AutoBePreliminaryController } from "../common/AutoBePreliminaryController";
 import { transformInterfaceComplementHistory } from "./histories/transformInterfaceComplementHistory";
 import { IAutoBeInterfaceComplementApplication } from "./structures/IAutoBeInterfaceComplementApplication";
@@ -17,34 +23,104 @@ import { JsonSchemaNamingConvention } from "./utils/JsonSchemaNamingConvention";
 import { JsonSchemaValidator } from "./utils/JsonSchemaValidator";
 import { fulfillJsonSchemaErrorMessages } from "./utils/fulfillJsonSchemaErrorMessages";
 
-export function orchestrateInterfaceComplement<Model extends ILlmSchema.Model>(
+export const orchestrateInterfaceComplement = <Model extends ILlmSchema.Model>(
   ctx: AutoBeContext<Model>,
   props: {
     instruction: string;
     document: AutoBeOpenApi.IDocument;
+    progress: AutoBeProgressEventBase;
   },
-): Promise<Record<string, AutoBeOpenApi.IJsonSchemaDescriptive>> {
-  return step(ctx, props, {
+): Promise<Record<string, AutoBeOpenApi.IJsonSchemaDescriptive>> =>
+  step(ctx, props, {
     wasEmpty: false,
     life: 10,
   });
-}
 
 async function step<Model extends ILlmSchema.Model>(
   ctx: AutoBeContext<Model>,
   props: {
     instruction: string;
     document: AutoBeOpenApi.IDocument;
+    progress: AutoBeProgressEventBase;
   },
-  progress: {
+  state: {
     wasEmpty: boolean;
     life: number;
   },
 ): Promise<Record<string, AutoBeOpenApi.IJsonSchemaDescriptive>> {
   const missed: string[] = missedOpenApiSchemas(props.document);
   if (missed.length === 0) return props.document.components.schemas;
-  else if (progress.life === 0) return props.document.components.schemas;
+  else if (state.life === 0) return props.document.components.schemas;
 
+  props.progress.total += missed.length;
+  const newbie: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive> =
+    await divideAndConquer(ctx, {
+      instruction: props.instruction,
+      document: props.document,
+      progress: props.progress,
+      missed,
+    });
+  const schemas: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive> = {
+    ...newbie,
+    ...props.document.components.schemas,
+  };
+  JsonSchemaNamingConvention.schemas(props.document.operations, schemas);
+  return await step(
+    ctx,
+    {
+      instruction: props.instruction,
+      document: {
+        ...props.document,
+        components: {
+          ...props.document.components,
+          schemas,
+        },
+      },
+      progress: props.progress,
+    },
+    {
+      wasEmpty: Object.keys(newbie).length === 0,
+      life: state.life - 1,
+    },
+  );
+}
+
+async function divideAndConquer<Model extends ILlmSchema.Model>(
+  ctx: AutoBeContext<Model>,
+  props: {
+    instruction: string;
+    document: AutoBeOpenApi.IDocument;
+    missed: string[];
+    progress: AutoBeProgressEventBase;
+  },
+): Promise<Record<string, AutoBeOpenApi.IJsonSchemaDescriptive>> {
+  const matrix: string[][] = divideArray({
+    array: props.missed,
+    capacity: AutoBeConfigConstant.INTERFACE_CAPACITY,
+  });
+  const x: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive> = {};
+  for (const missed of matrix) {
+    const row: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive> =
+      await process(ctx, {
+        instruction: props.instruction,
+        document: props.document,
+        progress: props.progress,
+        missed,
+      });
+    Object.assign(x, row);
+  }
+  return x;
+}
+
+async function process<Model extends ILlmSchema.Model>(
+  ctx: AutoBeContext<Model>,
+  props: {
+    instruction: string;
+    document: AutoBeOpenApi.IDocument;
+    missed: string[];
+    progress: AutoBeProgressEventBase;
+  },
+): Promise<Record<string, AutoBeOpenApi.IJsonSchemaDescriptive>> {
   const preliminary: AutoBePreliminaryController<
     | "analysisFiles"
     | "prismaSchemas"
@@ -96,50 +172,27 @@ async function step<Model extends ILlmSchema.Model>(
         state: ctx.state(),
         instruction: props.instruction,
         preliminary,
-        missed,
+        missed: props.missed,
       }),
     });
-    if (pointer.value !== null) {
-      ctx.dispatch({
-        type: SOURCE,
-        id: v7(),
-        missed,
-        schemas: pointer.value,
-        metric: result.metric,
-        tokenUsage: result.tokenUsage,
-        step: ctx.state().analyze?.step ?? 0,
-        created_at: new Date().toISOString(),
-      });
-      const empty: boolean = Object.keys(pointer.value).length === 0;
-      if (empty === true && progress.wasEmpty === true)
-        return out(result)(props.document.components.schemas);
+    if (pointer.value === null) return out(result)(null);
 
-      const newSchemas: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive> = {
-        ...pointer.value,
-        ...props.document.components.schemas,
-      };
-      JsonSchemaNamingConvention.schemas(props.document.operations, newSchemas);
-      return out(result)(
-        await step(
-          ctx,
-          {
-            instruction: props.instruction,
-            document: {
-              ...props.document,
-              components: {
-                ...props.document.components,
-                schemas: newSchemas,
-              },
-            },
-          },
-          {
-            wasEmpty: empty,
-            life: progress.life - 1,
-          },
-        ),
-      );
-    }
-    return out(result)(null);
+    props.progress.completed += Object.keys(pointer.value).length;
+    props.progress.total +=
+      Object.keys(pointer.value).length - props.missed.length;
+    ctx.dispatch({
+      type: SOURCE,
+      id: v7(),
+      missed: props.missed,
+      schemas: pointer.value,
+      metric: result.metric,
+      tokenUsage: result.tokenUsage,
+      step: ctx.state().analyze?.step ?? 0,
+      completed: props.progress.completed,
+      total: props.progress.total,
+      created_at: new Date().toISOString(),
+    });
+    return out(result)(pointer.value);
   });
 }
 
@@ -177,6 +230,7 @@ function createController<Model extends ILlmSchema.Model>(props: {
       return result;
     } else if (result.data.request.type !== "complete")
       return props.preliminary.validate({
+        thinking: result.data.thinking,
         request: result.data.request,
       });
 

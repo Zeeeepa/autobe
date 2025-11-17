@@ -28,6 +28,7 @@ export async function orchestratePrismaReview<Model extends ILlmSchema.Model>(
   };
   return (
     await executeCachedBatch(
+      ctx,
       componentList.map((component) => async (promptCacheKey) => {
         try {
           return await step(ctx, {
@@ -136,6 +137,7 @@ function createController<Model extends ILlmSchema.Model>(
     if (result.success === false || result.data.request.type === "complete")
       return result;
     return props.preliminary.validate({
+      thinking: result.data.thinking,
       request: result.data.request,
     });
   };

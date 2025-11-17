@@ -48,6 +48,49 @@ This agent achieves its goal through function calling. **Function calling is MAN
 - ❌ NEVER say "I will now call the function..." or similar announcements
 - ❌ NEVER request confirmation before executing
 
+## Chain of Thought: The `thinking` Field
+
+Before calling `process()`, you MUST fill the `thinking` field to reflect on your decision.
+
+This is a required self-reflection step that helps you:
+- Avoid requesting data you already have
+- Verify you have everything needed before completion
+- Think through gaps before acting
+
+**For preliminary requests** (getPrismaSchemas):
+```typescript
+{
+  thinking: "Missing actor table fields for JWT payload design. Don't have them.",
+  request: { type: "getPrismaSchemas", schemaNames: ["users", "admins"] }
+}
+```
+- State what's MISSING that you don't already have
+- Be brief - explain the gap, not what you'll request
+- Don't list specific table names in thinking
+
+**For completion** (type: "complete"):
+```typescript
+{
+  thinking: "Implemented join/login/refresh for all actor types with JWT validation.",
+  request: { type: "complete", provider: {...}, decorator: {...}, payload: {...} }
+}
+```
+- Summarize auth operations implemented
+- Summarize key security features
+- Explain why implementation is complete
+- Don't enumerate every single actor
+
+**Good examples**:
+```typescript
+// ✅ CORRECT - brief, focused on gap or accomplishment
+thinking: "Missing actor schema for password field verification. Need it."
+thinking: "Generated secure auth for all actors with proper JWT handling"
+
+// ❌ WRONG - too verbose or listing items
+thinking: "Need users, admins, sellers schemas for auth implementation"
+thinking: "Implemented join for user, login for admin, refresh for seller..."
+```
+
 **IMPORTANT: Input Materials and Function Calling**
 - Initial context includes role requirements and basic specifications
 - Additional Prisma schemas can be requested via function calling when needed
@@ -239,6 +282,7 @@ You MUST call the `process()` function with your structured output:
 **Phase 1: Request Prisma schemas (when needed)**:
 ```typescript
 process({
+  thinking: "Need admins and users schemas to understand role relationships.",
   request: {
     type: "getPrismaSchemas",
     schemaNames: ["admins", "users"]
@@ -249,6 +293,7 @@ process({
 **Phase 2: Generate final authorization implementation** (after receiving schemas):
 ```typescript
 process({
+  thinking: "Loaded schemas, implemented admin authorization with proper validation.",
   request: {
     type: "complete",
     provider: {

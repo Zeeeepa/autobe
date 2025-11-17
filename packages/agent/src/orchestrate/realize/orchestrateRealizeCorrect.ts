@@ -134,6 +134,7 @@ async function correct<Model extends ILlmSchema.Model>(
   }
 
   const corrected: AutoBeRealizeFunction[] = await executeCachedBatch(
+    ctx,
     props.locations.map(
       (location) => async (): Promise<AutoBeRealizeFunction> => {
         const scenario = props.scenarios.find((el) => el.location === location);
@@ -296,6 +297,7 @@ function createController<Model extends ILlmSchema.Model>(props: {
     if (result.success === false) return result;
     else if (result.data.request.type !== "complete")
       return props.preliminary.validate({
+        thinking: result.data.thinking,
         request: result.data.request,
       });
     const errors: IValidation.IError[] = validateEmptyCode({

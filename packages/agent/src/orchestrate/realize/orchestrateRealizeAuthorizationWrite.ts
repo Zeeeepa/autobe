@@ -50,6 +50,7 @@ export async function orchestrateRealizeAuthorizationWrite<
     dbms: "sqlite",
   });
   const authorizations: AutoBeRealizeAuthorization[] = await executeCachedBatch(
+    ctx,
     actors.map(
       (a) => (promptCacheKey) =>
         process(ctx, {
@@ -177,6 +178,7 @@ function createController<Model extends ILlmSchema.Model>(props: {
     if (result.success === false || result.data.request.type === "complete")
       return result;
     return props.preliminary.validate({
+      thinking: result.data.thinking,
       request: result.data.request,
     });
   };

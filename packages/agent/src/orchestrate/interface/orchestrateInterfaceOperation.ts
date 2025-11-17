@@ -30,12 +30,11 @@ export async function orchestrateInterfaceOperation<
   props: {
     instruction: string;
     endpoints: AutoBeOpenApi.IEndpoint[];
-    capacity?: number;
   },
 ): Promise<AutoBeOpenApi.IOperation[]> {
   const matrix: AutoBeOpenApi.IEndpoint[][] = divideArray({
     array: props.endpoints,
-    capacity: props.capacity ?? AutoBeConfigConstant.INTERFACE_CAPACITY,
+    capacity: AutoBeConfigConstant.INTERFACE_CAPACITY,
   });
   const progress: AutoBeProgressEventBase = {
     total: matrix.flat().length,
@@ -47,6 +46,7 @@ export async function orchestrateInterfaceOperation<
   };
   return (
     await executeCachedBatch(
+      ctx,
       matrix.map((it) => async (promptCacheKey) => {
         const row: AutoBeOpenApi.IOperation[] = await divideAndConquer(ctx, {
           endpoints: it,
@@ -222,6 +222,7 @@ function createController<Model extends ILlmSchema.Model>(props: {
     if (result.success === false) return result;
     else if (result.data.request.type !== "complete")
       return props.preliminary.validate({
+        thinking: result.data.thinking,
         request: result.data.request,
       });
 

@@ -66,6 +66,7 @@ export async function orchestrateInterfacePrerequisite<
       capacity: AutoBeConfigConstant.INTERFACE_CAPACITY,
     });
     await executeCachedBatch(
+      ctx,
       matrix.map((ops) => async (promptCacheKey) => {
         const row: AutoBeInterfacePrerequisite[] = await divideAndConquer(ctx, {
           dict: dict,
@@ -216,6 +217,7 @@ function createController<Model extends ILlmSchema.Model>(props: {
     if (result.success === false) return result;
     else if (result.data.request.type !== "complete")
       return props.preliminary.validate({
+        thinking: result.data.thinking,
         request: result.data.request,
       });
 
@@ -278,6 +280,7 @@ function createController<Model extends ILlmSchema.Model>(props: {
       ? {
           success: true,
           data: {
+            ...result.data,
             request: {
               ...result.data.request,
               operations: filteredOperations,
@@ -288,7 +291,10 @@ function createController<Model extends ILlmSchema.Model>(props: {
           success: false,
           data: {
             ...result.data,
-            operations: filteredOperations,
+            request: {
+              ...result.data.request,
+              operations: filteredOperations,
+            },
           },
           errors,
         };

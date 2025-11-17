@@ -35,6 +35,7 @@ export async function orchestrateInterfaceAuthorization<
   };
   const authorizations: AutoBeInterfaceAuthorization[] =
     await executeCachedBatch(
+      ctx,
       actors.map((a) => async (promptCacheKey) => {
         const event: AutoBeInterfaceAuthorizationEvent = await process(ctx, {
           actor: a,
@@ -128,6 +129,7 @@ function createController<Model extends ILlmSchema.Model>(props: {
     if (result.success === false) return result;
     else if (result.data.request.type !== "complete")
       return props.preliminary.validate({
+        thinking: result.data.thinking,
         request: result.data.request,
       });
     // remove login operation for guest role

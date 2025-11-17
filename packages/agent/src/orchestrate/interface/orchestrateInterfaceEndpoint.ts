@@ -38,6 +38,7 @@ export async function orchestrateInterfaceEndpoint<
   };
   const endpoints: AutoBeOpenApi.IEndpoint[] = (
     await executeCachedBatch(
+      ctx,
       props.groups.map(
         (group) => (promptCacheKey) =>
           process(ctx, {
@@ -151,6 +152,7 @@ function createController<Model extends ILlmSchema.Model>(props: {
     if (result.success === false || result.data.request.type === "complete")
       return result;
     return props.preliminary.validate({
+      thinking: result.data.thinking,
       request: result.data.request,
     });
   };

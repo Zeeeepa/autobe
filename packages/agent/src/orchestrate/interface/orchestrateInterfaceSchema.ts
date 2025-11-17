@@ -31,7 +31,6 @@ export async function orchestrateInterfaceSchema<
   props: {
     operations: AutoBeOpenApi.IOperation[];
     instruction: string;
-    capacity?: number;
   },
 ): Promise<Record<string, AutoBeOpenApi.IJsonSchemaDescriptive>> {
   // fix operation type names
@@ -49,7 +48,7 @@ export async function orchestrateInterfaceSchema<
   // divide and conquer
   const matrix: string[][] = divideArray({
     array: Array.from(typeNames),
-    capacity: props.capacity ?? AutoBeConfigConstant.INTERFACE_CAPACITY,
+    capacity: AutoBeConfigConstant.INTERFACE_CAPACITY,
   });
   const progress: AutoBeProgressEventBase = {
     total: typeNames.size,
@@ -59,6 +58,7 @@ export async function orchestrateInterfaceSchema<
     ...presets,
   };
   for (const y of await executeCachedBatch(
+    ctx,
     matrix.map((it) => async (promptCacheKey) => {
       const operations: AutoBeOpenApi.IOperation[] = props.operations.filter(
         (op) =>
@@ -75,13 +75,8 @@ export async function orchestrateInterfaceSchema<
         });
       return row;
     }),
-  )) {
-    JsonSchemaNamingConvention.schemas(props.operations, x, y);
+  ))
     Object.assign(x, y);
-  }
-  Object.assign(x, presets);
-  JsonSchemaNamingConvention.schemas(props.operations, x);
-  JsonSchemaFactory.authorize(x);
   return x;
 }
 
@@ -227,6 +222,7 @@ function createController<Model extends ILlmSchema.Model>(props: {
       return result;
     } else if (result.data.request.type !== "complete")
       return props.preliminary.validate({
+        thinking: result.data.thinking,
         request: result.data.request,
       });
 

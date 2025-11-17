@@ -36,17 +36,19 @@ export async function orchestrateInterfaceSchemaReview<
   config: IConfig,
   props: {
     document: AutoBeOpenApi.IDocument;
+    schemas: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive>;
     instruction: string;
     progress: AutoBeProgressEventBase;
   },
 ): Promise<Record<string, AutoBeOpenApi.IJsonSchemaDescriptive>> {
-  const typeNames: string[] = Object.keys(props.document.components.schemas);
+  const typeNames: string[] = Object.keys(props.schemas);
   const matrix: string[][] = divideArray({
     array: typeNames,
     capacity: AutoBeConfigConstant.INTERFACE_CAPACITY,
   });
   const x: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive> = {};
   for (const y of await executeCachedBatch(
+    ctx,
     matrix.map((it) => async (promptCacheKey) => {
       const reviewOperations: AutoBeOpenApi.IOperation[] =
         props.document.operations.filter(
@@ -61,7 +63,7 @@ export async function orchestrateInterfaceSchemaReview<
           reviewOperations,
           reviewSchemas: it.reduce(
             (acc, cur) => {
-              acc[cur] = props.document.components.schemas[cur];
+              acc[cur] = props.schemas[cur];
               return acc;
             },
             {} as Record<string, AutoBeOpenApi.IJsonSchemaDescriptive>,
@@ -219,6 +221,7 @@ function createController<Model extends ILlmSchema.Model>(props: {
       return result;
     } else if (result.data.request.type !== "complete")
       return props.preliminary.validate({
+        thinking: result.data.thinking,
         request: result.data.request,
       });
 

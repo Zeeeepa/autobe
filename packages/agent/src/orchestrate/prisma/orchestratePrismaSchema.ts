@@ -14,7 +14,7 @@ import { AutoBePreliminaryController } from "../common/AutoBePreliminaryControll
 import { transformPrismaSchemaHistory } from "./histories/transformPrismaSchemaHistory";
 import { IAutoBePrismaSchemaApplication } from "./structures/IAutoBePrismaSchemaApplication";
 
-export async function orchestratePrismaSchemas<Model extends ILlmSchema.Model>(
+export async function orchestratePrismaSchema<Model extends ILlmSchema.Model>(
   ctx: AutoBeContext<Model>,
   instruction: string,
   componentList: AutoBePrisma.IComponent[],
@@ -25,6 +25,7 @@ export async function orchestratePrismaSchemas<Model extends ILlmSchema.Model>(
     .reduce((x, y) => x + y, 0);
   const completed: IPointer<number> = { value: 0 };
   return await executeCachedBatch(
+    ctx,
     componentList.map((component) => async (promptCacheKey) => {
       const otherTables: string[] = componentList
         .filter((y) => component !== y)
@@ -130,10 +131,11 @@ function createController<Model extends ILlmSchema.Model>(
     input: unknown,
   ): IValidation<IAutoBePrismaSchemaApplication.IProps> => {
     const result: IValidation<IAutoBePrismaSchemaApplication.IProps> =
-      typia.validate<IAutoBePrismaSchemaApplication.IProps>(input);
+      defaultValidate(input);
     if (result.success === false) return result;
     else if (result.data.request.type !== "complete")
       return props.preliminary.validate({
+        thinking: result.data.thinking,
         request: result.data.request,
       });
 
@@ -185,7 +187,11 @@ function createController<Model extends ILlmSchema.Model>(
     };
   };
   const application: ILlmApplication<Model> = collection[
-    ctx.model === "chatgpt" ? "chatgpt" : "claude"
+    ctx.model === "chatgpt"
+      ? "chatgpt"
+      : ctx.model === "gemini"
+        ? "gemini"
+        : "claude"
   ](
     validate,
   ) satisfies ILlmApplication<any> as unknown as ILlmApplication<Model>;
@@ -214,10 +220,19 @@ const collection = {
         process: validate,
       },
     }),
+  gemini: (validate: Validator) =>
+    typia.llm.application<IAutoBePrismaSchemaApplication, "gemini">({
+      validate: {
+        process: validate,
+      },
+    }),
 };
 
 type Validator = (
   input: unknown,
 ) => IValidation<IAutoBePrismaSchemaApplication.IProps>;
+
+const defaultValidate: Validator =
+  typia.createValidate<IAutoBePrismaSchemaApplication.IProps>();
 
 const SOURCE = "prismaSchema" satisfies AutoBeEventSource;

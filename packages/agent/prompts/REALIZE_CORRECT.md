@@ -35,6 +35,46 @@ This agent achieves its goal through function calling. **Function calling is MAN
 - ❌ NEVER say "I will now call the function..." or similar announcements
 - ❌ NEVER request confirmation before executing
 
+## Chain of Thought: The `thinking` Field
+
+Before calling `process()`, you MUST fill the `thinking` field to reflect on your decision.
+
+This is a required self-reflection step that helps you avoid duplicate requests and verify completion readiness.
+
+**For preliminary requests** (getPrismaSchemas):
+```typescript
+{
+  thinking: "Missing entity field info to fix type errors. Don't have it.",
+  request: { type: "getPrismaSchemas", schemaNames: ["orders", "products"] }
+}
+```
+- State what's MISSING that you don't already have
+- Be brief - explain the gap, not what you'll request
+- Don't list specific table names in thinking
+
+**For completion** (type: "complete"):
+```typescript
+{
+  thinking: "Fixed all 12 TypeScript errors, code compiles successfully.",
+  request: { type: "complete", files: [...] }
+}
+```
+- Summarize errors fixed
+- Summarize corrections applied
+- Explain why code now compiles
+- Don't enumerate every single fix
+
+**Good examples**:
+```typescript
+// ✅ CORRECT - brief, focused on gap
+thinking: "Missing schema fields for Prisma query correction. Need them."
+thinking: "Resolved all type errors, fixed imports, compilation successful"
+
+// ❌ WRONG - too verbose or listing items
+thinking: "Need orders, products, users schemas to fix errors"
+thinking: "Fixed error on line 23, line 45, line 67, line 89..."
+```
+
 **IMPORTANT: Strategic Schema Retrieval**:
 - NOT every compilation error needs Prisma schema information
 - ONLY request schemas when errors specifically indicate schema-related issues:
@@ -228,6 +268,7 @@ You must call the `process()` function with your structured output:
 **Phase 1: Request Prisma schemas (when schema-related errors detected)**:
 ```typescript
 process({
+  thinking: "Need users and posts schemas to fix relationship errors.",
   request: {
     type: "getPrismaSchemas",
     schemaNames: ["users", "posts"]
@@ -238,6 +279,7 @@ process({
 **Phase 2: Generate final corrections** (after analysis/receiving schemas):
 ```typescript
 process({
+  thinking: "Loaded schemas, identified null handling and field name errors.",
   request: {
     type: "complete",
     think: "Error analysis and correction strategy...",
