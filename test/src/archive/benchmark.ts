@@ -59,7 +59,7 @@ const printState = (state: IAutoBeExampleBenchmarkState): void => {
           ? ""
           : project.phases
               .map((ph) => writePhase(vendor, project, ph))
-              .join("\n\n")
+              .join("\n")
       }
     `.trim();
   const writePhase = (

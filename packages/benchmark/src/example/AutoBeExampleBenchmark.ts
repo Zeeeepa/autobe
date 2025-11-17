@@ -140,4 +140,10 @@ const getArchiver = (phase: AutoBePhase) => {
 };
 
 const PROJECT_SEQUENCE = ["todo", "bbs", "reddit", "shopping"] as const;
-const PHASE_SEQUENCE = ["analyze", "interface", "test", "realize"] as const;
+const PHASE_SEQUENCE = [
+  "analyze",
+  "prisma",
+  "interface",
+  "test",
+  "realize",
+] as const;
