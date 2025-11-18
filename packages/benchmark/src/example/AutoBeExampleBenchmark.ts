@@ -36,7 +36,7 @@ export namespace AutoBeExampleBenchmark {
               name: project,
               phases: [],
               success: null,
-              started_at: new Date(),
+              started_at: null,
               completed_at: null,
             }),
           ),
@@ -85,6 +85,7 @@ export namespace AutoBeExampleBenchmark {
       on?: (event: AutoBeEvent) => void;
     },
   ): Promise<void> => {
+    props.projectState.started_at = new Date();
     for (const phase of PHASE_SEQUENCE) {
       if (props.phases && props.phases.includes(phase) === false) continue;
       const phaseState: IAutoBeExampleBenchmarkState.IOfPhase = {
@@ -93,10 +94,12 @@ export namespace AutoBeExampleBenchmark {
         success: null,
         started_at: new Date(),
         completed_at: null,
+        trial: 0,
       };
       props.projectState.phases.push(phaseState);
       for (let i: number = 0; i < 3; ++i) {
         try {
+          ++phaseState.trial;
           phaseState.started_at = new Date();
           phaseState.completed_at = null;
           const success: boolean = await getArchiver(phase)({
@@ -104,7 +107,13 @@ export namespace AutoBeExampleBenchmark {
             project: props.projectState.name,
             agent: (next) => ctx.createAgent(next),
             on: (s) => {
-              phaseState.snapshot = s;
+              const event = s.event;
+              if (
+                event.type !== "jsonValidateError" &&
+                event.type !== "jsonParseError" &&
+                event.type !== "preliminary"
+              )
+                phaseState.snapshot = s;
               props.report();
               if (props.on) props.on(s.event);
             },
