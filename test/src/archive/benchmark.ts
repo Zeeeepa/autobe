@@ -89,4 +89,11 @@ const main = async (): Promise<void> => {
     },
   );
 };
+
+global.process.on("uncaughtException", (error) => {
+  console.log("uncaughtException", error);
+});
+global.process.on("unhandledRejection", (error) => {
+  console.log("unhandledRejection", error);
+});
 main().catch(console.error);
