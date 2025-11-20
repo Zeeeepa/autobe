@@ -152,7 +152,13 @@ const getArchiver = (phase: AutoBePhase) => {
   throw new Error(`Unknown phase: ${phase}`);
 };
 
-const PROJECT_SEQUENCE = ["todo", "bbs", "reddit", "shopping"] as const;
+const PROJECT_SEQUENCE = [
+  "todo",
+  "bbs",
+  "reddit",
+  "shopping",
+  "account",
+] as const;
 const PHASE_SEQUENCE = [
   "analyze",
   "prisma",
