@@ -295,9 +295,15 @@ export class AutoBeAgent<Model extends ILlmSchema.Model>
       { content },
     );
     this.dispatch(userMessageHistory).catch(() => {});
+    const history: MicroAgenticaHistory<Model> | null = createAgenticaHistory({
+      history: userMessageHistory,
+      operations: this.agentica_.getOperations(),
+    });
+    if (history?.type !== "userMessage")
+      throw new Error("Unreachable code: Invalid history type");
 
     const agenticaHistories: MicroAgenticaHistory<Model>[] =
-      await this.agentica_.conversate(userMessageHistory.contents);
+      await this.agentica_.conversate(history.contents);
     const errorHistory: AgenticaExecuteHistory<Model> | undefined =
       agenticaHistories.find(
         (h): h is AgenticaExecuteHistory<Model> =>
