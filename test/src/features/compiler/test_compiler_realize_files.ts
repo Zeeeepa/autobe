@@ -1,5 +1,5 @@
 import { AutoBeAgent } from "@autobe/agent";
-import { compileRealizeFiles } from "@autobe/agent/src/orchestrate/realize/internal/compileRealizeFiles";
+import { compileRealizeFiles } from "@autobe/agent/src/orchestrate/realize/programmers/compileRealizeFiles";
 import { AutoBeExampleStorage } from "@autobe/benchmark";
 import { AutoBeCompiler } from "@autobe/compiler";
 import { FileSystemIterator } from "@autobe/filesystem";
@@ -46,8 +46,13 @@ export const test_compiler_realize_files = async () => {
   const event: AutoBeRealizeValidateEvent = await compileRealizeFiles(
     agent.getContext(),
     {
-      authorizations: realize.authorizations,
       functions: realize.functions,
+      additional: Object.fromEntries(
+        realize.authorizations.map((auth) => [
+          auth.payload.location,
+          auth.payload.content,
+        ]),
+      ),
     },
   );
   if (event.result.type === "failure") console.log(event.result.diagnostics);

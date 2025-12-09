@@ -7,13 +7,20 @@ import { Escaper } from "typia/lib/utils/Escaper";
 export namespace JsonSchemaValidator {
   export interface IProps {
     errors: IValidation.IError[];
+    prismaSchemas: Set<string>;
+    operations: AutoBeOpenApi.IOperation[];
     schemas: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive>;
     path: string;
   }
 
   export const validateSchemas = (props: IProps): void => {
+    const vo = validateObjectType({
+      errors: props.errors,
+      operations: props.operations,
+      path: props.path,
+    });
     validateAuthorization(props);
-    validatePrismaSchema(props.errors);
+    validatePrismaSchema(props);
     validateRecursive(props);
     for (const key of Object.keys(props.schemas)) {
       validateKey({
@@ -21,18 +28,22 @@ export namespace JsonSchemaValidator {
         path: `${props.path}[${JSON.stringify(key)}]`,
         key,
       });
+      vo(key, props.schemas[key]);
       OpenApiTypeChecker.visit({
         components: { schemas: props.schemas },
         schema: props.schemas[key],
         closure: (next, accessor) => {
-          if (OpenApiTypeChecker.isReference(next)) {
-            validateKey({
-              errors: props.errors,
-              path: `${accessor}.$ref`,
-              key: next.$ref.split("/").pop()!,
-              transform: (typeName) => `#/components/schemas/${typeName}`,
-            });
-          }
+          if (OpenApiTypeChecker.isReference(next) === false) return;
+          const key: string = next.$ref.split("/").pop()!;
+          const schema: AutoBeOpenApi.IJsonSchemaDescriptive | undefined =
+            props.schemas[key];
+          validateKey({
+            errors: props.errors,
+            path: `${accessor}.$ref`,
+            key,
+            transform: (typeName) => `#/components/schemas/${typeName}`,
+          });
+          if (schema) vo(key, schema);
         },
         accessor: `${props.path}[${JSON.stringify(key)}]`,
       });
@@ -176,8 +187,9 @@ export namespace JsonSchemaValidator {
     }
   };
 
-  const validatePrismaSchema = (errors: IValidation.IError[]): void => {
-    for (const e of errors) {
+  const validatePrismaSchema = (props: IProps): void => {
+    // fulfill error messages for "x-autobe-prisma-schema" misplacement
+    for (const e of props.errors) {
       if (e.path.endsWith(`.properties["x-autobe-prisma-schema"]`) === false)
         continue;
       e.expected =
@@ -201,6 +213,38 @@ export namespace JsonSchemaValidator {
         )} 
       `;
     }
+    // check prisma schema existence
+    for (const [key, value] of Object.entries(props.schemas))
+      AutoBeOpenApiTypeChecker.skim({
+        schema: value,
+        accessor: `${props.path}[${JSON.stringify(key)}]`,
+        closure: (schema, accessor) => {
+          if (AutoBeOpenApiTypeChecker.isObject(schema) === false) return;
+          else if (
+            schema["x-autobe-prisma-schema"] !== null &&
+            schema["x-autobe-prisma-schema"] !== undefined &&
+            props.prismaSchemas.has(schema["x-autobe-prisma-schema"]) === false
+          )
+            props.errors.push({
+              path: accessor,
+              expected: Array.from(props.prismaSchemas)
+                .map((s) => JSON.stringify(s))
+                .join(" | "),
+              value: schema["x-autobe-prisma-schema"],
+              description: StringUtil.trim`
+                You've referenced a non-existing Prisma schema name
+                ${JSON.stringify(schema["x-autobe-prisma-schema"])} in
+                "x-autobe-prisma-schema" property.
+
+                Make sure that the referenced Prisma schema name exists
+                in your Prisma schema files.
+
+                Existing Prisma schema names are:
+                - ${Array.from(props.prismaSchemas).join("\n- ")}
+              `,
+            });
+        },
+      });
   };
 
   const validateRecursive = (props: IProps): void => {
@@ -310,5 +354,70 @@ export namespace JsonSchemaValidator {
           Remove the required self-reference and redesign the schema at the next time.
         `);
     }
+  };
+
+  const validateObjectType = (props: {
+    errors: IValidation.IError[];
+    operations: AutoBeOpenApi.IOperation[];
+    path: string;
+  }) => {
+    const root: Set<string> = new Set();
+    for (const o of props.operations) {
+      if (o.requestBody) root.add(o.requestBody.typeName);
+      if (o.responseBody) root.add(o.responseBody.typeName);
+    }
+    return (
+      key: string,
+      schema: AutoBeOpenApi.IJsonSchemaDescriptive,
+    ): void => {
+      if (AutoBeOpenApiTypeChecker.isObject(schema) === true) return;
+      if (root.has(key))
+        props.errors.push({
+          path: `${props.path}[${JSON.stringify(key)}]`,
+          expected: `AutoBeOpenApi.IJsonSchemaDescriptive.IObject`,
+          value: schema,
+          description: StringUtil.trim`
+              Root schema types (used in requestBody or responseBody of operations)
+              must be defined as object types.
+
+              If current type is hard to be defined as an object type,
+              just wrap it in an object type like below:
+
+              \`\`\`typescript
+              {
+                value: T;
+              }
+              \`\`\`
+            `,
+        });
+      else if (
+        key.endsWith(".IAuthorized") ||
+        key.endsWith(".IRequest") ||
+        key.endsWith(".ISummary") ||
+        key.endsWith(".IInvert") ||
+        key.endsWith(".ICreate") ||
+        key.endsWith(".IUpdate") ||
+        key.endsWith(".IJoin") ||
+        key.endsWith(".ILogin") ||
+        key.endsWith(".IAuthorized")
+      )
+        props.errors.push({
+          path: `${props.path}[${JSON.stringify(key)}]`,
+          expected: `AutoBeOpenApi.IJsonSchemaDescriptive.IObject`,
+          value: schema,
+          description: StringUtil.trim`
+            DTO type of .${key.split(".").pop()} suffix must be defined as an object type.
+
+            If current type is hard to be defined as an object type,
+            just wrap it in an object type like below:
+
+            \`\`\`typescript
+            {
+              value: T;
+            }
+            \`\`\`
+          `,
+        });
+    };
   };
 }
