@@ -1,10 +1,6 @@
 import {
   AutoBeOpenApi,
-  AutoBeTestAuthorizeWriteFunction,
-  AutoBeTestGenerateWriteFunction,
-  AutoBeTestPrepareWriteFunction,
   AutoBeTestScenario,
-  AutoBeTestWriteFunction,
   IAutoBeCompiler,
 } from "@autobe/interface";
 import { ILlmSchema, OpenApiTypeChecker } from "@samchon/openapi";
@@ -12,7 +8,6 @@ import { ILlmSchema, OpenApiTypeChecker } from "@samchon/openapi";
 import { AutoBeContext } from "../../../context/AutoBeContext";
 import { IAutoBeTestArtifacts } from "../structures/IAutoBeTestArtifacts";
 import { IAutoBeTestScenarioArtifacts } from "../structures/IAutoBeTestScenarioArtifacts";
-import { getTestTemplateCode } from "./getTestTemplateCode";
 
 export async function getTestArtifacts<Model extends ILlmSchema.Model>(
   ctx: AutoBeContext<Model>,
@@ -84,7 +79,6 @@ export async function getTestScenarioArtifacts<Model extends ILlmSchema.Model>(
     sdk: filter("src/api", "src/api/structures"),
     dto: filter("src/api/structures"),
     e2e: filter("test/features"),
-    template: getTestTemplateCode(scenario, document),
   };
 }
 
@@ -126,55 +120,5 @@ function filterDocument(
   return {
     operations,
     components,
-  };
-}
-
-export async function getTestArtifactsFromFunction<
-  Model extends ILlmSchema.Model,
->(
-  ctx: AutoBeContext<Model>,
-  func:
-    | AutoBeTestAuthorizeWriteFunction
-    | AutoBeTestGenerateWriteFunction
-    | AutoBeTestPrepareWriteFunction
-    | AutoBeTestWriteFunction,
-): Promise<IAutoBeTestArtifacts> {
-  const endpoint: AutoBeOpenApi.IEndpoint = (() => {
-    switch (func.type) {
-      case "operation":
-        return func.scenario.endpoint;
-      case "authorize":
-      case "generate":
-      case "prepare":
-        return func.endpoint;
-    }
-  })();
-
-  const compiler: IAutoBeCompiler = await ctx.compiler();
-  const document: AutoBeOpenApi.IDocument = filterDocument(
-    ctx.state().interface!.document,
-    {
-      endpoint,
-      dependencies: [],
-    },
-  );
-  const entries: [string, string][] = Object.entries(
-    await compiler.interface.write(document, []),
-  );
-  const filter = (prefix: string, exclude?: string) => {
-    const result: [string, string][] = entries.filter(
-      ([key]) => key.startsWith(prefix) === true,
-    );
-    return Object.fromEntries(
-      exclude
-        ? result.filter(([key]) => key.startsWith(exclude) === false)
-        : result,
-    );
-  };
-  return {
-    document,
-    sdk: filter("src/api", "src/api/structures"),
-    dto: filter("src/api/structures"),
-    e2e: filter("test/features"),
   };
 }

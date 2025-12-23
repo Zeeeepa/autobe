@@ -5,6 +5,8 @@ import {
 } from "@autobe/interface";
 import nestiaCoreTransform from "@nestia/core/lib/transform";
 import { EmbedEsLint } from "embed-eslint";
+import { Pair } from "tstl";
+// import { Pair } from "tstl";
 import ts from "typescript";
 import typiaTransform from "typia/lib/transform";
 
@@ -97,5 +99,38 @@ export class AutoBeTypeScriptCompiler implements IAutoBeTypeScriptCompiler {
 
   public beautify(script: string): Promise<string> {
     return FilePrinter.beautify(script);
+  }
+
+  public async removeImportStatements(script: string): Promise<string> {
+    try {
+      const sourceFile: ts.SourceFile = ts.createSourceFile(
+        "module.ts",
+        script,
+        ts.ScriptTarget.ESNext,
+        true,
+      );
+      const statements: ts.Statement[] = sourceFile.statements.filter(
+        (stmt) => stmt.kind !== ts.SyntaxKind.ImportDeclaration,
+      );
+      const printer: ts.Printer = ts.createPrinter();
+      return statements
+        .map((stmt) =>
+          printer.printNode(ts.EmitHint.Unspecified, stmt, sourceFile),
+        )
+        .join("\n");
+    } catch {
+      script = await this.beautify(script);
+      const lines: string[] = script.replaceAll("\r\n", "\n").split("\n");
+      const indexes: Pair<number, number>[] = lines
+        .map((s, i) =>
+          s.startsWith("import ")
+            ? new Pair(i, lines.slice(i).findIndex((s) => s.endsWith(";")) + i)
+            : null,
+        )
+        .filter((p) => p !== null);
+      for (const index of indexes.reverse())
+        lines.splice(index.first, index.second - index.first + 1);
+      return lines.join("\n");
+    }
   }
 }

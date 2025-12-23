@@ -1,28 +1,26 @@
-import {
-  AutoBeOpenApi,
-  AutoBeTestPrepareWriteFunction,
-} from "@autobe/interface";
-import { StringUtil, transformOpenApiDocument } from "@autobe/utils";
-import {
-  HttpMigration,
-  IHttpMigrateApplication,
-  ILlmSchema,
-  OpenApi,
-} from "@samchon/openapi";
+import { AutoBeOpenApi, AutoBeTestPrepareFunction } from "@autobe/interface";
+import { StringUtil } from "@autobe/utils";
+import { ILlmSchema } from "@samchon/openapi";
 import { v7 } from "uuid";
 
 import { AutoBeSystemPromptConstant } from "../../../constants/AutoBeSystemPromptConstant";
+import { AutoBeContext } from "../../../context/AutoBeContext";
 import { IAutoBeOrchestrateHistory } from "../../../structures/IAutoBeOrchestrateHistory";
+import { AutoBeTestGenerateProgrammer } from "../programmers/AutoBeTestGenerateProgrammer";
 import { IAutoBeTestArtifacts } from "../structures/IAutoBeTestArtifacts";
+import { transformTestOperationWriteHistory } from "./transformTestOperationWriteHistory";
 
-export function transformTestGenerationWriteHistory<
+export async function transformTestGenerateWriteHistory<
   Model extends ILlmSchema.Model,
 >(
-  instruction: string,
-  prepareFunction: AutoBeTestPrepareWriteFunction,
-  operation: AutoBeOpenApi.IOperation,
-  artifacts: IAutoBeTestArtifacts,
-): IAutoBeOrchestrateHistory {
+  ctx: AutoBeContext<Model>,
+  props: {
+    instruction: string;
+    prepare: AutoBeTestPrepareFunction;
+    operation: AutoBeOpenApi.IOperation;
+    artifacts: IAutoBeTestArtifacts;
+  },
+): Promise<IAutoBeOrchestrateHistory> {
   return {
     histories: [
       {
@@ -49,10 +47,11 @@ export function transformTestGenerationWriteHistory<
 
           Follow these instructions when implementing the generation function.
           Carefully distinguish between:
+
           - Suggestions or recommendations (consider these as guidance)
           - Direct specifications or explicit commands (these must be followed exactly)
 
-          ${instruction}
+          ${props.instruction}
 
           ## Prepare Function
 
@@ -60,7 +59,7 @@ export function transformTestGenerationWriteHistory<
           Your generation function must use this prepare function to create the input data.
 
           \`\`\`json
-          ${JSON.stringify(prepareFunction, null, 2)}
+          ${JSON.stringify(props.prepare)}
           \`\`\`
 
           ## API Operation
@@ -73,7 +72,7 @@ export function transformTestGenerationWriteHistory<
           - parameters: URL path parameters that may be needed for the API call
 
           \`\`\`json
-          ${JSON.stringify(operation, null, 2)}
+          ${JSON.stringify(props.operation)}
           \`\`\`
 
           ## DTO Definitions
@@ -81,62 +80,33 @@ export function transformTestGenerationWriteHistory<
           These are the DTO type definitions available in the codebase.
           Use these to understand the structure of request and response types.
 
-          ${transformTestGenerationWriteHistory.structures(artifacts)}
+          ${await transformTestOperationWriteHistory.structures(ctx, props.artifacts)}
 
           ## API SDK Functions
 
           Here are the available SDK functions you can use to call the API.
           Find the appropriate function that matches the operation endpoint.
 
-          ${transformTestGenerationWriteHistory.functional(artifacts)}
+          ${transformTestOperationWriteHistory.functional(props.artifacts, [])}
 
           ## E2E Mockup Functions
 
           Just reference, and never follow this code as it is.
 
           \`\`\`json
-          ${JSON.stringify(artifacts.e2e)}
+          ${JSON.stringify(props.artifacts.e2e)}
           \`\`\`
 
+          ## Template Code
+
+          Here is the template code you have to implement.
+
+          Reference the template code, and fill the proper code to each section.
+
+          ${AutoBeTestGenerateProgrammer.writeTemplateCode(props)}
         `,
       },
     ],
-    userMessage: `Generate the resource generation function based on the prepare function "${prepareFunction.functionName}" and the API operation.`,
+    userMessage: `Generate the resource generation function based on the prepare function "${props.prepare.name}" and the API operation.`,
   };
-}
-
-export namespace transformTestGenerationWriteHistory {
-  export function structures(artifacts: IAutoBeTestArtifacts): string {
-    return StringUtil.trim`
-      ${Object.keys(artifacts.document.components.schemas)
-        .map((k) => `- ${k}`)
-        .join("\n")}
-
-      \`\`\`json
-      ${JSON.stringify(artifacts.dto)}
-      \`\`\`
-    `;
-  }
-
-  export function functional(artifacts: IAutoBeTestArtifacts): string {
-    const document: OpenApi.IDocument = transformOpenApiDocument(
-      artifacts.document,
-    );
-    const app: IHttpMigrateApplication = HttpMigration.application(document);
-    return StringUtil.trim`
-      Method | Path | Function Accessor
-      -------|------|-------------------
-      ${app.routes
-        .map((r) =>
-          [r.method, r.path, `api.functional.${r.accessor.join(".")}`].join(
-            " | ",
-          ),
-        )
-        .join("\n")}
-
-      \`\`\`json
-      ${JSON.stringify(artifacts.sdk)}
-      \`\`\`
-    `;
-  }
 }

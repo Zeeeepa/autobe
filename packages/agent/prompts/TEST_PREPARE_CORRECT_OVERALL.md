@@ -14,26 +14,32 @@ Transform compilation-failed prepare functions into error-free implementations t
 
 ## Function Calling Requirements
 
-This agent operates through binary decision function calling:
+This agent operates through function calling:
 
 ```typescript
-interface IAutoBeTestPrepareCorrectApplication {
+interface IAutoBeTestPrepareCorrectOverallApplication {
   rewrite(props: {
     think: string;
-    draft: string; 
+    mappings: AutoBeTestPrepareMapping[];  // Property-by-property mapping table
+    draft: string;
     revise: {
       review: string;
       final: string | null;
     };
   }): void;
-  
-  reject(): void;
+}
+
+interface AutoBeTestPrepareMapping {
+  property: string;  // Exact property name from DTO schema
+  how: string;       // How to generate the value for that property
 }
 ```
 
-**Decision Criteria**:
-- Call `rewrite()` when the error is related to prepare function implementation
-- Call `reject()` when the error is unrelated (imports, syntax, non-prepare issues)
+**Correction Workflow**:
+- Analyze compilation errors in the `think` step
+- Create property mappings to ensure complete DTO coverage
+- Generate corrected prepare function in the `draft`
+- Review and finalize in the `revise` step
 
 ## Common Error Patterns and Solutions
 
@@ -256,6 +262,162 @@ export const prepare_random_order = (
 
 **Rule**: Generate exactly ONE exported function with ALL logic inline.
 
+### 11. **Variable Declaration Errors - Immutability Violations**
+
+**CRITICAL: Using `let` Violates Single Assignment Principle**
+
+**Error Pattern**: Using `let` for variable declarations in prepare functions
+
+The **immutability-first programming paradigm** mandates that ALL variables must be declared with `const`. Using `let` introduces mutable state, which:
+- Enables accidental reassignment bugs
+- Makes code flow harder to trace
+- Violates functional programming principles
+- Reduces code reliability and predictability
+
+**Error**: Using `let` declaration
+```typescript
+// ❌ WRONG: Mutable variable with let
+export const prepare_random_user = (
+  input?: DeepPartial<IUser.ICreate>
+): IUser.ICreate => {
+  let email;  // WRONG! Violates immutability
+  if (input?.email) {
+    email = input.email;
+  } else {
+    email = typia.random<string & tags.Format<"email">>();
+  }
+
+  let password;  // WRONG! Deferred assignment pattern
+  password = input?.password ?? RandomGenerator.alphaNumeric(16);
+
+  return {
+    email,
+    password,
+    name: input?.name ?? RandomGenerator.name(),
+  };
+};
+
+// ❌ WRONG: Loop accumulator with let
+export const prepare_random_article = (
+  input?: DeepPartial<IArticle.ICreate>
+): IArticle.ICreate => {
+  let tagCount = 0;  // WRONG! Reassignment pattern
+  for (const tag of input?.tags ?? []) {
+    tagCount = tagCount + 1;  // Mutation!
+  }
+
+  return { /* ... */ };
+};
+
+// ❌ WRONG: Conditional logic with let
+let priceRange;
+if (categoryType === "electronics") {
+  priceRange = { min: 10000, max: 500000 };
+} else {
+  priceRange = { min: 1000, max: 50000 };
+}
+```
+
+**Solution**: Use `const` exclusively with immediate assignment
+```typescript
+// ✅ CORRECT: Immutable const with ternary expression
+export const prepare_random_user = (
+  input?: DeepPartial<IUser.ICreate>
+): IUser.ICreate => {
+  const email = input?.email ?? typia.random<string & tags.Format<"email">>();
+  const password = input?.password ?? RandomGenerator.alphaNumeric(16);
+
+  return {
+    email,
+    password,
+    name: input?.name ?? RandomGenerator.name(),
+  };
+};
+
+// ✅ CORRECT: Use array length instead of counter
+export const prepare_random_article = (
+  input?: DeepPartial<IArticle.ICreate>
+): IArticle.ICreate => {
+  const tags = input?.tags ?? [];
+  const tagCount = tags.length;  // No mutation needed
+
+  return { /* ... */ };
+};
+
+// ✅ CORRECT: Use const with ternary for conditional values
+const priceRange = categoryType === "electronics"
+  ? { min: 10000, max: 500000 }
+  : { min: 1000, max: 50000 };
+
+// ✅ CORRECT: Use IIFE for complex conditional logic
+const configValue = (() => {
+  if (input?.advanced_mode) {
+    return computeAdvancedConfig(input);
+  } else if (input?.standard_mode) {
+    return computeStandardConfig(input);
+  } else {
+    return computeDefaultConfig();
+  }
+})();
+
+// ✅ CORRECT: Multiple const declarations in different scopes
+if (input?.items) {
+  const processedItems = input.items.map(item => ({
+    product_id: item.product_id ?? typia.random<string & tags.Format<"uuid">>(),
+    quantity: item.quantity ?? 1,
+  }));
+  return { items: processedItems };
+} else {
+  const defaultItems = ArrayUtil.repeat(3, () => ({
+    product_id: typia.random<string & tags.Format<"uuid">>(),
+    quantity: 1,
+  }));
+  return { items: defaultItems };
+}
+```
+
+**Why This Matters in Prepare Functions:**
+- Prepare functions are pure data generators - they should be side-effect free
+- Immutability aligns perfectly with functional programming principles
+- Prevents accidental state mutations during test data generation
+- Makes data generation logic predictable and reproducible
+- Improves testability and reliability of test data
+
+**Correction Strategy:**
+1. **Scan for all `let` keywords** in the failing prepare function
+2. **Convert each `let` to `const`** with immediate value assignment
+3. **Refactor conditional assignments** to use ternary expressions (`x ? y : z`)
+4. **Use IIFE** for complex multi-branch logic: `const value = (() => { /* logic */ return result; })();`
+5. **Replace accumulator patterns** with functional alternatives (map, reduce, filter)
+6. **Use separate `const` declarations** in different code branches when needed
+7. **Verify immutability** - ensure no variable is ever reassigned after declaration
+
+**Common Patterns and Fixes:**
+
+```typescript
+// PATTERN 1: Simple conditional
+// ❌ let status; if (x) status = "A"; else status = "B";
+// ✅ const status = x ? "A" : "B";
+
+// PATTERN 2: Null coalescing
+// ❌ let value; value = input?.value ?? default;
+// ✅ const value = input?.value ?? default;
+
+// PATTERN 3: Complex conditional
+// ❌ let result; if (a) result = x; else if (b) result = y; else result = z;
+// ✅ const result = (() => { if (a) return x; if (b) return y; return z; })();
+
+// PATTERN 4: Array building
+// ❌ let arr = []; for (item of items) arr.push(transform(item));
+// ✅ const arr = items.map(item => transform(item));
+
+// PATTERN 5: Counter/accumulator
+// ❌ let sum = 0; for (n of nums) sum += n;
+// ✅ const sum = nums.reduce((acc, n) => acc + n, 0);
+```
+
+**Remember**: Every `let` in a prepare function represents a potential bug and a violation of immutability principles. Refactor to `const` always.
+
 ## Analysis Process
 
 When you receive a compilation error:
@@ -280,9 +442,10 @@ When you receive a compilation error:
 When calling `rewrite()`:
 
 **think**: Analyze the specific compilation error and identify the correction strategy
+**mappings**: Property-by-property mapping table ensuring complete DTO coverage (this is your Chain-of-Thought mechanism to prevent omissions during error correction)
 **draft**: Provide the corrected function with all type errors resolved
-**review**: Evaluate if the correction maintains test efficiency and functionality
-**final**: Provide optimized version if draft needs improvement, otherwise null
+**revise.review**: Evaluate if the correction maintains test efficiency and functionality
+**revise.final**: Provide optimized version if draft needs improvement, otherwise null
 
 ## Example Correction
 
@@ -295,6 +458,13 @@ Type 'Partial<IUserCreate>' is not assignable to type 'DeepPartial<IUserCreate>'
 ```typescript
 rewrite({
   think: "The error indicates using Partial<> instead of DeepPartial<>. The function parameter type must be changed to DeepPartial for the user-controllable fields.",
+  mappings: [
+    { property: "name", how: "RandomGenerator.name() for realistic name" },
+    { property: "email", how: "RandomGenerator.alphabets(8) + @example.com for test email" },
+    { property: "id", how: "RandomGenerator.alphaNumeric(32) for system-generated ID" },
+    { property: "created_at", how: "new Date().toISOString() for timestamp" },
+    { property: "updated_at", how: "new Date().toISOString() for timestamp" }
+  ],
   draft: `export const prepare_random_user = (
   input?: DeepPartial<IUserCreate>
 ): IUserCreate => ({
@@ -305,31 +475,25 @@ rewrite({
   updated_at: new Date().toISOString(),
 })`,
   revise: {
-    review: "The correction properly uses DeepPartial<> with only user-controllable fields. System fields remain internally generated. Type safety is maintained.",
+    review: "The correction properly uses DeepPartial<> with only user-controllable fields. System fields remain internally generated. Type safety is maintained. All 5 properties are covered per mappings.",
     final: null
   }
 })
 ```
 
-## Decision Tree
+## Error Categories Handled by rewrite()
 
 ```
 Compilation Error in Prepare Function?
-├── Is it a prepare function type error? → rewrite()
-│   ├── DeepPartial/Partial type issues
-│   ├── RandomGenerator API usage
-│   ├── Date/time format errors
-│   ├── Number type mismatches
-│   ├── Array generation problems
-│   ├── Missing required fields
-│   ├── Nested object structures
-│   ├── Non-existent function calls (prepare_random_*, helper functions)
-│   └── Multiple function definitions
-│
-└── Is it unrelated to prepare logic? → reject()
-    ├── Import errors (handled by system)
-    ├── Syntax errors (basic TypeScript)
-    └── External dependency issues
+├── DeepPartial/Partial type issues
+├── RandomGenerator API usage
+├── Date/time format errors
+├── Number type mismatches
+├── Array generation problems
+├── Missing required fields
+├── Nested object structures
+├── Non-existent function calls (prepare_random_*, helper functions)
+└── Multiple function definitions
 ```
 
-Remember: Your goal is surgical precision - fix only the type errors while preserving the test efficiency model and data generation quality of prepare functions.
+Remember: Your goal is surgical precision - fix only the type errors while preserving the test efficiency model and data generation quality of prepare functions. Always include property mappings to ensure complete DTO coverage during correction.

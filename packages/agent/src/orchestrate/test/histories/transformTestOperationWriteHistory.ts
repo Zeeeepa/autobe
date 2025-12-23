@@ -1,7 +1,8 @@
 import {
-  AutoBeTestAuthorizeWriteFunction,
-  AutoBeTestGenerateWriteFunction,
+  AutoBeTestAuthorizeFunction,
+  AutoBeTestGenerateFunction,
   AutoBeTestScenario,
+  IAutoBeCompiler,
 } from "@autobe/interface";
 import { StringUtil, transformOpenApiDocument } from "@autobe/utils";
 import {
@@ -18,6 +19,7 @@ import { AutoBeSystemPromptConstant } from "../../../constants/AutoBeSystemPromp
 import { AutoBeContext } from "../../../context/AutoBeContext";
 import { IAutoBeOrchestrateHistory } from "../../../structures/IAutoBeOrchestrateHistory";
 import { getTestExternalDeclarations } from "../compile/getTestExternalDeclarations";
+import { AutoBeTestOperationProgrammer } from "../programmers/AutoBeTestOperationProgrammer";
 import { IAutoBeTestScenarioArtifacts } from "../structures/IAutoBeTestScenarioArtifacts";
 
 export async function transformTestOperationWriteHistory<
@@ -28,13 +30,13 @@ export async function transformTestOperationWriteHistory<
     instruction: string;
     scenario: AutoBeTestScenario;
     artifacts: IAutoBeTestScenarioArtifacts;
-    authorizationFunctions: AutoBeTestAuthorizeWriteFunction[];
-    generationFunctions: AutoBeTestGenerateWriteFunction[];
+    authorizationFunctions: AutoBeTestAuthorizeFunction[];
+    generationFunctions: AutoBeTestGenerateFunction[];
   },
 ): Promise<IAutoBeOrchestrateHistory> {
   const functions: (
-    | AutoBeTestAuthorizeWriteFunction
-    | AutoBeTestGenerateWriteFunction
+    | AutoBeTestAuthorizeFunction
+    | AutoBeTestGenerateFunction
   )[] = [...props.authorizationFunctions, ...props.generationFunctions];
   return {
     histories: [
@@ -89,7 +91,7 @@ export async function transformTestOperationWriteHistory<
 
           Never use the DTO definitions that are not listed here.
 
-          ${transformTestOperationWriteHistory.structures(props.artifacts)}
+          ${await transformTestOperationWriteHistory.structures(ctx, props.artifacts)}
 
           ## API (SDK) Functions
 
@@ -129,18 +131,18 @@ export async function transformTestOperationWriteHistory<
           ${props.authorizationFunctions
             .map(
               (f) =>
-                `| \`${f.functionName}\` | \`${f.endpoint.method.toUpperCase()} ${f.endpoint.path}\` | ${f.actor} |`,
+                `| \`${f.name}\` | \`${f.endpoint.method.toUpperCase()} ${f.endpoint.path}\` | ${f.actor} |`,
             )
             .join("\n")}
 
           ${props.authorizationFunctions
             .map(
               (f) => StringUtil.trim`
-          #### ${f.functionName}
+          #### ${f.name}
           - **Endpoint**: \`${f.endpoint.method.toUpperCase()} ${f.endpoint.path}\`
           - **Actor**: ${f.actor}
           - **Auth Type**: ${f.authType}
-          - **Usage**: \`await ${f.functionName}({ connection, input: { ... } })\`
+          - **Usage**: \`await ${f.name}({ connection, input: { ... } })\`
           - ⚠️ **Do NOT use \`api.functional.*\` for \`${f.endpoint.method.toUpperCase()} ${f.endpoint.path}\`** - use this function instead
 
           \`\`\`typescript
@@ -158,16 +160,16 @@ export async function transformTestOperationWriteHistory<
           ${props.generationFunctions
             .map(
               (f) =>
-                `| \`${f.functionName}\` | \`${f.endpoint.method.toUpperCase()} ${f.endpoint.path}\` |`,
+                `| \`${f.name}\` | \`${f.endpoint.method.toUpperCase()} ${f.endpoint.path}\` |`,
             )
             .join("\n")}
 
           ${props.generationFunctions
             .map(
               (f) => StringUtil.trim`
-          #### ${f.functionName}
+          #### ${f.name}
           - **Endpoint**: \`${f.endpoint.method.toUpperCase()} ${f.endpoint.path}\`
-          - **Usage**: \`await ${f.functionName}({ connection, input: { ... } })\`
+          - **Usage**: \`await ${f.name}({ connection, input: { ... } })\`
           - ⚠️ **Do NOT use \`api.functional.*\` for \`${f.endpoint.method.toUpperCase()} ${f.endpoint.path}\`** - use this function instead
 
           \`\`\`typescript
@@ -205,7 +207,7 @@ export async function transformTestOperationWriteHistory<
           make your implementation code in the import scope.
 
           \`\`\`typescript
-          ${props.artifacts.template}
+          ${AutoBeTestOperationProgrammer.writeTemplateCode(props.scenario)}
           \`\`\`
         `,
       },
@@ -214,14 +216,21 @@ export async function transformTestOperationWriteHistory<
   };
 }
 export namespace transformTestOperationWriteHistory {
-  export function structures(artifacts: IAutoBeTestScenarioArtifacts): string {
+  export async function structures<Model extends ILlmSchema.Model>(
+    ctx: AutoBeContext<Model>,
+    artifacts: IAutoBeTestScenarioArtifacts,
+  ): Promise<string> {
+    const compiler: IAutoBeCompiler = await ctx.compiler();
     return StringUtil.trim`
       ${Object.keys(artifacts.document.components.schemas)
         .map((k) => `- ${k}`)
         .join("\n")}
 
       \`\`\`json
-      ${JSON.stringify(artifacts.dto)}
+      ${JSON.stringify({
+        ...artifacts.dto,
+        ...(await compiler.test.getDefaultTypes()),
+      })}
       \`\`\`
     `;
   }
@@ -229,7 +238,7 @@ export namespace transformTestOperationWriteHistory {
   export function functional(
     artifacts: IAutoBeTestScenarioArtifacts,
     excludeFunctions: Array<
-      AutoBeTestAuthorizeWriteFunction | AutoBeTestGenerateWriteFunction
+      AutoBeTestAuthorizeFunction | AutoBeTestGenerateFunction
     >,
   ): string {
     const document: OpenApi.IDocument = transformOpenApiDocument(

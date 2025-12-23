@@ -35,7 +35,7 @@ interface IFactoryProps<
     final: string | undefined;
     metric: AutoBeFunctionCallingMetric;
     tokenUsage: IAutoBeTokenUsageJson.IComponent;
-  }): CorrectEvent;
+  }): Promise<CorrectEvent>;
   script(event: ValidateEvent): string;
   source: "testCorrect" | "realizeCorrect";
   functionName: string;
@@ -118,7 +118,7 @@ const correct = async <
   else if (pointer.value === false) return event;
 
   ctx.dispatch(
-    factory.correct({
+    await factory.correct({
       failure: event.result,
       think: pointer.value.think,
       draft: pointer.value.draft,
@@ -153,6 +153,7 @@ const createController = <Model extends ILlmSchema.Model>(props: {
       functionName: props.functionName,
       draft: result.data.draft,
       revise: result.data.revise,
+      path: "$input",
     });
     return errors.length
       ? {

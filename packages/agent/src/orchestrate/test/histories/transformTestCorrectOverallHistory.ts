@@ -5,12 +5,12 @@ import { AutoBeSystemPromptConstant } from "../../../constants/AutoBeSystemPromp
 import { AutoBeContext } from "../../../context/AutoBeContext";
 import { IAutoBeOrchestrateHistory } from "../../../structures/IAutoBeOrchestrateHistory";
 import { transformPreviousAndLatestCorrectHistory } from "../../common/histories/transformPreviousAndLatestCorrectHistory";
-import { IAutoBeTestAgentResult } from "../structures/IAutoBeTestAgentResult";
 import { IAutoBeTestFunctionFailure } from "../structures/IAutoBeTestFunctionFailure";
-import { transformTestAuthorizationWriteHistory } from "./transformTestAuthorizationWriteHistory";
-import { transformTestGenerationWriteHistory } from "./transformTestGenerationWriteHistory";
+import { IAutoBeTestProcedure } from "../structures/IAutoBeTestProcedure";
+import { transformTestAuthorizeWriteHistory } from "./transformTestAuthorizeWriteHistory";
+import { transformTestGenerateWriteHistory } from "./transformTestGenerationWriteHistory";
 import { transformTestOperationWriteHistory } from "./transformTestOperationWriteHistory";
-import { transformTestPrepareWriteHistories } from "./transformTestPrepareWriteHistories";
+import { transformTestPrepareWriteHistory } from "./transformTestPrepareWriteHistory";
 
 export const transformTestCorrectOverallHistory = async <
   Model extends ILlmSchema.Model,
@@ -18,12 +18,12 @@ export const transformTestCorrectOverallHistory = async <
   ctx: AutoBeContext<Model>,
   props: {
     instruction: string;
-    target: IAutoBeTestAgentResult;
+    procedure: IAutoBeTestProcedure;
     failures: IAutoBeTestFunctionFailure[];
   },
 ): Promise<IAutoBeOrchestrateHistory> => {
   const systemPrompt: string = (() => {
-    switch (props.target.function.type) {
+    switch (props.procedure.function.type) {
       case "operation":
         return AutoBeSystemPromptConstant.TEST_OPERATION_CORRECT_OVERALL;
       case "prepare":
@@ -33,7 +33,7 @@ export const transformTestCorrectOverallHistory = async <
       case "authorize":
         return AutoBeSystemPromptConstant.TEST_AUTHORIZE_CORRECT_OVERALL;
       default:
-        props.target.function satisfies never;
+        props.procedure.function satisfies never;
 
         throw new Error(
           `Unreachable: Cannot create correct system prompt of function kind`,
@@ -42,42 +42,39 @@ export const transformTestCorrectOverallHistory = async <
   })();
 
   const previous: IAutoBeOrchestrateHistory | undefined = await (async () => {
-    switch (props.target.type) {
+    switch (props.procedure.type) {
       case "operation":
         return await transformTestOperationWriteHistory(ctx, {
           instruction: props.instruction,
           scenario: {
-            ...props.target.function.scenario,
-            functionName: props.target.function.functionName,
+            ...props.procedure.function.scenario,
+            functionName: props.procedure.function.name,
           },
-          artifacts: props.target.artifacts,
-          authorizationFunctions: props.target.authorizeFunctions,
-          generationFunctions: props.target.generateFunctions,
+          artifacts: props.procedure.artifacts,
+          authorizationFunctions: props.procedure.authorizes,
+          generationFunctions: props.procedure.generates,
         });
       case "authorize":
-        return transformTestAuthorizationWriteHistory({
-          operation: props.target.operation,
-          artifacts: props.target.artifacts,
+        return await transformTestAuthorizeWriteHistory(ctx, {
+          operation: props.procedure.operation,
+          artifacts: props.procedure.artifacts,
         });
       case "generate":
-        return transformTestGenerationWriteHistory(
-          props.instruction,
-          props.target.prepareFunction,
-          props.target.operation,
-          props.target.artifacts,
-        );
+        return await transformTestGenerateWriteHistory(ctx, {
+          instruction: props.instruction,
+          prepare: props.procedure.prepare,
+          operation: props.procedure.operation,
+          artifacts: props.procedure.artifacts,
+        });
       case "prepare":
-        return transformTestPrepareWriteHistories({
-          operation: props.target.operation,
-          schema:
-            ctx.state().interface!.document.components.schemas[
-              props.target.function.dtoTypeName
-            ],
+        return await transformTestPrepareWriteHistory(ctx, {
+          typeName: props.procedure.typeName,
+          schema: props.procedure.schema,
+          document: ctx.state().interface!.document,
           instruction: props.instruction,
         });
       default:
-        props.target satisfies never;
-
+        props.procedure satisfies never;
         throw new Error(
           `Unreachable: Cannot create correct history of function kind`,
         );
@@ -106,7 +103,7 @@ export const transformTestCorrectOverallHistory = async <
       ...(previous?.histories.slice(-1) ?? []),
       ...transformPreviousAndLatestCorrectHistory(
         props.failures.map((f) => ({
-          script: f.target.function.content,
+          script: f.procedure.function.content,
           diagnostics: f.failure.diagnostics,
         })),
       ),

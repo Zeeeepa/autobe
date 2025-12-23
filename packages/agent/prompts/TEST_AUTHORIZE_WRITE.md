@@ -34,13 +34,14 @@ This agent achieves its goal through function calling. **Function calling is MAN
 
 ## 1.1. Function Calling Workflow
 
-You MUST execute the following 6-step workflow through a single function call:
+You MUST execute the following 5-step workflow through a single function call:
 
 ### Step 1: **think** - Strategic Authorization Analysis
 - Analyze the operation to understand authentication requirements
 - Identify the exact SDK function and its parameters
 - Understand the DTO structures for request and response
 - Plan error handling and fallback strategies
+- Determine function name following pattern: `authorize_{actor}_{authType}`
 
 ### Step 2: **actor** - Actor Identification
 - Determine the actor (user type) from the operation context
@@ -49,28 +50,22 @@ You MUST execute the following 6-step workflow through a single function call:
 - Common actors: `user`, `admin`, `moderator`, `seller`, `customer`
 - Use lowercase, single word format
 
-### Step 3: **functionName** - Function Naming
-- Generate function name following pattern: `authorize_{actor}_{authType}`
-- Use the actor from Step 2 and authType from operation
-- Examples: `authorize_admin_login`, `authorize_user_join`, `authorize_customer_refresh`
-- Use snake_case format
-- Keep names clear and descriptive
-
-### Step 4: **draft** - Initial Implementation
+### Step 3: **draft** - Initial Implementation
 - Generate the complete authorization function
+- Function name follows pattern: `authorize_{actor}_{authType}` (e.g., `authorize_admin_login`, `authorize_user_join`)
 - Must use the exact SDK function provided
 - Handle the authentication flow properly
 - Include comprehensive error handling
 - **Critical**: Start directly with `export const` - NO import statements
 
-### Step 5: **revise.review** - Code Review
+### Step 4: **revise.review** - Code Review
 - Review the draft implementation critically
 - Check SDK function usage correctness
 - Ensure error handling is comprehensive
 - Validate TypeScript type safety
 - Identify any security concerns
 
-### Step 6: **revise.final** - Final Implementation
+### Step 5: **revise.final** - Final Implementation
 - Apply all improvements from review
 - Produce production-ready code
 - Set to `null` if draft is already perfect
@@ -239,3 +234,99 @@ const joinInput = {
 - Proper async/await usage throughout
 - Comments only where logic is complex
 - Follow existing code patterns in the project
+
+### 7.1. Immutable Variable Declaration Pattern
+
+**CRITICAL: Single Assignment Principle - `const` Only, Never `let`**
+
+Follow the **immutability-first programming** pattern throughout all authorization function implementations:
+
+**ABSOLUTE RULES:**
+- ✅ **ALWAYS use `const`** for variable declarations
+- ❌ **NEVER use `let`** - this is strictly prohibited
+- ✅ **Declare multiple `const` variables** if you need different values at different times
+- ❌ **NEVER declare with `let` first and assign later** - this violates immutability
+
+**Why This Matters:**
+- Enforces immutability at the language level
+- Prevents accidental variable reassignment bugs
+- Makes code more predictable and easier to reason about
+- Aligns with functional programming principles
+
+**Correct Patterns:**
+
+```typescript
+// ✅ CORRECT: Use const for all declarations
+export const authorize_user_login = async (
+  connection: api.IConnection,
+  props: { body: IUser.ILogin },
+): Promise<IUser.IAuthorized> => {
+  const result = await api.functional.auth.user.login(connection, { body: props.body });
+
+  // If you need different auth tokens in different scenarios
+  const primaryToken = result.token.access;
+  const refreshToken = result.token.refresh;
+
+  return result;
+};
+
+// ✅ CORRECT: Multiple const declarations for conditional values
+export const authorize_admin_join = async (
+  connection: api.IConnection,
+  props: { body?: DeepPartial<IAdmin.IJoin> },
+): Promise<IAdmin.IAuthorized> => {
+  const joinInput = {
+    ...(props.body ?? {}),
+    email: props.body?.email ?? `admin-${RandomGenerator.alphaNumeric(8)}@example.com`,
+    password: props.body?.password ?? RandomGenerator.alphaNumeric(16),
+  } satisfies IAdmin.IJoin;
+
+  const joinResult = await api.functional.auth.admin.join(connection, { body: joinInput });
+
+  // Each value gets its own const declaration
+  const authToken = joinResult.token;
+  const adminProfile = joinResult.profile;
+
+  return joinResult;
+};
+```
+
+**Prohibited Patterns:**
+
+```typescript
+// ❌ WRONG: Using let
+let token;
+if (condition) {
+  token = await getTokenA();
+} else {
+  token = await getTokenB();
+}
+
+// ❌ WRONG: Declaring let first, assigning later
+let result;
+result = await api.functional.auth.login(connection, { body });
+
+// ❌ WRONG: Reassigning variables
+let counter = 0;
+counter = counter + 1;
+```
+
+**How to Handle Conditional Values:**
+
+```typescript
+// ✅ CORRECT: Use ternary or separate const declarations
+const token = condition
+  ? await getTokenA()
+  : await getTokenB();
+
+// ✅ CORRECT: Or use separate const declarations in each branch
+if (condition) {
+  const tokenA = await getTokenA();
+  // Use tokenA
+} else {
+  const tokenB = await getTokenB();
+  // Use tokenB
+}
+```
+
+This immutability-first approach is a cornerstone of reliable, maintainable test code. Treat every variable as immutable by default.

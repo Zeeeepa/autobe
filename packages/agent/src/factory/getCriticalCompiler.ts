@@ -30,12 +30,15 @@ export const getCriticalCompiler = (
       getExternal: (location) =>
         lock(() => compiler.typescript.getExternal(location)),
       beautify: (code) => lock(() => compiler.typescript.beautify(code)),
+      removeImportStatements: (code) =>
+        lock(() => compiler.typescript.removeImportStatements(code)),
     },
     test: {
       compile: (props) => lock(() => compiler.test.compile(props)),
       validate: (props) => lock(() => compiler.test.validate(props)),
       write: (props) => lock(() => compiler.test.write(props)),
       getExternal: () => lock(() => compiler.test.getExternal()),
+      getDefaultTypes: () => lock(() => compiler.test.getDefaultTypes()),
     },
     realize: {
       controller: (props) => lock(() => compiler.realize.controller(props)),
