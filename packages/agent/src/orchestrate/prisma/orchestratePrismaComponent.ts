@@ -3,21 +3,18 @@ import {
   AutoBeEventSource,
   AutoBePrismaComponentEvent,
 } from "@autobe/interface";
-import { ILlmApplication, ILlmSchema, IValidation } from "@samchon/openapi";
+import { ILlmApplication, IValidation } from "@samchon/openapi";
 import { IPointer } from "tstl";
 import typia from "typia";
 import { v7 } from "uuid";
 
 import { AutoBeContext } from "../../context/AutoBeContext";
-import { assertSchemaModel } from "../../context/assertSchemaModel";
 import { AutoBePreliminaryController } from "../common/AutoBePreliminaryController";
 import { transformPrismaComponentsHistory } from "./histories/transformPrismaComponentsHistory";
 import { IAutoBePrismaComponentApplication } from "./structures/IAutoBePrismaComponentApplication";
 
-export async function orchestratePrismaComponents<
-  Model extends ILlmSchema.Model,
->(
-  ctx: AutoBeContext<Model>,
+export async function orchestratePrismaComponents(
+  ctx: AutoBeContext,
   instruction: string,
 ): Promise<AutoBePrismaComponentEvent> {
   const start: Date = new Date();
@@ -41,10 +38,9 @@ export async function orchestratePrismaComponents<
       {
         value: null,
       };
-    const result: AutoBeContext.IResult<Model> = await ctx.conversate({
+    const result: AutoBeContext.IResult = await ctx.conversate({
       source: SOURCE,
       controller: createController({
-        model: ctx.model,
         pointer,
         preliminary,
       }),
@@ -73,15 +69,12 @@ export async function orchestratePrismaComponents<
   });
 }
 
-function createController<Model extends ILlmSchema.Model>(props: {
-  model: Model;
+function createController(props: {
   pointer: IPointer<IAutoBePrismaComponentApplication.IComplete | null>;
   preliminary: AutoBePreliminaryController<
     "analysisFiles" | "previousAnalysisFiles" | "previousPrismaSchemas"
   >;
-}): IAgenticaController.IClass<Model> {
-  assertSchemaModel(props.model);
-
+}): IAgenticaController.IClass {
   const validate: Validator = (input) => {
     const result: IValidation<IAutoBePrismaComponentApplication.IProps> =
       typia.validate<IAutoBePrismaComponentApplication.IProps>(input);
@@ -92,16 +85,12 @@ function createController<Model extends ILlmSchema.Model>(props: {
       request: result.data.request,
     });
   };
-  const application: ILlmApplication<Model> = props.preliminary.fixApplication(
-    collection[
-      props.model === "chatgpt"
-        ? "chatgpt"
-        : props.model === "gemini"
-          ? "gemini"
-          : "claude"
-    ](
-      validate,
-    ) satisfies ILlmApplication<any> as unknown as ILlmApplication<Model>,
+  const application: ILlmApplication = props.preliminary.fixApplication(
+    typia.llm.application<IAutoBePrismaComponentApplication>({
+      validate: {
+        process: validate,
+      },
+    }),
   );
   return {
     protocol: "class",
@@ -115,27 +104,6 @@ function createController<Model extends ILlmSchema.Model>(props: {
     } satisfies IAutoBePrismaComponentApplication,
   };
 }
-
-const collection = {
-  chatgpt: (validate: Validator) =>
-    typia.llm.application<IAutoBePrismaComponentApplication, "chatgpt">({
-      validate: {
-        process: validate,
-      },
-    }),
-  claude: (validate: Validator) =>
-    typia.llm.application<IAutoBePrismaComponentApplication, "claude">({
-      validate: {
-        process: validate,
-      },
-    }),
-  gemini: (validate: Validator) =>
-    typia.llm.application<IAutoBePrismaComponentApplication, "gemini">({
-      validate: {
-        process: validate,
-      },
-    }),
-};
 
 type Validator = (
   input: unknown,

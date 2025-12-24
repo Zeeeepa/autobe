@@ -7,21 +7,18 @@ import {
   AutoBeAssistantMessageHistory,
   AutoBeEventSource,
 } from "@autobe/interface";
-import { ILlmApplication, ILlmSchema, IValidation } from "@samchon/openapi";
+import { ILlmApplication, IValidation } from "@samchon/openapi";
 import { IPointer } from "tstl";
 import typia from "typia";
 import { v7 } from "uuid";
 
 import { AutoBeContext } from "../../context/AutoBeContext";
-import { assertSchemaModel } from "../../context/assertSchemaModel";
 import { AutoBePreliminaryController } from "../common/AutoBePreliminaryController";
 import { transformAnalyzeSceHistories } from "./histories/transformAnalyzeScenarioHistories";
 import { IAutoBeAnalyzeScenarioApplication } from "./structures/IAutoBeAnalyzeScenarioApplication";
 
-export const orchestrateAnalyzeScenario = async <
-  Model extends ILlmSchema.Model,
->(
-  ctx: AutoBeContext<Model>,
+export const orchestrateAnalyzeScenario = async (
+  ctx: AutoBeContext,
 ): Promise<AutoBeAnalyzeScenarioEvent | AutoBeAssistantMessageHistory> => {
   const start: Date = new Date();
   const preliminary: AutoBePreliminaryController<"previousAnalysisFiles"> =
@@ -36,10 +33,9 @@ export const orchestrateAnalyzeScenario = async <
       {
         value: null,
       };
-    const result: AutoBeContext.IResult<Model> = await ctx.conversate({
+    const result: AutoBeContext.IResult = await ctx.conversate({
       source: SOURCE,
       controller: createController({
-        model: ctx.model,
         pointer,
         preliminary,
       }),
@@ -71,14 +67,13 @@ export const orchestrateAnalyzeScenario = async <
   });
 };
 
-function createController<Model extends ILlmSchema.Model>(props: {
-  model: Model;
+function createController(props: {
   pointer: IPointer<IAutoBeAnalyzeScenarioApplication.IComplete | null>;
   preliminary: AutoBePreliminaryController<"previousAnalysisFiles">;
-}): IAgenticaController.IClass<Model> {
-  assertSchemaModel(props.model);
-
-  const validate: Validator = (input) => {
+}): IAgenticaController.IClass {
+  const validate = (
+    input: unknown,
+  ): IValidation<IAutoBeAnalyzeScenarioApplication.IProps> => {
     const result: IValidation<IAutoBeAnalyzeScenarioApplication.IProps> =
       typia.validate<IAutoBeAnalyzeScenarioApplication.IProps>(input);
     if (result.success === false || result.data.request.type === "complete")
@@ -88,16 +83,12 @@ function createController<Model extends ILlmSchema.Model>(props: {
       request: result.data.request,
     });
   };
-  const application: ILlmApplication<Model> = props.preliminary.fixApplication(
-    collection[
-      props.model === "chatgpt"
-        ? "chatgpt"
-        : props.model === "gemini"
-          ? "gemini"
-          : "claude"
-    ](
-      validate,
-    ) satisfies ILlmApplication<any> as unknown as ILlmApplication<Model>,
+  const application: ILlmApplication = props.preliminary.fixApplication(
+    typia.llm.application<IAutoBeAnalyzeScenarioApplication>({
+      validate: {
+        process: validate,
+      },
+    }),
   );
   return {
     protocol: "class",
@@ -111,30 +102,5 @@ function createController<Model extends ILlmSchema.Model>(props: {
     } satisfies IAutoBeAnalyzeScenarioApplication,
   };
 }
-
-const collection = {
-  chatgpt: (validate: Validator) =>
-    typia.llm.application<IAutoBeAnalyzeScenarioApplication, "chatgpt">({
-      validate: {
-        process: validate,
-      },
-    }),
-  claude: (validate: Validator) =>
-    typia.llm.application<IAutoBeAnalyzeScenarioApplication, "claude">({
-      validate: {
-        process: validate,
-      },
-    }),
-  gemini: (validate: Validator) =>
-    typia.llm.application<IAutoBeAnalyzeScenarioApplication, "gemini">({
-      validate: {
-        process: validate,
-      },
-    }),
-};
-
-type Validator = (
-  input: unknown,
-) => IValidation<IAutoBeAnalyzeScenarioApplication.IProps>;
 
 const SOURCE = "analyzeScenario" satisfies AutoBeEventSource;

@@ -11,7 +11,7 @@ import {
   MapUtil,
   StringUtil,
 } from "@autobe/utils";
-import { ILlmApplication, ILlmSchema, IValidation } from "@samchon/openapi";
+import { ILlmApplication, IValidation } from "@samchon/openapi";
 import { HashMap, HashSet, IPointer, Pair } from "tstl";
 import typia from "typia";
 import { NamingConvention } from "typia/lib/utils/NamingConvention";
@@ -19,7 +19,6 @@ import { v7 } from "uuid";
 
 import { AutoBeConfigConstant } from "../../constants/AutoBeConfigConstant";
 import { AutoBeContext } from "../../context/AutoBeContext";
-import { assertSchemaModel } from "../../context/assertSchemaModel";
 import { divideArray } from "../../utils/divideArray";
 import { executeCachedBatch } from "../../utils/executeCachedBatch";
 import { AutoBePreliminaryController } from "../common/AutoBePreliminaryController";
@@ -29,8 +28,8 @@ import { IAutoBeTestScenarioApplication } from "./structures/IAutoBeTestScenario
 import { IAutoBeTestScenarioAuthorizationActor } from "./structures/IAutoBeTestScenarioAuthorizationActor";
 import { getPrerequisites } from "./utils/getPrerequisites";
 
-export const orchestrateTestScenario = async <Model extends ILlmSchema.Model>(
-  ctx: AutoBeContext<Model>,
+export const orchestrateTestScenario = async (
+  ctx: AutoBeContext,
   instruction: string,
 ): Promise<AutoBeTestScenario[]> => {
   const document: AutoBeOpenApi.IDocument | undefined =
@@ -128,8 +127,8 @@ export const orchestrateTestScenario = async <Model extends ILlmSchema.Model>(
   });
 };
 
-const divideAndConquer = async <Model extends ILlmSchema.Model>(
-  ctx: AutoBeContext<Model>,
+const divideAndConquer = async (
+  ctx: AutoBeContext,
   props: {
     dict: HashMap<AutoBeOpenApi.IEndpoint, AutoBeOpenApi.IOperation>;
     endpointNotFound: string;
@@ -148,8 +147,8 @@ const divideAndConquer = async <Model extends ILlmSchema.Model>(
   }
 };
 
-const process = async <Model extends ILlmSchema.Model>(
-  ctx: AutoBeContext<Model>,
+const process = async (
+  ctx: AutoBeContext,
   props: {
     dict: HashMap<AutoBeOpenApi.IEndpoint, AutoBeOpenApi.IOperation>;
     endpointNotFound: string;
@@ -201,10 +200,9 @@ const process = async <Model extends ILlmSchema.Model>(
     const pointer: IPointer<IAutoBeTestScenarioApplication.IScenarioGroup[]> = {
       value: [],
     };
-    const result: AutoBeContext.IResult<Model> = await ctx.conversate({
+    const result: AutoBeContext.IResult = await ctx.conversate({
       source: SOURCE,
       controller: createController({
-        model: ctx.model,
         endpointNotFound: props.endpointNotFound,
         dict: props.dict,
         authorizations,
@@ -278,8 +276,7 @@ const process = async <Model extends ILlmSchema.Model>(
   });
 };
 
-const createController = <Model extends ILlmSchema.Model>(props: {
-  model: Model;
+const createController = (props: {
   endpointNotFound: string;
   dict: HashMap<AutoBeOpenApi.IEndpoint, AutoBeOpenApi.IOperation>;
   authorizations: AutoBeInterfaceAuthorization[];
@@ -287,9 +284,7 @@ const createController = <Model extends ILlmSchema.Model>(props: {
   preliminary: AutoBePreliminaryController<
     "analysisFiles" | "interfaceOperations" | "interfaceSchemas"
   >;
-}): IAgenticaController.IClass<Model> => {
-  assertSchemaModel(props.model);
-
+}): IAgenticaController.IClass => {
   const validate = (
     next: unknown,
   ): IValidation<IAutoBeTestScenarioApplication.IProps> => {
@@ -455,15 +450,13 @@ const createController = <Model extends ILlmSchema.Model>(props: {
           errors,
         };
   };
-  const application: ILlmApplication<Model> = collection[
-    props.model === "chatgpt"
-      ? "chatgpt"
-      : props.model === "gemini"
-        ? "gemini"
-        : "claude"
-  ](
-    validate,
-  ) satisfies ILlmApplication<any> as unknown as ILlmApplication<Model>;
+
+  const application: ILlmApplication =
+    typia.llm.application<IAutoBeTestScenarioApplication>({
+      validate: {
+        process: validate,
+      },
+    });
   return {
     protocol: "class",
     name: SOURCE,
@@ -486,31 +479,6 @@ const uniqueScenarioGroups = (
   )
     .toJSON()
     .map((it) => it.second);
-
-const collection = {
-  chatgpt: (validate: Validator) =>
-    typia.llm.application<IAutoBeTestScenarioApplication, "chatgpt">({
-      validate: {
-        process: validate,
-      },
-    }),
-  claude: (validate: Validator) =>
-    typia.llm.application<IAutoBeTestScenarioApplication, "claude">({
-      validate: {
-        process: validate,
-      },
-    }),
-  gemini: (validate: Validator) =>
-    typia.llm.application<IAutoBeTestScenarioApplication, "gemini">({
-      validate: {
-        process: validate,
-      },
-    }),
-};
-
-type Validator = (
-  input: unknown,
-) => IValidation<IAutoBeTestScenarioApplication.IProps>;
 
 const SOURCE = "testScenario" satisfies AutoBeEventSource;
 const MAX_SCENARIO_COUNT = 3 as const;

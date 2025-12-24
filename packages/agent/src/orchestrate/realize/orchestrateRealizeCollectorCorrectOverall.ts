@@ -4,21 +4,18 @@ import {
   AutoBeRealizeCollectorFunction,
 } from "@autobe/interface";
 import { AutoBeOpenApiTypeChecker } from "@autobe/utils";
-import { ILlmApplication, ILlmSchema, IValidation } from "@samchon/openapi";
+import { ILlmApplication, IValidation } from "@samchon/openapi";
 import typia from "typia";
 
 import { AutoBeContext } from "../../context/AutoBeContext";
-import { assertSchemaModel } from "../../context/assertSchemaModel";
 import { AutoBePreliminaryController } from "../common/AutoBePreliminaryController";
 import { transformRealizeCollectorCorrectHistory } from "./histories/transformRealizeCollectorCorrectHistory";
 import { orchestrateRealizeCorrectOverall } from "./internal/orchestrateRealizeCorrectOverall";
 import { AutoBeRealizeCollectorProgrammer } from "./programmers/AutoBeRealizeCollectorProgrammer";
 import { IAutoBeRealizeCollectorCorrectApplication } from "./structures/IAutoBeRealizeCollectorCorrectApplication";
 
-export const orchestrateRealizeCollectorCorrectOverall = async <
-  Model extends ILlmSchema.Model,
->(
-  ctx: AutoBeContext<Model>,
+export const orchestrateRealizeCollectorCorrectOverall = async (
+  ctx: AutoBeContext,
   props: {
     functions: AutoBeRealizeCollectorFunction[];
     progress: AutoBeProgressEventBase;
@@ -92,7 +89,6 @@ export const orchestrateRealizeCollectorCorrectOverall = async <
 
       // Create controller with Collector-specific validation
       controller: (next) => {
-        assertSchemaModel(next.model);
         const validate: Validator = (input) => {
           const result: IValidation<IAutoBeRealizeCollectorCorrectApplication.IProps> =
             typia.validate<IAutoBeRealizeCollectorCorrectApplication.IProps>(
@@ -124,15 +120,12 @@ export const orchestrateRealizeCollectorCorrectOverall = async <
             : result;
         };
 
-        const application: ILlmApplication<Model> = collection[
-          next.model === "chatgpt"
-            ? "chatgpt"
-            : next.model === "gemini"
-              ? "gemini"
-              : "claude"
-        ](
-          validate,
-        ) satisfies ILlmApplication<any> as unknown as ILlmApplication<Model>;
+        const application: ILlmApplication =
+          typia.llm.application<IAutoBeRealizeCollectorCorrectApplication>({
+            validate: {
+              process: validate,
+            },
+          });
 
         return {
           protocol: "class",
@@ -149,29 +142,6 @@ export const orchestrateRealizeCollectorCorrectOverall = async <
     functions: props.functions,
     progress: props.progress,
   });
-};
-
-const collection = {
-  chatgpt: (validate: Validator) =>
-    typia.llm.application<IAutoBeRealizeCollectorCorrectApplication, "chatgpt">(
-      {
-        validate: {
-          process: validate,
-        },
-      },
-    ),
-  claude: (validate: Validator) =>
-    typia.llm.application<IAutoBeRealizeCollectorCorrectApplication, "claude">({
-      validate: {
-        process: validate,
-      },
-    }),
-  gemini: (validate: Validator) =>
-    typia.llm.application<IAutoBeRealizeCollectorCorrectApplication, "gemini">({
-      validate: {
-        process: validate,
-      },
-    }),
 };
 
 type Validator = (

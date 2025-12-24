@@ -5,13 +5,12 @@ import {
   AutoBeTestAuthorizeFunction,
   AutoBeTestWriteEvent,
 } from "@autobe/interface";
-import { ILlmApplication, ILlmSchema, IValidation } from "@samchon/openapi";
+import { ILlmApplication, IValidation } from "@samchon/openapi";
 import { IPointer } from "tstl";
 import typia from "typia";
 import { v7 } from "uuid";
 
 import { AutoBeContext } from "../../context/AutoBeContext";
-import { assertSchemaModel } from "../../context/assertSchemaModel";
 import { executeCachedBatch } from "../../utils/executeCachedBatch";
 import { validateEmptyCode } from "../../utils/validateEmptyCode";
 import { getTestArtifacts } from "./compile/getTestArtifacts";
@@ -27,10 +26,8 @@ import { IAutoBeTestAuthorizeProcedure } from "./structures/IAutoBeTestAuthorize
  * Creates authorization utility functions for test scenarios using LLM to
  * generate proper authentication handling code.
  */
-export const orchestrateTestAuthorizeWrite = async <
-  Model extends ILlmSchema.Model,
->(
-  ctx: AutoBeContext<Model>,
+export const orchestrateTestAuthorizeWrite = async (
+  ctx: AutoBeContext,
   props: {
     instruction: string;
     progress: AutoBeProgressEventBase;
@@ -78,8 +75,8 @@ export const orchestrateTestAuthorizeWrite = async <
   return results.filter((r) => r !== null);
 };
 
-async function process<Model extends ILlmSchema.Model>(
-  ctx: AutoBeContext<Model>,
+async function process(
+  ctx: AutoBeContext,
   props: {
     operation: AutoBeOpenApi.IOperation;
     artifacts: IAutoBeTestArtifacts;
@@ -95,7 +92,6 @@ async function process<Model extends ILlmSchema.Model>(
   const { metric, tokenUsage } = await ctx.conversate({
     source: "testWrite",
     controller: createController({
-      model: ctx.model,
       operatiopn: props.operation,
       build: (next) => {
         pointer.value = next;
@@ -147,12 +143,10 @@ async function process<Model extends ILlmSchema.Model>(
   } satisfies AutoBeTestWriteEvent<AutoBeTestAuthorizeFunction>;
 }
 
-function createController<Model extends ILlmSchema.Model>(props: {
-  model: Model;
+function createController(props: {
   operatiopn: AutoBeOpenApi.IOperation;
   build: (next: IAutoBeTestAuthorizationWriteApplication.IProps) => void;
-}): IAgenticaController.IClass<Model> {
-  assertSchemaModel(props.model);
+}): IAgenticaController.IClass {
 
   const validate: Validator = (input) => {
     const result: IValidation<IAutoBeTestAuthorizationWriteApplication.IProps> =
@@ -178,15 +172,11 @@ function createController<Model extends ILlmSchema.Model>(props: {
       : result;
   };
 
-  const application: ILlmApplication<Model> = collection[
-    props.model === "chatgpt"
-      ? "chatgpt"
-      : props.model === "gemini"
-        ? "gemini"
-        : "claude"
-  ](
-    validate,
-  ) satisfies ILlmApplication<any> as unknown as ILlmApplication<Model>;
+  const application: ILlmApplication = typia.llm.application<IAutoBeTestAuthorizationWriteApplication>({
+    validate: {
+      write: validate,
+    },
+  });
 
   return {
     protocol: "class",
@@ -199,27 +189,6 @@ function createController<Model extends ILlmSchema.Model>(props: {
     } satisfies IAutoBeTestAuthorizationWriteApplication,
   };
 }
-
-const collection = {
-  chatgpt: (validate: Validator) =>
-    typia.llm.application<IAutoBeTestAuthorizationWriteApplication, "chatgpt">({
-      validate: {
-        write: validate,
-      },
-    }),
-  claude: (validate: Validator) =>
-    typia.llm.application<IAutoBeTestAuthorizationWriteApplication, "claude">({
-      validate: {
-        write: validate,
-      },
-    }),
-  gemini: (validate: Validator) =>
-    typia.llm.application<IAutoBeTestAuthorizationWriteApplication, "gemini">({
-      validate: {
-        write: validate,
-      },
-    }),
-};
 
 type Validator = (
   input: unknown,

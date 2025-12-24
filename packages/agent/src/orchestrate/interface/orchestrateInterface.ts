@@ -14,7 +14,6 @@ import {
   missedOpenApiSchemas,
   revertOpenApiAccessor,
 } from "@autobe/utils";
-import { ILlmSchema } from "@samchon/openapi";
 import { HashMap, Pair } from "tstl";
 import typia from "typia";
 import { v7 } from "uuid";
@@ -38,7 +37,7 @@ import { JsonSchemaFactory } from "./utils/JsonSchemaFactory";
 import { JsonSchemaNamingConvention } from "./utils/JsonSchemaNamingConvention";
 
 export const orchestrateInterface =
-  <Model extends ILlmSchema.Model>(ctx: AutoBeContext<Model>) =>
+  (ctx: AutoBeContext) =>
   async (
     props: IAutoBeFacadeApplicationProps,
   ): Promise<AutoBeAssistantMessageHistory | AutoBeInterfaceHistory> => {

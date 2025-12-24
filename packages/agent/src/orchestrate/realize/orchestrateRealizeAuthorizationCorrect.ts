@@ -6,23 +6,20 @@ import {
   IAutoBeCompiler,
   IAutoBeTypeScriptCompileResult,
 } from "@autobe/interface";
-import { ILlmApplication, ILlmSchema, IValidation } from "@samchon/openapi";
+import { ILlmApplication, IValidation } from "@samchon/openapi";
 import { IPointer } from "tstl";
 import typia from "typia";
 import { v7 } from "uuid";
 
 import { AutoBeContext } from "../../context/AutoBeContext";
-import { assertSchemaModel } from "../../context/assertSchemaModel";
 import { AutoBePreliminaryController } from "../common/AutoBePreliminaryController";
 import { transformRealizeAuthorizationCorrectHistory } from "./histories/transformRealizeAuthorizationCorrectHistory";
 import { IAutoBeRealizeAuthorizationCorrectApplication } from "./structures/IAutoBeRealizeAuthorizationCorrectApplication";
 import { AuthorizationFileSystem } from "./utils/AuthorizationFileSystem";
 import { AutoBeRealizeAuthorizationReplaceImport } from "./utils/AutoBeRealizeAuthorizationReplaceImport";
 
-export async function orchestrateRealizeAuthorizationCorrect<
-  Model extends ILlmSchema.Model,
->(
-  ctx: AutoBeContext<Model>,
+export async function orchestrateRealizeAuthorizationCorrect(
+  ctx: AutoBeContext,
   props: {
     authorization: AutoBeRealizeAuthorization;
     template: Record<string, string>;
@@ -89,10 +86,9 @@ export async function orchestrateRealizeAuthorizationCorrect<
       {
         value: null,
       };
-    const result: AutoBeContext.IResult<Model> = await ctx.conversate({
+    const result: AutoBeContext.IResult = await ctx.conversate({
       source: "realizeAuthorizationCorrect",
       controller: createController({
-        model: ctx.model,
         build: (next) => {
           pointer.value = next;
         },
@@ -159,14 +155,12 @@ export async function orchestrateRealizeAuthorizationCorrect<
   });
 }
 
-function createController<Model extends ILlmSchema.Model>(props: {
-  model: Model;
+function createController(props: {
   build: (
     next: IAutoBeRealizeAuthorizationCorrectApplication.IComplete,
   ) => void;
   preliminary: AutoBePreliminaryController<"prismaSchemas">;
-}): IAgenticaController.IClass<Model> {
-  assertSchemaModel(props.model);
+}): IAgenticaController.IClass {
 
   const validate: Validator = (input) => {
     const result: IValidation<IAutoBeRealizeAuthorizationCorrectApplication.IProps> =
@@ -181,15 +175,12 @@ function createController<Model extends ILlmSchema.Model>(props: {
     });
   };
 
-  const application: ILlmApplication<Model> = collection[
-    props.model === "chatgpt"
-      ? "chatgpt"
-      : props.model === "gemini"
-        ? "gemini"
-        : "claude"
-  ](
-    validate,
-  ) satisfies ILlmApplication<any> as unknown as ILlmApplication<Model>;
+  const application: ILlmApplication =
+    typia.llm.application<IAutoBeRealizeAuthorizationCorrectApplication>({
+      validate: {
+        process: validate,
+      },
+    });
   return {
     protocol: "class",
     name: SOURCE,
@@ -201,36 +192,6 @@ function createController<Model extends ILlmSchema.Model>(props: {
     } satisfies IAutoBeRealizeAuthorizationCorrectApplication,
   };
 }
-
-const collection = {
-  chatgpt: (validate: Validator) =>
-    typia.llm.application<
-      IAutoBeRealizeAuthorizationCorrectApplication,
-      "chatgpt"
-    >({
-      validate: {
-        process: validate,
-      },
-    }),
-  claude: (validate: Validator) =>
-    typia.llm.application<
-      IAutoBeRealizeAuthorizationCorrectApplication,
-      "claude"
-    >({
-      validate: {
-        process: validate,
-      },
-    }),
-  gemini: (validate: Validator) =>
-    typia.llm.application<
-      IAutoBeRealizeAuthorizationCorrectApplication,
-      "gemini"
-    >({
-      validate: {
-        process: validate,
-      },
-    }),
-};
 
 type Validator = (
   input: unknown,

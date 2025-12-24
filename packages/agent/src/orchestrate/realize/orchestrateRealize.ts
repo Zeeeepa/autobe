@@ -9,7 +9,6 @@ import {
   AutoBeRealizeTransformerFunction,
   IAutoBeCompiler,
 } from "@autobe/interface";
-import { ILlmSchema } from "@samchon/openapi";
 import { v7 } from "uuid";
 
 import { AutoBeContext } from "../../context/AutoBeContext";
@@ -23,7 +22,7 @@ import { AutoBeRealizeCollectorProgrammer } from "./programmers/AutoBeRealizeCol
 import { AutoBeRealizeTransformerProgrammer } from "./programmers/AutoBeRealizeTransformerProgrammer";
 
 export const orchestrateRealize =
-  <Model extends ILlmSchema.Model>(ctx: AutoBeContext<Model>) =>
+  (ctx: AutoBeContext) =>
   async (
     props: IAutoBeFacadeApplicationProps,
   ): Promise<AutoBeAssistantMessageHistory | AutoBeRealizeHistory> => {

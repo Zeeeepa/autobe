@@ -8,13 +8,12 @@ import {
   IAutoBeCompiler,
   IAutoBePrismaCompileResult,
 } from "@autobe/interface";
-import { ILlmApplication, ILlmSchema, IValidation } from "@samchon/openapi";
+import { ILlmApplication, IValidation } from "@samchon/openapi";
 import { IPointer } from "tstl";
 import typia from "typia";
 import { v7 } from "uuid";
 
 import { AutoBeContext } from "../../context/AutoBeContext";
-import { assertSchemaModel } from "../../context/assertSchemaModel";
 import { executeCachedBatch } from "../../utils/executeCachedBatch";
 import { AutoBePreliminaryController } from "../common/AutoBePreliminaryController";
 import { transformRealizeAuthorizationWriteHistory } from "./histories/transformRealizeAuthorizationWriteHistory";
@@ -29,9 +28,9 @@ import { InternalFileSystem } from "./utils/InternalFileSystem";
  *
  * @param ctx
  */
-export async function orchestrateRealizeAuthorizationWrite<
-  Model extends ILlmSchema.Model,
->(ctx: AutoBeContext<Model>): Promise<AutoBeRealizeAuthorization[]> {
+export async function orchestrateRealizeAuthorizationWrite(
+  ctx: AutoBeContext,
+): Promise<AutoBeRealizeAuthorization[]> {
   ctx.dispatch({
     type: "realizeAuthorizationStart",
     id: v7(),
@@ -73,8 +72,8 @@ export async function orchestrateRealizeAuthorizationWrite<
   return authorizations;
 }
 
-async function process<Model extends ILlmSchema.Model>(
-  ctx: AutoBeContext<Model>,
+async function process(
+  ctx: AutoBeContext,
   props: {
     actor: AutoBeAnalyzeActor;
     templates: Record<string, string>;
@@ -95,10 +94,9 @@ async function process<Model extends ILlmSchema.Model>(
       {
         value: null,
       };
-    const result: AutoBeContext.IResult<Model> = await ctx.conversate({
+    const result: AutoBeContext.IResult = await ctx.conversate({
       source: "realizeAuthorizationWrite",
       controller: createController({
-        model: ctx.model,
         build: (next) => {
           pointer.value = next;
         },
@@ -166,13 +164,10 @@ async function process<Model extends ILlmSchema.Model>(
   });
 }
 
-function createController<Model extends ILlmSchema.Model>(props: {
-  model: Model;
+function createController(props: {
   build: (next: IAutoBeRealizeAuthorizationWriteApplication.IComplete) => void;
   preliminary: AutoBePreliminaryController<"prismaSchemas">;
-}): IAgenticaController.IClass<Model> {
-  assertSchemaModel(props.model);
-
+}): IAgenticaController.IClass {
   const validate: Validator = (input) => {
     const result: IValidation<IAutoBeRealizeAuthorizationWriteApplication.IProps> =
       typia.validate<IAutoBeRealizeAuthorizationWriteApplication.IProps>(input);
@@ -183,15 +178,13 @@ function createController<Model extends ILlmSchema.Model>(props: {
       request: result.data.request,
     });
   };
-  const application: ILlmApplication<Model> = collection[
-    props.model === "chatgpt"
-      ? "chatgpt"
-      : props.model === "gemini"
-        ? "gemini"
-        : "claude"
-  ](
-    validate,
-  ) satisfies ILlmApplication<any> as unknown as ILlmApplication<Model>;
+
+  const application: ILlmApplication =
+    typia.llm.application<IAutoBeRealizeAuthorizationWriteApplication>({
+      validate: {
+        process: validate,
+      },
+    });
 
   return {
     protocol: "class",
@@ -204,36 +197,6 @@ function createController<Model extends ILlmSchema.Model>(props: {
     } satisfies IAutoBeRealizeAuthorizationWriteApplication,
   };
 }
-
-const collection = {
-  chatgpt: (validate: Validator) =>
-    typia.llm.application<
-      IAutoBeRealizeAuthorizationWriteApplication,
-      "chatgpt"
-    >({
-      validate: {
-        process: validate,
-      },
-    }),
-  claude: (validate: Validator) =>
-    typia.llm.application<
-      IAutoBeRealizeAuthorizationWriteApplication,
-      "claude"
-    >({
-      validate: {
-        process: validate,
-      },
-    }),
-  gemini: (validate: Validator) =>
-    typia.llm.application<
-      IAutoBeRealizeAuthorizationWriteApplication,
-      "gemini"
-    >({
-      validate: {
-        process: validate,
-      },
-    }),
-};
 
 type Validator = (
   input: unknown,

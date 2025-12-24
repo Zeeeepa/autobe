@@ -10,7 +10,6 @@ import {
 } from "@autobe/interface";
 import { AutoBePrismaSchemaEvent } from "@autobe/interface/src/events/AutoBePrismaSchemaEvent";
 import { writePrismaApplication } from "@autobe/utils";
-import { ILlmSchema } from "@samchon/openapi";
 import { v7 } from "uuid";
 
 import { AutoBeContext } from "../../context/AutoBeContext";
@@ -21,8 +20,8 @@ import { orchestratePrismaCorrect } from "./orchestratePrismaCorrect";
 import { orchestratePrismaReview } from "./orchestratePrismaReview";
 import { orchestratePrismaSchema } from "./orchestratePrismaSchema";
 
-export const orchestratePrisma = async <Model extends ILlmSchema.Model>(
-  ctx: AutoBeContext<Model>,
+export const orchestratePrisma = async (
+  ctx: AutoBeContext,
   props: IAutoBeFacadeApplicationProps,
 ): Promise<AutoBePrismaHistory | AutoBeAssistantMessageHistory> => {
   // PREDICATION

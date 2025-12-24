@@ -1,4 +1,3 @@
-import { ILlmSchema } from "@samchon/openapi";
 import { Pair, Semaphore } from "tstl";
 import { v7 } from "uuid";
 
@@ -29,8 +28,8 @@ import { AutoBeContext } from "../context/AutoBeContext";
  * @param promptCacheKey Optional cache key (generates UUID if not provided)
  * @returns Array of task results in original order
  */
-export const executeCachedBatch = async <Model extends ILlmSchema.Model, T>(
-  ctx: AutoBeContext<Model>,
+export const executeCachedBatch = async <T>(
+  ctx: AutoBeContext,
   taskList: Task<T>[],
   promptCacheKey?: string,
 ): Promise<T[]> => {

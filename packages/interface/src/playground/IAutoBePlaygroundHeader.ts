@@ -1,5 +1,3 @@
-import { ILlmSchema } from "@samchon/openapi";
-
 import { IAutoBePlaygroundVendor } from "./IAutoBePlaygroundVendor";
 
 /**
@@ -19,23 +17,7 @@ import { IAutoBePlaygroundVendor } from "./IAutoBePlaygroundVendor";
  *
  * @author Samchon
  */
-export interface IAutoBePlaygroundHeader<Model extends ILlmSchema.Model> {
-  /**
-   * AI model type specification for type-safe function calling schemas.
-   *
-   * Specifies the AI model type that determines the function calling schema
-   * generation and optimization characteristics. This type parameter ensures
-   * compile-time type safety and enables model-specific optimizations in the AI
-   * function calling interface generation process through
-   * [`typia.llm.application()`](https://typia.io/docs/llm/application).
-   *
-   * Different model types may have varying function calling capabilities,
-   * parameter limitations, and schema requirements that need to be accounted
-   * for during the vibe coding pipeline to ensure optimal AI performance and
-   * compatibility.
-   */
-  model: Model;
-
+export interface IAutoBePlaygroundHeader {
   /**
    * AI vendor configuration for service provider integration.
    *

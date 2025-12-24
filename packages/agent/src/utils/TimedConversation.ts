@@ -1,5 +1,4 @@
 import { MicroAgentica, MicroAgenticaHistory } from "@agentica/core";
-import { ILlmSchema } from "@samchon/openapi";
 import { ConditionVariable, IPointer, Singleton, sleep_for } from "tstl";
 
 import { AutoBeTimeoutError } from "./AutoBeTimeoutError";
@@ -17,9 +16,9 @@ import { AutoBeTimeoutError } from "./AutoBeTimeoutError";
  */
 export namespace TimedConversation {
   /** Configuration for timed conversation execution. */
-  export interface IProps<Model extends ILlmSchema.Model> {
+  export interface IProps {
     /** MicroAgentica agent to execute conversation */
-    agent: MicroAgentica<Model>;
+    agent: MicroAgentica;
     /** User message to send */
     message: string;
     /** Timeout in milliseconds, or null for no timeout */
@@ -27,15 +26,12 @@ export namespace TimedConversation {
   }
 
   /** Discriminated union of possible conversation outcomes. */
-  export type IResult<Model extends ILlmSchema.Model> =
-    | ISuccessResult<Model>
-    | ITimeoutResult
-    | IErrorResult;
+  export type IResult = ISuccessResult | ITimeoutResult | IErrorResult;
 
   /** Successful conversation completion. */
-  export interface ISuccessResult<Model extends ILlmSchema.Model> {
+  export interface ISuccessResult {
     type: "success";
-    histories: MicroAgenticaHistory<Model>[];
+    histories: MicroAgenticaHistory[];
   }
 
   /** Conversation exceeded timeout limit. */
@@ -60,13 +56,12 @@ export namespace TimedConversation {
    * @param props Agent, message, and timeout configuration
    * @returns Discriminated result indicating success, timeout, or error
    */
-  export const process = async <Model extends ILlmSchema.Model>(
-    props: IProps<Model>,
-  ): Promise<IResult<Model>> => {
+  export const process = async (props: IProps): Promise<IResult> => {
     if (props.timeout === null)
       try {
-        const histories: MicroAgenticaHistory<Model>[] =
-          await props.agent.conversate(props.message);
+        const histories: MicroAgenticaHistory[] = await props.agent.conversate(
+          props.message,
+        );
         return {
           type: "success",
           histories,
@@ -79,7 +74,7 @@ export namespace TimedConversation {
       }
 
     // PREPARE TIMEOUT HANDLERS
-    const result: IPointer<IResult<Model> | null> = {
+    const result: IPointer<IResult | null> = {
       value: null,
     };
     const holder: ConditionVariable = new ConditionVariable();

@@ -12,7 +12,6 @@ import {
   IAutoBeCompiler,
   IAutoBeTypeScriptCompileResult,
 } from "@autobe/interface";
-import { ILlmSchema } from "@samchon/openapi";
 import { v7 } from "uuid";
 
 import { AutoBeContext } from "../../context/AutoBeContext";
@@ -28,7 +27,7 @@ import { AutoBeTestGenerateProgrammer } from "./programmers/AutoBeTestGeneratePr
 import { AutoBeTestPrepareProgrammer } from "./programmers/AutoBeTestPrepareProgrammer";
 
 export const orchestrateTest =
-  <Model extends ILlmSchema.Model>(ctx: AutoBeContext<Model>) =>
+  (ctx: AutoBeContext) =>
   async (
     props: IAutoBeFacadeApplicationProps,
   ): Promise<AutoBeAssistantMessageHistory | AutoBeTestHistory> => {
