@@ -121,7 +121,16 @@ export async function transformTestOperationWriteHistory(
           Using \`api.functional.*\` directly for an endpoint that has a utility function is **FORBIDDEN**.
 
           ### Authorization Functions
-          Use these to authenticate users. After calling, \`connection.headers.Authorization\` is automatically updated.
+          Use these to authenticate users. They update the connection's headers internally.
+          **You MUST create a NEW connection object** with \`{ host: connection.host }\` and pass it to the authorize function.
+
+          **MANDATORY Pattern:**
+          \`\`\`typescript
+          const adminConnection: api.IConnection = { host: connection.host };
+          await authorize_admin_login(adminConnection, { body: {...} });
+          // adminConnection.headers is now updated internally by authorize function
+          // Use adminConnection for all subsequent API calls
+          \`\`\`
 
           | Function Name | Endpoint | Actor |
           |---------------|----------|-------|
@@ -139,7 +148,7 @@ export async function transformTestOperationWriteHistory(
           - **Endpoint**: \`${f.endpoint.method.toUpperCase()} ${f.endpoint.path}\`
           - **Actor**: ${f.actor}
           - **Auth Type**: ${f.authType}
-          - **Usage**: \`await ${f.name}({ connection, input: { ... } })\`
+          - **Usage**: Call function, then create NEW connection with token from result
           - ⚠️ **Do NOT use \`api.functional.*\` for \`${f.endpoint.method.toUpperCase()} ${f.endpoint.path}\`** - use this function instead
 
           \`\`\`typescript
@@ -151,6 +160,7 @@ export async function transformTestOperationWriteHistory(
 
           ### Generation Functions
           Use these to create test resources. They handle data preparation and API calls internally.
+          **Pass actor-specific connection** (e.g., \`userConnection\`), NOT base \`connection\`.
 
           | Function Name | Endpoint |
           |---------------|----------|
@@ -166,7 +176,7 @@ export async function transformTestOperationWriteHistory(
               (f) => StringUtil.trim`
           #### ${f.name}
           - **Endpoint**: \`${f.endpoint.method.toUpperCase()} ${f.endpoint.path}\`
-          - **Usage**: \`await ${f.name}({ connection, input: { ... } })\`
+          - **Usage**: \`await ${f.name}(userConnection, { ... })\` - pass actor-specific connection
           - ⚠️ **Do NOT use \`api.functional.*\` for \`${f.endpoint.method.toUpperCase()} ${f.endpoint.path}\`** - use this function instead
 
           \`\`\`typescript

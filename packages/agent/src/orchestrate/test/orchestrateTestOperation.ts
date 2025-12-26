@@ -46,9 +46,9 @@ export async function orchestrateTestOperation(
     AutoBeTestOperationProgrammer.replaceImportStatements({
       compiler: await ctx.compiler(),
       artifacts: procedure.artifacts,
-      prepares: props.prepares,
-      generates: props.generates,
-      authorizes: props.authorizes,
+      prepares: procedure.prepares,
+      generates: procedure.generates,
+      authorizes: procedure.authorizes,
       location: procedure.function.location,
       content: procedure.function.content,
     });
