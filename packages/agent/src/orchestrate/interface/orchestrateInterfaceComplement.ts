@@ -5,7 +5,7 @@ import {
   AutoBeProgressEventBase,
 } from "@autobe/interface";
 import { missedOpenApiSchemas } from "@autobe/utils";
-import { ILlmApplication, IValidation } from "@samchon/openapi";
+import { ILlmApplication, ILlmSchema, IValidation } from "@samchon/openapi";
 import { OpenApiV3_1Emender } from "@samchon/openapi/lib/converters/OpenApiV3_1Emender";
 import { IPointer } from "tstl";
 import typia from "typia";
@@ -44,7 +44,9 @@ async function step(
     life: number;
   },
 ): Promise<Record<string, AutoBeOpenApi.IJsonSchemaDescriptive>> {
-  const missedTypes: string[] = missedOpenApiSchemas(props.document);
+  const missedTypes: string[] = missedOpenApiSchemas(props.document).filter(
+    (k) => JsonSchemaValidator.isPreset(k) === false,
+  );
   if (missedTypes.length === 0) return props.document.components.schemas;
   else if (state.life === 0) return props.document.components.schemas;
 
@@ -244,6 +246,20 @@ function createController(
       },
     }),
   );
+  if (
+    JsonSchemaValidator.isObjectType({
+      operations: props.operations,
+      typeName: props.typeName,
+    }) === true
+  )
+    (
+      (
+        application.functions[0].parameters.$defs[
+          "IAutoBeInterfaceComplementApplication.IComplete"
+        ] as ILlmSchema.IObject
+      ).properties.schema as ILlmSchema.IReference
+    ).$ref = "AutoBeOpenApi.IJsonSchemaDescriptive.IObject";
+
   return {
     protocol: "class",
     name: SOURCE,
