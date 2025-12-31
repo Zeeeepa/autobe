@@ -130,7 +130,10 @@ const complementInterfaceOperations = (props: INextProps) => {
       if (op.responseBody !== null) typeNames.add(op.responseBody.typeName);
     }
     for (const key of typeNames)
-      if (props.local[schemaKind][key] === undefined)
+      if (
+        props.local[schemaKind][key] === undefined &&
+        props.all[schemaKind][key] !== undefined
+      )
         props.local[schemaKind][key] = props.all[schemaKind][key];
   }
 };
@@ -195,7 +198,10 @@ const complementInterfaceSchemas = (props: INextProps) => {
       },
     });
   for (const key of unique)
-    if (props.local[kind][key] === undefined)
+    if (
+      props.local[kind][key] === undefined &&
+      props.all[kind][key] !== undefined
+    )
       props.local[kind][key] = props.all[kind][key];
 
   // load related prisma schemas
