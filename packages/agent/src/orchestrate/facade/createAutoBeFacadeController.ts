@@ -1,15 +1,14 @@
-import { IAgenticaController } from "@agentica/core";
 import {
   AutoBeAnalyzeHistory,
   AutoBeAssistantMessageEvent,
   AutoBeAssistantMessageHistory,
+  AutoBeDatabaseHistory,
   AutoBeInterfaceHistory,
-  AutoBePrismaHistory,
   AutoBeRealizeHistory,
   AutoBeTestHistory,
 } from "@autobe/interface";
 import { StringUtil } from "@autobe/utils";
-import { ILlmApplication } from "@samchon/openapi";
+import { ILlmApplication, ILlmController } from "@samchon/openapi";
 import typia from "typia";
 
 import { AutoBeContext } from "../../context/AutoBeContext";
@@ -22,7 +21,7 @@ import { IAutoBeFacadeApplication } from "./histories/IAutoBeFacadeApplication";
 
 export const createAutoBeFacadeController = (props: {
   context: AutoBeContext;
-}): IAgenticaController.IClass => {
+}): ILlmController<IAutoBeFacadeApplication> => {
   const application: ILlmApplication =
     typia.llm.application<IAutoBeFacadeApplication>();
   return {
@@ -37,7 +36,7 @@ export const createAutoBeFacadeController = (props: {
           return {
             type: "in-progress",
             description: StringUtil.trim`
-              Requirements are not yet fully elicited, 
+              Requirements are not yet fully elicited,
               therefore additional questions will be made to the user.
             `,
           };
@@ -47,8 +46,8 @@ export const createAutoBeFacadeController = (props: {
             "Analysis completed successfully, and report has been published.",
         };
       },
-      prisma: async (next) => {
-        const history: AutoBeAssistantMessageHistory | AutoBePrismaHistory =
+      database: async (next) => {
+        const history: AutoBeAssistantMessageHistory | AutoBeDatabaseHistory =
           await orchestratePrisma(props.context, next);
         if (history.type === "assistantMessage")
           return {
@@ -59,11 +58,11 @@ export const createAutoBeFacadeController = (props: {
           type: history.compiled.type,
           description:
             history.compiled.type === "success"
-              ? "Prisma schemas have been generated successfully."
+              ? "Database schemas have been generated successfully."
               : history.result.success === false ||
                   history.compiled.type === "failure"
-                ? "Prisma schemas are generated, but compilation failed."
-                : "Unexpected error occurred while generating Prisma schemas.",
+                ? "Database schemas are generated, but compilation failed."
+                : "Unexpected error occurred while generating database schemas.",
         };
       },
       interface: async (next) => {
@@ -72,7 +71,7 @@ export const createAutoBeFacadeController = (props: {
         if (history.type === "assistantMessage")
           return {
             type: "prerequisites-not-satisfied",
-            description: "Prisma schemas are not yet completed.",
+            description: "Database schemas are not yet completed.",
           };
         return {
           type: "success",

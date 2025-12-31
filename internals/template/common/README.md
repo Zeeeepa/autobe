@@ -18,13 +18,13 @@ subgraph "Backend Coding Agent"
 end
 subgraph "Functional Agents"
   coder --"Requirements Analysis"--> analyze("{{ANALYSIS_EMOJI}} Analyze")
-  coder --"ERD"--> prisma("{{PRISMA_EMOJI}} Prisma")
+  coder --"ERD"--> database("{{DATABASE_EMOJI}} Database")
   coder --"API Design"--> interface("{{INTERFACE_EMOJI}} Interface")
   coder --"Test Codes" --> test("{{TEST_EMOJI}} Test")
   coder --"Main Program" --> realize("{{REALIZE_EMOJI}} Realize")
 end
 subgraph "Compiler Feedback"
-  prisma --"validates" --> prismaCompiler("Prisma Compiler")
+  database --"validates" --> prismaCompiler("Prisma Compiler")
   interface --"validates" --> openapiValidator("OpenAPI Validator")
   interface --"generates" --> tsCompiler("TypeScript Compiler")
   test --"validates" --> tsCompiler("TypeScript Compiler")
@@ -42,7 +42,7 @@ Waterfall Model | AutoBe Agent | Result
 ----------------|--------------|----------------------------------------------
 Requirements    | ✅ Facade       | Conversation History
 Analysis        | {{ANALYSIS_EMOJI}} Analyze      | [Requirement Analysis Report](docs/analysis)
-Design          | {{PRISMA_EMOJI}} Prisma       | [Entity Relationship Diagram](docs/ERD.md) / [Prisma Schema](prisma/schema)
+Design          | {{DATABASE_EMOJI}} Prisma       | [Entity Relationship Diagram](docs/ERD.md) / [Prisma Schema](prisma/schema)
 Design          | {{INTERFACE_EMOJI}} Interface    | [API Controllers](src/controllers) / [DTO Structures](src/api/structures)
 Development     | {{REALIZE_EMOJI}} Realize      | [API Provider Functions](src/providers)
 Testing         | {{TEST_EMOJI}} Test         | [E2E Test Functions](test/features/api)
@@ -115,7 +115,7 @@ Phase | Generated | FCSR | Token Consumption | Elapsed Time
 ------|-----------|------|-------------------|--------------
 {{BENCHMARK_AGGREGATE}}
 
-This table shows the comprehensive metrics for each phase of the AutoBE generation pipeline. For each phase (Analyze, Prisma, Interface, Test, Realize), it tracks:
+This table shows the comprehensive metrics for each phase of the AutoBE generation pipeline. For each phase (Analyze, Database, Interface, Test, Realize), it tracks:
 
 - **Phase**: The pipeline phase with success (✅) or failure (❌) indicator
 - **Generated**: Count of artifacts produced (e.g., actors, documents, namespaces, models, operations, schemas, functions)

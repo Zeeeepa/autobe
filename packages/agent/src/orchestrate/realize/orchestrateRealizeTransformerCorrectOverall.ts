@@ -1,6 +1,6 @@
 import {
+  AutoBeDatabase,
   AutoBeOpenApi,
-  AutoBePrisma,
   AutoBeProgressEventBase,
   AutoBeRealizeTransformerFunction,
 } from "@autobe/interface";
@@ -22,8 +22,8 @@ export const orchestrateRealizeTransformerCorrectOverall = async (
     progress: AutoBeProgressEventBase;
   },
 ): Promise<AutoBeRealizeTransformerFunction[]> => {
-  const prismaApplication: AutoBePrisma.IApplication =
-    ctx.state().prisma!.result.data;
+  const prismaApplication: AutoBeDatabase.IApplication =
+    ctx.state().database!.result.data;
   const document: AutoBeOpenApi.IDocument = ctx.state().interface!.document;
   const getNeighbors = (
     func: AutoBeRealizeTransformerFunction,
@@ -64,20 +64,20 @@ export const orchestrateRealizeTransformerCorrectOverall = async (
       // No additional files needed for transformers (unlike operations)
       additional: (_functions) => ({}),
 
-      // Create preliminary controller with only prismaSchemas support
+      // Create preliminary controller with only databaseSchemas support
       preliminary: (next) =>
-        new AutoBePreliminaryController<"prismaSchemas">({
+        new AutoBePreliminaryController<"databaseSchemas">({
           source: next.source,
           application:
             typia.json.application<IAutoBeRealizeTransformerCorrectApplication>(),
-          kinds: ["prismaSchemas"],
+          kinds: ["databaseSchemas"],
           state: ctx.state(),
           local: {
-            prismaSchemas: ctx
+            databaseSchemas: ctx
               .state()
-              .prisma!.result.data.files.map((f) => f.models)
+              .database!.result.data.files.map((f) => f.models)
               .flat()
-              .filter((m) => m.name === next.function.plan.prismaSchemaName),
+              .filter((m) => m.name === next.function.plan.databaseSchemaName),
           },
         }),
 

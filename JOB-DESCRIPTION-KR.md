@@ -35,13 +35,13 @@ subgraph "Backend Coding Agent"
 end
 subgraph "Functional Agents"
   coder --"Requirements Analysis"--> analyze("Analyze")
-  coder --"ERD"--> prisma("Prisma")
+  coder --"ERD"--> database("Database")
   coder --"API Design"--> interface("Interface")
   coder --"Test Codes" --> test("Test")
   coder --"Main Program" --> realize("Realize")
 end
 subgraph "Compiler Feedback"
-  prisma --"validates" --> prismaCompiler("Prisma Compiler")
+  database --"validates" --> prismaCompiler("Prisma Compiler")
   interface --"validates" --> openapiValidator("OpenAPI Validator")
   interface --"generates" --> tsCompiler("TypeScript Compiler")
   test --"validates" --> tsCompiler("TypeScript Compiler")
@@ -86,7 +86,7 @@ AutoBE 자체는 TypeScript와 AI Function Calling을 활용하여 개발되었�
 - API 설계 역량
 - OpenAPI와 JSON Schema 스펙에 대한 이해
 
-AutoBE는 Prisma 기반 데이터베이스 스키마와 OpenAPI 기반 API 명세를 생성하는 시스템입니다. RDB 정규화, 인덱스 설계, 관계 모델링에 대한 이해가 있다면 [Prisma 컴파일러](https://github.com/wrtnlabs/autobe/blob/main/packages/interface/src/prisma/AutoBePrisma.ts)가 생성하는 스키마의 품질을 높일 수 있습니다.
+AutoBE는 Prisma 기반 데이터베이스 스키마와 OpenAPI 기반 API 명세를 생성하는 시스템입니다. RDB 정규화, 인덱스 설계, 관계 모델링에 대한 이해가 있다면 [Prisma 컴파일러](https://github.com/wrtnlabs/autobe/blob/main/packages/interface/src/database/AutoBeDatabase.ts)가 생성하는 스키마의 품질을 높일 수 있습니다.
 
 REST API 설계 원칙과 [OpenAPI 3.1 스펙](https://github.com/wrtnlabs/autobe/blob/main/packages/interface/src/openapi/AutoBeOpenApi.ts)에 익숙하다면 Interface 컴파일러가 생성하는 API 명세의 완성도를 개선할 수 있습니다. JSON Schema의 제약 조건과 검증 규칙을 이해하고 있다면 감마 로드맵의 "JSON Schema 가이드라인" 작업에도 직접 기여할 수 있습니다.
 
@@ -125,7 +125,7 @@ AutoBE는 현재 TypeScript + NestJS + Prisma 스택으로만 백엔드를 생�
 
 > 현재 AutoBE 의 언어 중립적 AST 구조
 >
-> - [`AutoBePrisma.IApplication`](https://github.com/wrtnlabs/autobe/blob/main/packages/interface/src/prisma/AutoBePrisma.ts)
+> - [`AutoBeDatabase.IApplication`](https://github.com/wrtnlabs/autobe/blob/main/packages/interface/src/database/AutoBeDatabase.ts)
 > - [`AutoBeOpenApi.IDocument`](https://github.com/wrtnlabs/autobe/blob/main/packages/interface/src/openapi/AutoBeOpenApi.ts)
 > - [`AutoBeTest.IFunction`](https://github.com/wrtnlabs/autobe/blob/main/packages/interface/src/test/AutoBeTest.ts)
 

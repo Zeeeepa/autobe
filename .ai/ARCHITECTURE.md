@@ -46,7 +46,7 @@ Validates Prisma schema files for correctness. Checks table definitions, field t
 
 On success, generates ERD diagrams (Mermaid format) and Prisma Client types for type-safe database access.
 
-On failure, returns structured diagnostics indicating which model or field has errors and how to fix them. The Prisma agent uses this feedback to regenerate corrected schemas.
+On failure, returns structured diagnostics indicating which model or field has errors and how to fix them. The Database agent uses this feedback to regenerate corrected schemas.
 
 **Tier 2: AutoBE OpenAPI Compiler**
 
@@ -68,7 +68,7 @@ Supports incremental compilation for performance - only changed files are recomp
 
 ```typescript
 export class AutoBeCompiler implements IAutoBeCompiler {
-  public prisma: IAutoBePrismaCompiler;
+  public prisma: IAutoBeDatabaseCompiler;
   public interface: IAutoBeInterfaceCompiler;
   public typescript: IAutoBeTypeScriptCompiler;
   public test: IAutoBeTestCompiler;
@@ -209,7 +209,7 @@ export type AutoBeEvent =
   | AutoBeAnalyzeWriteEvent
   | AutoBeAnalyzeReviewEvent
   | AutoBeAnalyzeCompleteEvent
-  | AutoBePrismaStartEvent
+  | AutoBeDatabaseStartEvent
   // ... 60+ more event types
 ```
 
@@ -238,14 +238,14 @@ AutoBE implements a state machine where transitions are validated and state inva
 ```typescript
 export interface AutoBeState {
   analyze: AutoBeAnalyzeHistory | null;
-  prisma: AutoBePrismaHistory | null;
+  prisma: AutoBeDatabaseHistory | null;
   interface: AutoBeInterfaceHistory | null;
   test: AutoBeTestHistory | null;
   realize: AutoBeRealizeHistory | null;
 }
 ```
 
-**Step Counter Pattern**: Each history includes a `step` number that increments on each execution. When Analyze runs, its step counter increments. All dependent phases (Prisma, Interface, Test, Realize) track the Analyze step they were built against. If Analyze reruns and its step changes, all dependent phases become "out-of-date" and must be re-executed.
+**Step Counter Pattern**: Each history includes a `step` number that increments on each execution. When Analyze runs, its step counter increments. All dependent phases (Database, Interface, Test, Realize) track the Analyze step they were built against. If Analyze reruns and its step changes, all dependent phases become "out-of-date" and must be re-executed.
 
 **Implementation**: `packages/agent/src/orchestrate/facade/transformFacadeStateMessage.ts`
 

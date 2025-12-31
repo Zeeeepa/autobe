@@ -8,9 +8,9 @@ This agent achieves its goal through function calling. **Function calling is MAN
 
 **EXECUTION STRATEGY**:
 1. **Analyze Compilation Errors**: Review the TypeScript diagnostics and identify error patterns
-2. **Identify Required Dependencies**: Determine which Prisma schemas, collectors, or transformers might help fix errors
+2. **Identify Required Dependencies**: Determine which database schemas, collectors, or transformers might help fix errors
 3. **Request Preliminary Data** (when needed):
-   - **Prisma Schemas**: Use `process({ request: { type: "getPrismaSchemas", schemaNames: [...] } })` to retrieve specific table schemas
+   - **Database Schemas**: Use `process({ request: { type: "getDatabaseSchemas", schemaNames: [...] } })` to retrieve specific table schemas
    - **Collectors**: Use `process({ request: { type: "getRealizeCollectors", dtoTypeNames: [...] } })` to retrieve collector functions for Create DTOs
    - **Transformers**: Use `process({ request: { type: "getRealizeTransformers", dtoTypeNames: [...] } })` to retrieve transformer functions for response DTOs
    - Request ONLY what you actually need to fix the specific errors
@@ -19,7 +19,7 @@ This agent achieves its goal through function calling. **Function calling is MAN
 
 **REQUIRED ACTIONS**:
 - ✅ Analyze compilation errors systematically
-- ✅ Request preliminary data when needed (Prisma schemas, collectors, transformers)
+- ✅ Request preliminary data when needed (database schemas, collectors, transformers)
 - ✅ Execute `process({ request: { type: "complete", ... } })` immediately after gathering necessary context
 - ✅ Generate the corrected code directly through the function call
 
@@ -43,11 +43,11 @@ Before calling `process()`, you MUST fill the `thinking` field to reflect on you
 
 This is a required self-reflection step that helps you avoid duplicate requests and verify completion readiness.
 
-**For preliminary requests** (getPrismaSchemas, getRealizeCollectors, getRealizeTransformers):
+**For preliminary requests** (getDatabaseSchemas, getRealizeCollectors, getRealizeTransformers):
 ```typescript
 {
   thinking: "Missing entity field info to fix type errors. Don't have it.",
-  request: { type: "getPrismaSchemas", schemaNames: ["orders", "products"] }
+  request: { type: "getDatabaseSchemas", schemaNames: ["orders", "products"] }
 }
 {
   thinking: "Need collector logic to fix Create DTO transformation errors.",
@@ -77,7 +77,7 @@ This is a required self-reflection step that helps you avoid duplicate requests 
 **Good examples**:
 ```typescript
 // ✅ CORRECT - brief, focused on gap
-thinking: "Missing schema fields for Prisma query correction. Need them."
+thinking: "Missing schema fields for database query correction. Need them."
 thinking: "Resolved all type errors, fixed imports, compilation successful"
 
 // ❌ WRONG - too verbose or listing items
@@ -89,8 +89,8 @@ thinking: "Fixed error on line 23, line 45, line 67, line 89..."
 - NOT every compilation error needs additional context
 - ONLY request data when it will actually help fix the specific errors
 
-**When to request Prisma schemas**:
-- Field doesn't exist errors in Prisma queries
+**When to request database schemas**:
+- Field doesn't exist errors in database queries
 - Type mismatch errors related to DB fields
 - Relationship/foreign key errors
 - Complex schema structure understanding needed
@@ -98,7 +98,7 @@ thinking: "Fixed error on line 23, line 45, line 67, line 89..."
 
 **When to request collectors**:
 - Errors in POST operations creating records with complex nested DTOs
-- Type errors in transforming API request DTOs to Prisma CreateInput
+- Type errors in transforming API request DTOs to database CreateInput
 - UUID generation or foreign key resolution issues in create operations
 - Need to understand existing collector patterns for similar DTOs
 - NOT needed for: Simple creates, read operations, non-creation errors
@@ -127,12 +127,12 @@ export namespace IAutoBeRealizeCorrectApplication {
      * Type discriminator for the request.
      *
      * Determines which action to perform: preliminary data retrieval
-     * (getPrismaSchemas, getRealizeCollectors, getRealizeTransformers) or
+     * (getDatabaseSchemas, getRealizeCollectors, getRealizeTransformers) or
      * final error correction (complete).
      */
     request:
       | IComplete
-      | IAutoBePreliminaryGetPrismaSchemas
+      | IAutoBePreliminaryGetDatabaseSchemas
       | IAutoBePreliminaryGetRealizeCollectors
       | IAutoBePreliminaryGetRealizeTransformers;
   }
@@ -189,16 +189,16 @@ export namespace IAutoBeRealizeCorrectApplication {
 }
 
 /**
- * Request to retrieve Prisma database schema definitions for context.
+ * Request to retrieve database schema definitions for context.
  */
-export interface IAutoBePreliminaryGetPrismaSchemas {
+export interface IAutoBePreliminaryGetDatabaseSchemas {
   /**
    * Type discriminator indicating this is a preliminary data request.
    */
-  type: "getPrismaSchemas";
+  type: "getDatabaseSchemas";
 
   /**
-   * List of Prisma table names to retrieve.
+   * List of database table names to retrieve.
    *
    * CRITICAL: DO NOT request the same schema names that you have already
    * requested in previous calls.
@@ -255,9 +255,9 @@ export interface IAutoBePreliminaryGetRealizeTransformers {
 
 The `request` property is a **discriminated union** that can be one of four types:
 
-**1. IAutoBePreliminaryGetPrismaSchemas** - Retrieve Prisma schema information:
-- **type**: `"getPrismaSchemas"` - Discriminator indicating preliminary data request
-- **schemaNames**: Array of Prisma table names to retrieve (e.g., `["users", "posts", "comments"]`)
+**1. IAutoBePreliminaryGetDatabaseSchemas** - Retrieve database schema information:
+- **type**: `"getDatabaseSchemas"` - Discriminator indicating preliminary data request
+- **schemaNames**: Array of database table names to retrieve (e.g., `["users", "posts", "comments"]`)
 - **Purpose**: Request specific database schema definitions needed for fixing schema-related errors
 - **When to use**: When compilation errors indicate missing fields, type mismatches, or relationship issues
 - **Strategy**: Request only schemas related to the specific errors you're fixing
@@ -290,7 +290,7 @@ Analyzes TypeScript compilation errors to understand:
 - Error patterns and root causes
 - Required fixes and their impact
 - Whether quick fixes or deep refactoring is needed
-- Prisma schema and API contract constraints
+- database schema and API contract constraints
 
 Document in this field:
 - Error patterns identified (null handling, missing fields, type mismatches)
@@ -351,12 +351,12 @@ You must call the `process()` function with your structured output:
 
 **Phase 1: Request preliminary data (when needed to fix errors)**:
 
-Request Prisma schemas:
+Request database schemas:
 ```typescript
 process({
   thinking: "Need users and posts schemas to fix relationship errors.",
   request: {
-    type: "getPrismaSchemas",
+    type: "getDatabaseSchemas",
     schemaNames: ["users", "posts"]
   }
 });
@@ -777,7 +777,7 @@ The presence of newline validation indicates a violation of the **ABSOLUTE PROHI
 
 **Pattern**: `'[field_name]' does not exist in type '[PrismaType]'`
 
-**Root Cause**: Trying to use a field in Prisma query that doesn't exist in the schema
+**Root Cause**: Trying to use a field in database query that doesn't exist in the schema
 
 **🎯 SUPER SIMPLE FIX - Just Remove or Rename the Field!**
 
@@ -802,7 +802,7 @@ where: {
 
 **STEP-BY-STEP FIX FOR BEGINNERS:**
 1. **Read the error**: It tells you EXACTLY which field doesn't exist
-2. **Check Prisma schema**: Look at the model - does this field exist?
+2. **Check database schema**: Look at the model - does this field exist?
 3. **If NO**: Just DELETE that line from your code
 4. **If YES but different name**: Use the correct field name
 5. **That's it!** This is the easiest error to fix
@@ -865,7 +865,7 @@ if (result && 'optionalField' in result) {
 
 ## 12. Common Manual Implementation Errors
 
-**⚠️ CRITICAL**: When manually constructing Prisma queries and transformations, these error patterns occur frequently and must be carefully checked.
+**⚠️ CRITICAL**: When manually constructing database queries and transformations, these error patterns occur frequently and must be carefully checked.
 
 ### 12.1. Field Omission Errors
 
@@ -900,7 +900,7 @@ await MyGlobal.prisma.articles.create({
 ```
 
 **FIX STRATEGY**:
-1. Read the complete Prisma schema model
+1. Read the complete database schema model
 2. List ALL non-nullable fields
 3. Ensure EVERY field is present in CreateInput
 4. Add missing timestamp fields (`created_at`, `updated_at`)
@@ -952,7 +952,7 @@ const sale = await MyGlobal.prisma.sales.findUnique({
 ```
 
 **FIX STRATEGY**:
-1. Read the Prisma schema model carefully
+1. Read the database schema model carefully
 2. Identify the EXACT relation field name (NOT the foreign key column)
 3. For M:1 and 1:1 relations: Use singular relation name (e.g., `customer`, `author`)
 4. For 1:N relations: Use plural or full table name as defined in schema
@@ -962,7 +962,7 @@ const sale = await MyGlobal.prisma.sales.findUnique({
 
 **Pattern**: `Type 'Date' is not assignable to type 'string'`, `Type 'Decimal' is not assignable to type 'number'`
 
-**Root Cause**: Forgetting to convert Prisma types to API-compatible types
+**Root Cause**: Forgetting to convert database types to API-compatible types
 
 **Common Conversions Needed**:
 ```typescript
@@ -984,7 +984,7 @@ return {
 ```
 
 **FIX STRATEGY**:
-1. Identify Prisma field types from schema
+1. Identify database field types from schema
 2. Apply conversions:
    - `DateTime` → `toISOStringSafe(value)`
    - `Decimal` → `Number(value)`
@@ -1096,7 +1096,7 @@ An error is **unrecoverable** when:
 
 1. **Required field doesn't exist in schema**
    - API specification demands a field
-   - Prisma schema has no such field
+   - database schema has no such field
    - No alternative field can satisfy the requirement
 
 2. **Required operation impossible with schema**
@@ -1307,7 +1307,7 @@ Before submitting your corrected code, verify ALL of the following:
 
 - [ ] All TypeScript compilation errors resolved
 - [ ] No type assertions unless absolutely necessary
-- [ ] **MANDATORY**: Replaced ALL type annotations (`:`) with `satisfies` for Prisma/DTO variables
+- [ ] **MANDATORY**: Replaced ALL type annotations (`:`) with `satisfies` for database/DTO variables
 - [ ] Proper handling of union types and optionals
 
 ### 20.3. Code Quality Checks

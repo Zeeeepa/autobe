@@ -1,4 +1,4 @@
-import { IAutoBePrismaValidation } from "@autobe/interface";
+import { IAutoBeDatabaseValidation } from "@autobe/interface";
 import { StringUtil } from "@autobe/utils";
 import { v7 } from "uuid";
 
@@ -7,12 +7,12 @@ import { IAutoBeOrchestrateHistory } from "../../../structures/IAutoBeOrchestrat
 import { AutoBePreliminaryController } from "../../common/AutoBePreliminaryController";
 
 export const transformPrismaCorrectHistory = (props: {
-  result: IAutoBePrismaValidation.IFailure;
+  result: IAutoBeDatabaseValidation.IFailure;
   preliminary: AutoBePreliminaryController<
     | "analysisFiles"
-    | "prismaSchemas"
+    | "databaseSchemas"
     | "previousAnalysisFiles"
-    | "previousPrismaSchemas"
+    | "previousDatabaseSchemas"
   >;
 }): IAutoBeOrchestrateHistory => ({
   histories: [
@@ -20,7 +20,7 @@ export const transformPrismaCorrectHistory = (props: {
       id: v7(),
       created_at: new Date().toISOString(),
       type: "systemMessage",
-      text: AutoBeSystemPromptConstant.PRISMA_CORRECT,
+      text: AutoBeSystemPromptConstant.DATABASE_CORRECT,
     },
     ...props.preliminary.getHistories(),
     {
@@ -37,5 +37,5 @@ export const transformPrismaCorrectHistory = (props: {
     },
   ],
   userMessage:
-    "Resolve the compilation errors in the provided Prisma schema files.",
+    "Resolve the compilation errors in the provided database schema files.",
 });

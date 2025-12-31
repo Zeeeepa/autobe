@@ -1,6 +1,6 @@
 import {
+  AutoBeDatabase,
   AutoBeOpenApi,
-  AutoBePrisma,
   AutoBeRealizeCollectorMapping,
   AutoBeRealizeCollectorPlan,
   IAutoBeCompiler,
@@ -36,8 +36,8 @@ export namespace AutoBeRealizeCollectorProgrammer {
   }
 
   export function getMappingMetadata(props: {
-    application: AutoBePrisma.IApplication;
-    model: AutoBePrisma.IModel;
+    application: AutoBeDatabase.IApplication;
+    model: AutoBeDatabase.IModel;
   }): AutoBeRealizeCollectorMapping.Metadata[] {
     return [
       {
@@ -83,8 +83,8 @@ export namespace AutoBeRealizeCollectorProgrammer {
   export function writeTemplate(props: {
     plan: AutoBeRealizeCollectorPlan;
     body: AutoBeOpenApi.IJsonSchema;
-    model: AutoBePrisma.IModel;
-    application: AutoBePrisma.IApplication;
+    model: AutoBeDatabase.IModel;
+    application: AutoBeDatabase.IApplication;
   }): string {
     const mappings: string[] = getMappingMetadata(props).map((r) => r.member);
     return StringUtil.trim`
@@ -96,7 +96,7 @@ export namespace AutoBeRealizeCollectorProgrammer {
             props.plan.references
               .map(
                 (r) =>
-                  `${NamingConvention.camel(r.prismaSchemaName)}: IEntity; // ${r.source}`,
+                  `${NamingConvention.camel(r.databaseSchemaName)}: IEntity; // ${r.source}`,
               )
               .join("\n")
           }
@@ -122,7 +122,7 @@ export namespace AutoBeRealizeCollectorProgrammer {
         }) {
           return {
 ${mappings.map((r) => `      ${r}: ...,`).join("\n")}
-          } satisfies Prisma.${props.plan.prismaSchemaName}CreateInput;
+          } satisfies Prisma.${props.plan.databaseSchemaName}CreateInput;
         }
       }
     `;
@@ -223,7 +223,7 @@ ${mappings.map((r) => `      ${r}: ...,`).join("\n")}
   }
 
   export function validate(props: {
-    application: AutoBePrisma.IApplication;
+    application: AutoBeDatabase.IApplication;
     plan: AutoBeRealizeCollectorPlan;
     mappings: AutoBeRealizeCollectorMapping[];
     neighbors: AutoBeRealizeCollectorPlan[];
@@ -270,15 +270,15 @@ ${mappings.map((r) => `      ${r}: ...,`).join("\n")}
   }
 
   function validateMappings(props: {
-    application: AutoBePrisma.IApplication;
+    application: AutoBeDatabase.IApplication;
     errors: IValidation.IError[];
     plan: AutoBeRealizeCollectorPlan;
     mappings: AutoBeRealizeCollectorMapping[];
   }): void {
-    const model: AutoBePrisma.IModel = props.application.files
+    const model: AutoBeDatabase.IModel = props.application.files
       .map((f) => f.models)
       .flat()
-      .find((m) => m.name === props.plan.prismaSchemaName)!;
+      .find((m) => m.name === props.plan.databaseSchemaName)!;
     const required: AutoBeRealizeCollectorMapping.Metadata[] =
       getMappingMetadata({
         application: props.application,

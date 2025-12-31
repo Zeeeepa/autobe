@@ -1,5 +1,5 @@
 import {
-  AutoBePrismaCorrectEvent,
+  AutoBeDatabaseCorrectEvent,
   AutoBeRealizeAuthorizationCorrectEvent,
   AutoBeRealizeCorrectEvent,
   AutoBeTestCorrectEvent,
@@ -12,7 +12,7 @@ import { EventCard, EventContent, EventHeader } from "./common";
 export interface IAutoBeCorrectEventMovieProps {
   /** Correct event to display */
   event:
-    | AutoBePrismaCorrectEvent
+    | AutoBeDatabaseCorrectEvent
     | AutoBeTestCorrectEvent
     | AutoBeRealizeCorrectEvent
     | AutoBeRealizeAuthorizationCorrectEvent;
@@ -20,7 +20,7 @@ export interface IAutoBeCorrectEventMovieProps {
 
 /** Event type definition */
 type CorrectEventType =
-  | "prismaCorrect"
+  | "databaseCorrect"
   | "testCorrect"
   | "realizeCorrect"
   | "realizeAuthorizationCorrect";
@@ -31,7 +31,7 @@ function getStepConfig(eventType: CorrectEventType): {
   description: string;
 } {
   switch (eventType) {
-    case "prismaCorrect":
+    case "databaseCorrect":
       return {
         title: "Prisma Schema Corrected",
         description: "Database schema has been successfully corrected",
@@ -137,9 +137,9 @@ function getEventDetails(
   };
 
   switch (event.type) {
-    case "prismaCorrect":
+    case "databaseCorrect":
       const prismaEvent = event as IAutoBeCorrectEventMovieProps["event"] & {
-        type: "prismaCorrect";
+        type: "databaseCorrect";
       };
       return (
         <div style={containerStyle}>

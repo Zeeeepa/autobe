@@ -124,11 +124,11 @@ async function process(
 ): Promise<AutoBeInterfacePrerequisite[]> {
   const preliminary: AutoBePreliminaryController<
     | "analysisFiles"
-    | "prismaSchemas"
+    | "databaseSchemas"
     | "interfaceOperations"
     | "interfaceSchemas"
     | "previousAnalysisFiles"
-    | "previousPrismaSchemas"
+    | "previousDatabaseSchemas"
     | "previousInterfaceOperations"
     | "previousInterfaceSchemas"
   > = new AutoBePreliminaryController({
@@ -137,11 +137,11 @@ async function process(
     source: SOURCE,
     kinds: [
       "analysisFiles",
-      "prismaSchemas",
+      "databaseSchemas",
       "interfaceOperations",
       "interfaceSchemas",
       "previousAnalysisFiles",
-      "previousPrismaSchemas",
+      "previousDatabaseSchemas",
       "previousInterfaceOperations",
       "previousInterfaceSchemas",
     ],
@@ -189,7 +189,7 @@ async function process(
         operations: pointer.value,
         total: props.progress.total,
         completed: props.progress.completed,
-        step: ctx.state().prisma?.step ?? 0,
+        step: ctx.state().database?.step ?? 0,
       });
       return out(result)(pointer.value);
     }
@@ -204,12 +204,12 @@ function createController(props: {
   prerequisitesNotFound: string;
   preliminary: AutoBePreliminaryController<
     | "analysisFiles"
-    | "prismaSchemas"
+    | "databaseSchemas"
     | "interfaceOperations"
     | "interfaceSchemas"
     | "previousInterfaceOperations"
     | "previousAnalysisFiles"
-    | "previousPrismaSchemas"
+    | "previousDatabaseSchemas"
     | "previousInterfaceSchemas"
   >;
   build: (next: AutoBeInterfacePrerequisite[]) => void;

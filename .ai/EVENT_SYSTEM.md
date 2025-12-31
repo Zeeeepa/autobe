@@ -25,15 +25,15 @@ export type AutoBeEvent =
   | AutoBeAnalyzeReviewEvent
   | AutoBeAnalyzeCompleteEvent
 
-  // Prisma phase (9 events)
-  | AutoBePrismaStartEvent
-  | AutoBePrismaComponentEvent
-  | AutoBePrismaSchemaEvent
-  | AutoBePrismaInsufficientEvent
-  | AutoBePrismaReviewEvent
-  | AutoBePrismaValidateEvent
-  | AutoBePrismaCorrectEvent
-  | AutoBePrismaCompleteEvent
+  // Database phase (9 events)
+  | AutoBeDatabaseStartEvent
+  | AutoBeDatabaseComponentEvent
+  | AutoBeDatabaseSchemaEvent
+  | AutoBeDatabaseInsufficientEvent
+  | AutoBeDatabaseReviewEvent
+  | AutoBeDatabaseValidateEvent
+  | AutoBeDatabaseCorrectEvent
+  | AutoBeDatabaseCompleteEvent
 
   // Interface phase (15+ events)
   | AutoBeInterfaceStartEvent
@@ -328,8 +328,8 @@ export class AutoBeAgent {
     // Update state based on history type
     if (history.type === "analyze") {
       this.state_.analyze = history;
-    } else if (history.type === "prisma") {
-      this.state_.prisma = history;
+    } else if (history.type === "database") {
+      this.state_.database = history;
     }
     // ...
   }
@@ -353,7 +353,7 @@ const agent = new AutoBeAgent({
 
 // State is automatically rebuilt from histories
 console.log(agent.state().analyze);  // Reconstructed from analyzeComplete event
-console.log(agent.state().prisma);   // Reconstructed from prismaComplete event
+console.log(agent.state().database); // Reconstructed from databaseComplete event
 ```
 
 ### Event Serialization
@@ -388,7 +388,7 @@ export const groupEvents = (events: AutoBeEvent[]): EventGroup[] => {
     if (event.type.endsWith("Start")) {
       // Start new group
       currentGroup = {
-        phase: extractPhase(event.type),  // "analyze", "prisma", etc.
+        phase: extractPhase(event.type),  // "analyze", "database", etc.
         events: [event],
         status: "in-progress",
       };
@@ -534,7 +534,7 @@ Tests can inject pre-recorded event streams:
 ```typescript
 const mockHistories: AutoBeHistory[] = [
   { type: "analyze", step: 1, documents: [...] },
-  { type: "prisma", step: 1, analyzeStep: 1, schemas: [...] },
+  { type: "database", step: 1, analyzeStep: 1, schemas: [...] },
 ];
 
 const agent = new AutoBeAgent({

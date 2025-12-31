@@ -1,6 +1,6 @@
 import { AutoBeRealizeCollectorMapping } from "@autobe/interface";
 
-import { IAutoBePreliminaryGetPrismaSchemas } from "../../common/structures/IAutoBePreliminaryGetPrismaSchemas";
+import { IAutoBePreliminaryGetDatabaseSchemas } from "../../common/structures/IAutoBePreliminaryGetDatabaseSchemas";
 
 export interface IAutoBeRealizeCollectorCorrectApplication {
   /**
@@ -24,7 +24,7 @@ export namespace IAutoBeRealizeCollectorCorrectApplication {
      * Before requesting preliminary data or completing your task, reflect on
      * your current state and explain your reasoning:
      *
-     * For preliminary requests (getPrismaSchemas):
+     * For preliminary requests (getDatabaseSchemas):
      *
      * - What critical information is missing that you don't already have?
      * - Why do you need it specifically right now?
@@ -46,11 +46,11 @@ export namespace IAutoBeRealizeCollectorCorrectApplication {
      * Type discriminator for the request.
      *
      * Determines which action to perform: preliminary data retrieval
-     * (getPrismaSchemas) or final error correction (complete). When preliminary
-     * returns empty array, that type is removed from the union, physically
-     * preventing repeated calls.
+     * (getDatabaseSchemas) or final error correction (complete). When
+     * preliminary returns empty array, that type is removed from the union,
+     * physically preventing repeated calls.
      */
-    request: IComplete | IAutoBePreliminaryGetPrismaSchemas;
+    request: IComplete | IAutoBePreliminaryGetDatabaseSchemas;
   }
 
   /**
@@ -79,7 +79,7 @@ export namespace IAutoBeRealizeCollectorCorrectApplication {
      * 2. Root Cause Analysis - Identify WHY each error occurs (wrong field, type
      *    mismatch, etc.)
      * 3. Schema Verification - Cross-check error-related fields against actual
-     *    Prisma schema
+     *    database schema
      * 4. Correction Strategy - Specific fix for each error (not workarounds)
      *
      * This forces you to understand the REAL problem (not guess) and plan
@@ -90,13 +90,13 @@ export namespace IAutoBeRealizeCollectorCorrectApplication {
     /**
      * Field-by-field mapping verification for complete coverage.
      *
-     * Review EVERY field and relation from the Prisma schema to ensure correct
+     * Review EVERY field and relation from the database schema to ensure correct
      * handling. This systematic approach catches errors beyond what the
      * compiler reports and prevents new issues.
      *
-     * For each Prisma member, document:
+     * For each database schema member, document:
      *
-     * - `member`: Exact field/relation name from Prisma schema
+     * - `member`: Exact field/relation name from database schema
      * - `kind`: Whether it's a scalar field, belongsTo, hasOne, or hasMany
      *   relation
      * - `nullable`: Whether the field/relation is nullable (true/false for
@@ -110,9 +110,9 @@ export namespace IAutoBeRealizeCollectorCorrectApplication {
      * scalar fields.
      *
      * The `nullable` property forces you to explicitly identify nullability
-     * constraints BEFORE deciding correction strategy. This prevents errors like
-     * assigning null to non-nullable fields or using null instead of undefined
-     * for optional belongsTo relations.
+     * constraints BEFORE deciding correction strategy. This prevents errors
+     * like assigning null to non-nullable fields or using null instead of
+     * undefined for optional belongsTo relations.
      *
      * Even fields without errors should be included with "No change needed" to
      * ensure complete review. Missing even a single field could hide bugs.
@@ -127,7 +127,7 @@ export namespace IAutoBeRealizeCollectorCorrectApplication {
      * - Documents correction decisions explicitly
      * - Prevents regression in working fields
      *
-     * The validator will cross-check this against the Prisma schema to ensure
+     * The validator will cross-check this against the database schema to ensure
      * nothing was overlooked.
      */
     mappings: AutoBeRealizeCollectorMapping[];
@@ -139,7 +139,7 @@ export namespace IAutoBeRealizeCollectorCorrectApplication {
      * strategy. EVERY error in think Section 1 inventory MUST be addressed.
      * Implement:
      *
-     * - Field name corrections (exact names from Prisma schema)
+     * - Field name corrections (exact names from database schema)
      * - Type fixes (proper CreateInput types, nullable handling)
      * - Neighbor collector reuse (replace inline logic if collector exists)
      * - Relationship fixes (connect/create syntax)

@@ -151,7 +151,7 @@ export class AutoBePreliminaryController<Kind extends AutoBePreliminaryKind> {
   /**
    * Returns data types enabled for this controller.
    *
-   * @returns Array of enabled kinds (e.g., `["prismaSchemas",
+   * @returns Array of enabled kinds (e.g., `["databaseSchemas",
    *   "interfaceSchemas"]`).
    */
   public getKinds(): Kind[] {
@@ -159,7 +159,7 @@ export class AutoBePreliminaryController<Kind extends AutoBePreliminaryKind> {
   }
 
   /**
-   * Returns configuration (e.g., Prisma format: `"ast"` | `"text"`).
+   * Returns configuration (e.g., database schema format: `"ast"` | `"text"`).
    *
    * @returns Controller configuration object.
    */
@@ -274,7 +274,10 @@ export namespace AutoBePreliminaryController {
     /** LLM application schema for function calling validation. */
     application: IJsonSchemaApplication;
 
-    /** Data types to enable (e.g., `["prismaSchemas", "interfaceOperations"]`). */
+    /**
+     * Data types to enable (e.g., `["databaseSchemas",
+     * "interfaceOperations"]`).
+     */
     kinds: Kind[];
 
     /** Current AutoBe state containing generated artifacts. */
@@ -301,7 +304,7 @@ export namespace AutoBePreliminaryController {
 
   /** Controller configuration options. */
   export interface IConfig<Kind extends AutoBePreliminaryKind> {
-    /** Prisma schema format: `"ast"` (JSON) or `"text"` (Prisma DSL). */
-    prisma: Kind extends "prismaSchemas" ? "ast" | "text" : never;
+    /** Database schema format: `"ast"` (JSON) or `"text"` (Prisma DSL). */
+    prisma: Kind extends "databaseSchemas" ? "ast" | "text" : never;
   }
 }

@@ -7,11 +7,7 @@ import {
   AutoBeRealizeTransformerPlan,
 } from "@autobe/interface";
 import { StringUtil } from "@autobe/utils";
-import {
-  ILlmApplication,
-  ILlmController,
-  IValidation,
-} from "@samchon/openapi";
+import { ILlmApplication, ILlmController, IValidation } from "@samchon/openapi";
 import { IPointer } from "tstl";
 import typia from "typia";
 import { v4 } from "uuid";
@@ -47,7 +43,7 @@ export async function orchestrateRealizeTransformerPlan(
   const prismaSchemaNames: Set<string> = new Set(
     ctx
       .state()
-      .prisma!.result.data.files.map((f) => f.models)
+      .database!.result.data.files.map((f) => f.models)
       .flat()
       .map((m) => m.name),
   );
@@ -83,13 +79,13 @@ async function process(
   },
 ): Promise<AutoBeRealizeTransformerPlan[]> {
   const preliminary: AutoBePreliminaryController<
-    "prismaSchemas" | "interfaceSchemas"
+    "databaseSchemas" | "interfaceSchemas"
   > = new AutoBePreliminaryController({
     state: ctx.state(),
     source: SOURCE,
     application:
       typia.json.application<IAutoBeRealizeTransformerPlanApplication>(),
-    kinds: ["prismaSchemas", "interfaceSchemas"],
+    kinds: ["databaseSchemas", "interfaceSchemas"],
     local: {
       interfaceSchemas: Object.fromEntries(
         Object.entries(props.document.components.schemas).filter(([key]) =>
@@ -123,12 +119,12 @@ async function process(
     if (pointer.value === null) return out(result)(null);
 
     const plans: AutoBeRealizeTransformerPlan[] = pointer.value.plans
-      .filter((p) => p.prismaSchemaName !== null)
+      .filter((p) => p.databaseSchemaName !== null)
       .map((p) => ({
         type: "transformer",
         dtoTypeName: p.dtoTypeName,
         thinking: p.thinking,
-        prismaSchemaName: p.prismaSchemaName!,
+        databaseSchemaName: p.databaseSchemaName!,
       }));
     const event: AutoBeRealizePlanEvent = {
       type: "realizePlan",
@@ -151,10 +147,9 @@ function createController(props: {
   dtoTypeNames: string[];
   build: (next: IAutoBeRealizeTransformerPlanApplication.IComplete) => void;
   preliminary: AutoBePreliminaryController<
-    "prismaSchemas" | "interfaceSchemas"
+    "databaseSchemas" | "interfaceSchemas"
   >;
 }): ILlmController {
-
   const validate: Validator = (input) => {
     const result: IValidation<IAutoBeRealizeTransformerPlanApplication.IProps> =
       typia.validate<IAutoBeRealizeTransformerPlanApplication.IProps>(input);
@@ -181,17 +176,17 @@ function createController(props: {
           `,
         });
       if (
-        plan.prismaSchemaName !== null &&
-        props.prismaSchemaNames.has(plan.prismaSchemaName) === false
+        plan.databaseSchemaName !== null &&
+        props.prismaSchemaNames.has(plan.databaseSchemaName) === false
       )
         errors.push({
-          path: `$input.request.plans[${i}].prismaSchemaName`,
-          value: plan.prismaSchemaName,
+          path: `$input.request.plans[${i}].databaseSchemaName`,
+          value: plan.databaseSchemaName,
           expected: Array.from(props.prismaSchemaNames)
             .map((s) => JSON.stringify(s))
             .join(" | "),
           description: StringUtil.trim`
-            The Prisma schema name must be one of the available Prisma schemas.
+            The database schema name must be one of the available database schemas.
 
             ${Array.from(props.prismaSchemaNames)
               .map((s) => `- ${s}`)

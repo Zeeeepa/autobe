@@ -291,7 +291,7 @@ export const validateInterfacePrerequisites = (state: AutoBeState): ValidationRe
     };
   }
 
-  if (!state.prisma || state.prisma.analyzeStep !== state.analyze.step) {
+  if (!state.database || state.database.analyzeStep !== state.analyze.step) {
     return {
       failure: true,
       message: "Cannot run interface() - prisma() must be completed and up-to-date."
@@ -353,7 +353,7 @@ export const transformPrismaSchemaHistories = (
   return [
     {
       role: "system",
-      content: AutoBeSystemPromptConstant.PRISMA_SCHEMA,
+      content: AutoBeSystemPromptConstant.DATABASE_SCHEMA,
     },
     {
       role: "user",
@@ -457,8 +457,8 @@ public state(): AutoBeState {
 private updateState(history: AutoBeHistory): void {
   if (history.type === "analyze") {
     this.state_.analyze = history;
-  } else if (history.type === "prisma") {
-    this.state_.prisma = history;
+  } else if (history.type === "database") {
+    this.state_.database = history;
   }
   // ... update other phases
 }
@@ -527,7 +527,7 @@ Generates JSON schema:
       }
     },
     {
-      "name": "prisma",
+      "name": "database",
       "description": "Design Prisma database schema based on analyzed requirements.",
       "parameters": {
         "type": "object",

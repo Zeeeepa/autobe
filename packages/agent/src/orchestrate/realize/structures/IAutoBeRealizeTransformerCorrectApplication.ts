@@ -3,7 +3,7 @@ import {
   AutoBeRealizeTransformerTransformMapping,
 } from "@autobe/interface";
 
-import { IAutoBePreliminaryGetPrismaSchemas } from "../../common/structures/IAutoBePreliminaryGetPrismaSchemas";
+import { IAutoBePreliminaryGetDatabaseSchemas } from "../../common/structures/IAutoBePreliminaryGetDatabaseSchemas";
 
 export interface IAutoBeRealizeTransformerCorrectApplication {
   /**
@@ -28,7 +28,7 @@ export namespace IAutoBeRealizeTransformerCorrectApplication {
      * Before requesting preliminary data or completing your task, reflect on
      * your current state and explain your reasoning:
      *
-     * For preliminary requests (getPrismaSchemas):
+     * For preliminary requests (getDatabaseSchemas):
      *
      * - What critical information is missing that you don't already have?
      * - Why do you need it specifically right now?
@@ -50,11 +50,11 @@ export namespace IAutoBeRealizeTransformerCorrectApplication {
      * Type discriminator for the request.
      *
      * Determines which action to perform: preliminary data retrieval
-     * (getPrismaSchemas) or final error correction (complete). When preliminary
-     * returns empty array, that type is removed from the union, physically
-     * preventing repeated calls.
+     * (getDatabaseSchemas) or final error correction (complete). When
+     * preliminary returns empty array, that type is removed from the union,
+     * physically preventing repeated calls.
      */
-    request: IComplete | IAutoBePreliminaryGetPrismaSchemas;
+    request: IComplete | IAutoBePreliminaryGetDatabaseSchemas;
   }
 
   /**
@@ -83,7 +83,7 @@ export namespace IAutoBeRealizeTransformerCorrectApplication {
      * 2. Root Cause Analysis - Identify WHY each error occurs (wrong field, wrong
      *    transform, etc.)
      * 3. Schema Verification - Cross-check error-related fields against actual
-     *    Prisma schema
+     *    database schema
      * 4. Correction Strategy - Specific fix for each error in BOTH select() and
      *    transform()
      *
@@ -93,22 +93,23 @@ export namespace IAutoBeRealizeTransformerCorrectApplication {
     think: string;
 
     /**
-     * Prisma field-by-field selection mapping verification for the select()
+     * Database field-by-field selection mapping verification for the select()
      * function.
      *
-     * Review which Prisma fields/relations are being selected to identify
-     * missing selections or incorrect field names that cause compilation errors.
+     * Review which database fields/relations are being selected to identify
+     * missing selections or incorrect field names that cause compilation
+     * errors.
      *
-     * For each Prisma field needed by transform(), document:
+     * For each database field needed by transform(), document:
      *
-     * - `member`: Exact Prisma field/relation name (snake_case) - verify
-     *   against schema
+     * - `member`: Exact database field/relation name (snake_case) - verify against
+     *   schema
      * - `kind`: Whether it's a scalar field, belongsTo, hasOne, or hasMany
      *   relation
      * - `nullable`: Whether the field/relation is nullable (true/false for
      *   scalar/belongsTo, null for hasMany/hasOne)
-     * - `how`: Current state + correction plan ("No change needed", "Fix:
-     *   wrong field name", etc.)
+     * - `how`: Current state + correction plan ("No change needed", "Fix: wrong
+     *   field name", etc.)
      *
      * The `kind` property helps identify selection syntax errors (e.g., using
      * `field: true` for a relation instead of nested select).
@@ -121,9 +122,8 @@ export namespace IAutoBeRealizeTransformerCorrectApplication {
      * - Wrong field name (typo or doesn't exist in schema)
      * - Missing required field (transform() uses it but select() doesn't fetch
      *   it)
-     * - Wrong selection syntax (true for relation, or nested select for
-     *   scalar)
-     * - Selecting field that doesn't exist in Prisma model
+     * - Wrong selection syntax (true for relation, or nested select for scalar)
+     * - Selecting field that doesn't exist in database model
      * - Missing aggregation (_count, _sum) when transform() needs it
      *
      * This structured verification:
@@ -134,12 +134,12 @@ export namespace IAutoBeRealizeTransformerCorrectApplication {
      * - Documents what corrections are needed for selection logic
      * - Prevents "field not found" errors
      *
-     * The validator will cross-check this against the Prisma schema to ensure
+     * The validator will cross-check this against the database schema to ensure
      * all field names are valid and complete coverage.
      *
      * **Note**: If compilation succeeds, select() is typically correct. This
-     * mapping is mainly for cases where select() has errors (wrong field
-     * names, missing selections).
+     * mapping is mainly for cases where select() has errors (wrong field names,
+     * missing selections).
      */
     selectMappings: AutoBeRealizeTransformerSelectMapping[];
 
@@ -172,7 +172,7 @@ export namespace IAutoBeRealizeTransformerCorrectApplication {
      * **Common correction scenarios in transform()**:
      *
      * - Missing type conversion (Decimal → Number, DateTime → ISO)
-     * - Wrong property name (DTO vs Prisma mismatch)
+     * - Wrong property name (DTO vs database mismatch)
      * - Inline transformation when neighbor transformer exists
      * - Missing computed property
      * - Wrong nullable handling (DateTime? → string | null)
@@ -196,7 +196,7 @@ export namespace IAutoBeRealizeTransformerCorrectApplication {
      * strategy. EVERY error in think Section 1 inventory MUST be addressed.
      * Implement:
      *
-     * - Field name corrections in select() (exact Prisma field names)
+     * - Field name corrections in select() (exact database field names)
      * - Type casts in transform() (Decimal→Number, DateTime→ISO)
      * - Neighbor transformer reuse (replace inline logic if transformer exists)
      * - Function order fix (transform → select → Payload)

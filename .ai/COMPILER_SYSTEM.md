@@ -32,7 +32,7 @@ This rich diagnostic information enables the Correct orchestrators to generate t
 
 ## Tier 1: AutoBE Prisma Compiler
 
-**Location**: `packages/compiler/src/prisma/AutoBePrismaCompiler.ts`
+**Location**: `packages/compiler/src/prisma/AutoBeDatabaseCompiler.ts`
 
 The Prisma Compiler validates database schema definitions for:
 
@@ -45,10 +45,10 @@ The Prisma Compiler validates database schema definitions for:
 ### Validation Process
 
 ```typescript
-export class AutoBePrismaCompiler {
+export class AutoBeDatabaseCompiler {
   public async compile(
-    props: IAutoBePrismaCompileProps
-  ): Promise<IAutoBePrismaCompileResult> {
+    props: IAutoBeDatabaseCompileProps
+  ): Promise<IAutoBeDatabaseCompileResult> {
     // 1. Write schema to temporary file
     const schemaPath = await this.writeSchema(props.schema);
 
@@ -166,13 +166,13 @@ function validateOpenApiSpec(doc: AutoBeOpenApi.IDocument): IDiagnostic[] {
 ```typescript
 function validatePrismaAlignment(
   doc: AutoBeOpenApi.IDocument,
-  prismaSchemas: PrismaSchema[]
+  databaseSchemas: PrismaSchema[]
 ): IDiagnostic[] {
   const diagnostics: IDiagnostic[] = [];
 
   // Build map of Prisma fields
   const prismaFields = new Map<string, Set<string>>();
-  for (const schema of prismaSchemas) {
+  for (const schema of databaseSchemas) {
     prismaFields.set(
       schema.name,
       new Set(schema.fields.map((f) => f.name))
@@ -181,8 +181,8 @@ function validatePrismaAlignment(
 
   // Validate operation schemas reference real Prisma fields
   for (const [typeName, schema] of Object.entries(doc.components.schemas)) {
-    if (schema.type === "object" && schema["x-autobe-prisma-schema"]) {
-      const modelName = schema["x-autobe-prisma-schema"];
+    if (schema.type === "object" && schema["x-autobe-database-schema"]) {
+      const modelName = schema["x-autobe-database-schema"];
       const modelFields = prismaFields.get(modelName);
 
       if (!modelFields) {
@@ -470,7 +470,7 @@ Different compiler tiers can validate in parallel when appropriate:
 // Validate Prisma and OpenAPI in parallel
 const [prismaResult, openapiResult] = await Promise.all([
   compiler.prisma.compile(prismaSchema),
-  compiler.interface.validate(openapiDoc, prismaSchemas),
+  compiler.interface.validate(openapiDoc, databaseSchemas),
 ]);
 
 // TypeScript compilation depends on both, so runs after

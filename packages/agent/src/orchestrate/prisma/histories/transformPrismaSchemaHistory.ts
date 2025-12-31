@@ -1,4 +1,4 @@
-import { AutoBePrisma } from "@autobe/interface";
+import { AutoBeDatabase } from "@autobe/interface";
 import { StringUtil } from "@autobe/utils";
 import { v7 } from "uuid";
 
@@ -8,11 +8,11 @@ import { AutoBePreliminaryController } from "../../common/AutoBePreliminaryContr
 
 export const transformPrismaSchemaHistory = (props: {
   analysis: Record<string, string>;
-  targetComponent: AutoBePrisma.IComponent;
+  targetComponent: AutoBeDatabase.IComponent;
   otherTables: string[];
   instruction: string;
   preliminary: AutoBePreliminaryController<
-    "analysisFiles" | "previousAnalysisFiles" | "previousPrismaSchemas"
+    "analysisFiles" | "previousAnalysisFiles" | "previousDatabaseSchemas"
   >;
 }): IAutoBeOrchestrateHistory => ({
   histories: [
@@ -20,7 +20,7 @@ export const transformPrismaSchemaHistory = (props: {
       id: v7(),
       created_at: new Date().toISOString(),
       type: "systemMessage",
-      text: AutoBeSystemPromptConstant.PRISMA_SCHEMA,
+      text: AutoBeSystemPromptConstant.DATABASE_SCHEMA,
     },
     ...props.preliminary.getHistories(),
     {
@@ -73,5 +73,5 @@ export const transformPrismaSchemaHistory = (props: {
       `,
     },
   ],
-  userMessage: "Make prisma schema file please",
+  userMessage: "Make database schema file please",
 });

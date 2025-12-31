@@ -1,7 +1,7 @@
 import {
+  AutoBeDatabase,
   AutoBeOpenApi,
   AutoBePreliminaryKind,
-  AutoBePrisma,
   AutoBeRealizeCollectorFunction,
   AutoBeRealizeTransformerFunction,
 } from "@autobe/interface";
@@ -70,15 +70,17 @@ const complementRealizeModularizations = (
     | AutoBeRealizeTransformerFunction[],
 ): void => {
   for (const { plan } of metadata) {
-    if (props.kinds.includes("prismaSchemas")) {
-      const model: AutoBePrisma.IModel | undefined =
-        props.all.prismaSchemas.find((m) => m.name === plan.prismaSchemaName);
+    if (props.kinds.includes("databaseSchemas")) {
+      const model: AutoBeDatabase.IModel | undefined =
+        props.all.databaseSchemas.find(
+          (m) => m.name === plan.databaseSchemaName,
+        );
       if (
         model !== undefined &&
-        props.local.prismaSchemas.find((m) => m.name === model.name) ===
+        props.local.databaseSchemas.find((m) => m.name === model.name) ===
           undefined
       )
-        props.local.prismaSchemas.push(model);
+        props.local.databaseSchemas.push(model);
     }
     if (props.kinds.includes("interfaceSchemas")) {
       const type: AutoBeOpenApi.IJsonSchemaDescriptive | undefined =
@@ -182,9 +184,8 @@ const complementInterfaceSchemas = (props: INextProps) => {
   const kind: "interfaceSchemas" | "previousInterfaceSchemas" = props.previous
     ? "previousInterfaceSchemas"
     : "interfaceSchemas";
-  const prismaKind: "prismaSchemas" | "previousPrismaSchemas" = props.previous
-    ? "previousPrismaSchemas"
-    : "prismaSchemas";
+  const prismaKind: "databaseSchemas" | "previousDatabaseSchemas" =
+    props.previous ? "previousDatabaseSchemas" : "databaseSchemas";
   const unique: Set<string> = new Set(Object.keys(props.local[kind]));
   for (const dto of Object.values(props.local[kind]))
     OpenApiTypeChecker.visit({
@@ -204,7 +205,7 @@ const complementInterfaceSchemas = (props: INextProps) => {
     )
       props.local[kind][key] = props.all[kind][key];
 
-  // load related prisma schemas
+  // load related database schemas
   if (props.kinds.includes(prismaKind) === true) {
     const prisma: Set<string> = new Set();
     for (const [key, value] of Object.entries(props.local[kind])) {
@@ -217,7 +218,7 @@ const complementInterfaceSchemas = (props: INextProps) => {
           if (OpenApiTypeChecker.isObject(next) === false) return;
           const name: string | null | undefined = (
             next as AutoBeOpenApi.IJsonSchema.IObject
-          )["x-autobe-prisma-schema"];
+          )["x-autobe-database-schema"];
           if (
             name !== null &&
             name !== undefined &&

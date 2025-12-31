@@ -1,5 +1,5 @@
 import {
-  AutoBePrismaCorrectEvent,
+  AutoBeDatabaseCorrectEvent,
   AutoBeRealizeAuthorizationCorrectEvent,
   AutoBeRealizeCorrectEvent,
   AutoBeTestCorrectEvent,
@@ -9,7 +9,7 @@ import { AutoBeCorrectEventMovie } from "../AutoBeCorrectEventMovie";
 import { CollapsibleEventGroup } from "../common/CollapsibleEventGroup";
 
 type CorrectEvent =
-  | AutoBePrismaCorrectEvent
+  | AutoBeDatabaseCorrectEvent
   | AutoBeTestCorrectEvent
   | AutoBeRealizeCorrectEvent
   | AutoBeRealizeAuthorizationCorrectEvent;
@@ -71,7 +71,7 @@ export const CorrectEventGroup = (props: ICorrectEventGroupProps) => {
       >
         {eventTypes.map((type) => {
           const typeDisplayNames = {
-            prismaCorrect: "🗄️ Database Schema",
+            databaseCorrect: "🗄️ Database Schema",
             testCorrect: "🧪 Test Suite",
             realizeCorrect: "⚙️ Implementation",
             realizeAuthorizationCorrect: "🔐 Authorization",

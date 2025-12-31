@@ -5,10 +5,10 @@ import {
 import {
   AutoBeAnalyzeFile,
   AutoBeAnalyzeHistory,
+  AutoBeDatabase,
   AutoBeEventSource,
   AutoBeOpenApi,
   AutoBePreliminaryKind,
-  AutoBePrisma,
   AutoBeRealizeCollectorFunction,
   AutoBeRealizeTransformerFunction,
 } from "@autobe/interface";
@@ -144,23 +144,24 @@ namespace PreliminaryTransformer {
         ];
   };
 
-  export const prismaSchemas = (
-    props: IProps<"prismaSchemas" | "previousPrismaSchemas">,
+  export const databaseSchemas = (
+    props: IProps<"databaseSchemas" | "previousDatabaseSchemas">,
   ): IMicroAgenticaHistoryJson[] => {
-    const kind: "prismaSchemas" | "previousPrismaSchemas" = props.previous
-      ? "previousPrismaSchemas"
-      : "prismaSchemas";
-    const oldbie: Record<string, AutoBePrisma.IModel> = Object.fromEntries(
+    const kind: "databaseSchemas" | "previousDatabaseSchemas" = props.previous
+      ? "previousDatabaseSchemas"
+      : "databaseSchemas";
+    const oldbie: Record<string, AutoBeDatabase.IModel> = Object.fromEntries(
       props.local[kind].map((s) => [s.name, s]),
     );
-    const newbie: AutoBePrisma.IModel[] = props.all[kind].filter(
+    const newbie: AutoBeDatabase.IModel[] = props.all[kind].filter(
       (s) => oldbie[s.name] === undefined,
     );
 
     const assistant: IAgenticaHistoryJson.IAssistantMessage =
       createAssistantMessage({
-        prompt: AutoBeSystemPromptConstant.PRELIMINARY_PRISMA_SCHEMA_LOADED,
-        previous: AutoBeSystemPromptConstant.PRELIMINARY_PRISMA_SCHEMA_PREVIOUS,
+        prompt: AutoBeSystemPromptConstant.PRELIMINARY_DATABASE_SCHEMA_LOADED,
+        previous:
+          AutoBeSystemPromptConstant.PRELIMINARY_DATABASE_SCHEMA_PREVIOUS,
         content:
           props.config.prisma === "ast"
             ? StringUtil.trim`
@@ -188,14 +189,14 @@ namespace PreliminaryTransformer {
               `,
         replace: props.previous
           ? {
-              from: "getPrismaSchemas",
-              to: "getPreviousPrismaSchemas",
+              from: "getDatabaseSchemas",
+              to: "getPreviousDatabaseSchemas",
             }
           : null,
       });
     const system: IAgenticaHistoryJson.ISystemMessage = createSystemMessage({
-      prompt: AutoBeSystemPromptConstant.PRELIMINARY_PRISMA_SCHEMA,
-      previous: AutoBeSystemPromptConstant.PRELIMINARY_PRISMA_SCHEMA_PREVIOUS,
+      prompt: AutoBeSystemPromptConstant.PRELIMINARY_DATABASE_SCHEMA,
+      previous: AutoBeSystemPromptConstant.PRELIMINARY_DATABASE_SCHEMA_PREVIOUS,
       available: StringUtil.trim`
         Name | Stance | Summary
         -----|--------|---------
@@ -208,12 +209,12 @@ namespace PreliminaryTransformer {
       loaded: props.local[kind].map((s) => `- ${s.name}`).join("\n"),
       exhausted:
         newbie.length === 0
-          ? AutoBeSystemPromptConstant.PRELIMINARY_PRISMA_SCHEMA_EXHAUSTED
+          ? AutoBeSystemPromptConstant.PRELIMINARY_DATABASE_SCHEMA_EXHAUSTED
           : "",
       replace: props.previous
         ? {
-            from: "getPrismaSchemas",
-            to: "getPreviousPrismaSchemas",
+            from: "getDatabaseSchemas",
+            to: "getPreviousDatabaseSchemas",
           }
         : null,
     });
@@ -224,11 +225,11 @@ namespace PreliminaryTransformer {
             controller: props.source,
             kind,
             arguments: {
-              thinking: "prisma schemas for DB schema information",
+              thinking: "database schemas for DB schema information",
               request: {
                 type: props.previous
-                  ? "getPreviousPrismaSchemas"
-                  : "getPrismaSchemas",
+                  ? "getPreviousDatabaseSchemas"
+                  : "getDatabaseSchemas",
                 schemaNames: props.local[kind].map((s) => s.name),
               },
             },
@@ -426,13 +427,13 @@ namespace PreliminaryTransformer {
     const system: IAgenticaHistoryJson.ISystemMessage = createSystemMessage({
       prompt: AutoBeSystemPromptConstant.PRELIMINARY_REALIZE_COLLECTOR,
       available: StringUtil.trim`
-        DTO Type Name | Prisma Table | References | Neighbor Collectors
-        --------------|--------------|------------|--------------------
+        DTO Type Name | Database Table | References | Neighbor Collectors
+        --------------|----------------|------------|--------------------
         ${newbie
           .map((c) =>
             [
               c.plan.dtoTypeName,
-              c.plan.prismaSchemaName,
+              c.plan.databaseSchemaName,
               c.plan.references.length > 0
                 ? `(${c.plan.references.map((r) => r.source).join(", ")})`
                 : "-",
@@ -495,13 +496,13 @@ namespace PreliminaryTransformer {
     const system: IAgenticaHistoryJson.ISystemMessage = createSystemMessage({
       prompt: AutoBeSystemPromptConstant.PRELIMINARY_REALIZE_TRANSFORMER,
       available: StringUtil.trim`
-        DTO Type Name | Prisma Table | Neighbor Transformers 
-        --------------|--------------|----------------------
+        DTO Type Name | Database Table | Neighbor Transformers
+        --------------|----------------|----------------------
         ${newbie
           .map((t) =>
             [
               t.plan.dtoTypeName,
-              t.plan.prismaSchemaName,
+              t.plan.databaseSchemaName,
               `(${t.neighbors.join(", ")})`,
             ].join(" | "),
           )

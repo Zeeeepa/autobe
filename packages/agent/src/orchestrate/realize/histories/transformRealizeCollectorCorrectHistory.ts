@@ -1,5 +1,5 @@
 import {
-  AutoBePrisma,
+  AutoBeDatabase,
   AutoBeRealizeCollectorFunction,
 } from "@autobe/interface";
 import { StringUtil } from "@autobe/utils";
@@ -19,15 +19,15 @@ export const transformRealizeCollectorCorrectHistory = async (
     function: AutoBeRealizeCollectorFunction;
     neighbors: AutoBeRealizeCollectorFunction[];
     failures: IAutoBeRealizeFunctionFailure<AutoBeRealizeCollectorFunction>[];
-    preliminary: AutoBePreliminaryController<"prismaSchemas">;
+    preliminary: AutoBePreliminaryController<"databaseSchemas">;
   },
 ): Promise<IAutoBeOrchestrateHistory> => {
-  const application: AutoBePrisma.IApplication =
-    ctx.state().prisma!.result.data;
-  const model: AutoBePrisma.IModel = application.files
+  const application: AutoBeDatabase.IApplication =
+    ctx.state().database!.result.data;
+  const model: AutoBeDatabase.IModel = application.files
     .map((f) => f.models)
     .flat()
-    .find((m) => m.name === props.function.plan.prismaSchemaName)!;
+    .find((m) => m.name === props.function.plan.databaseSchemaName)!;
   const dto: Record<string, string> =
     await AutoBeRealizeCollectorProgrammer.writeStructures(
       ctx,
@@ -74,7 +74,7 @@ export const transformRealizeCollectorCorrectHistory = async (
                 n.location,
                 {
                   dtoTypeName: n.plan.dtoTypeName,
-                  prismaSchemaName: n.plan.prismaSchemaName,
+                  databaseSchemaName: n.plan.databaseSchemaName,
                   content: n.content,
                 },
               ]),
@@ -82,7 +82,7 @@ export const transformRealizeCollectorCorrectHistory = async (
           )}
           \`\`\`
 
-          Also, this is the list of Prisma schema members you have to consider:
+          Also, this is the list of database schema members you have to consider:
 
           Member | Kind | Nullable
           -------|------|----------
@@ -125,8 +125,8 @@ export const transformRealizeCollectorCorrectHistory = async (
       ${props.function.content}
       \`\`\`
 
-      Remember: Collectors transform DTO → Prisma CreateInput. Focus on:
-      - Field mapping between ${props.function.plan.dtoTypeName} and Prisma.${props.function.plan.prismaSchemaName}CreateInput
+      Remember: Collectors transform DTO → Database CreateInput. Focus on:
+      - Field mapping between ${props.function.plan.dtoTypeName} and Prisma.${props.function.plan.databaseSchemaName}CreateInput
       - UUID generation for primary keys
       - Foreign key connections using { connect: { id: ... } }
       - Timestamp fields (created_at, updated_at)

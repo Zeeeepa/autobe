@@ -1,5 +1,5 @@
+import { IAutoBePreliminaryGetDatabaseSchemas } from "../../common/structures/IAutoBePreliminaryGetDatabaseSchemas";
 import { IAutoBePreliminaryGetInterfaceSchemas } from "../../common/structures/IAutoBePreliminaryGetInterfaceSchemas";
-import { IAutoBePreliminaryGetPrismaSchemas } from "../../common/structures/IAutoBePreliminaryGetPrismaSchemas";
 
 /**
  * Function calling interface for planning transformer DTO generation.
@@ -10,12 +10,12 @@ import { IAutoBePreliminaryGetPrismaSchemas } from "../../common/structures/IAut
  * other transformers are identified upfront.
  *
  * The planning follows a structured RAG workflow: preliminary context gathering
- * (Prisma schemas, DTO schemas) → eligibility analysis → plan generation.
+ * (database schemas, DTO schemas) → eligibility analysis → plan generation.
  *
  * **Key Decisions**: Not all DTOs require transformers. The agent must
  * distinguish transformable DTOs (Read DTO + DB-backed + Direct mapping) from
  * non-transformable DTOs (request params, pagination wrappers, business logic
- * types) and include ALL DTOs with prismaSchemaName set to null for
+ * types) and include ALL DTOs with databaseSchemaName set to null for
  * non-transformable ones.
  */
 export interface IAutoBeRealizeTransformerPlanApplication {
@@ -24,7 +24,7 @@ export interface IAutoBeRealizeTransformerPlanApplication {
    *
    * Analyzes operation response DTOs and generates complete plan listing which
    * transformers to generate. Ensures nested DTOs are analyzed recursively and
-   * ALL DTOs are included with appropriate prismaSchemaName values.
+   * ALL DTOs are included with appropriate databaseSchemaName values.
    *
    * @param props Request containing either preliminary data request or complete
    *   plan
@@ -41,7 +41,7 @@ export namespace IAutoBeRealizeTransformerPlanApplication {
      *
      * For preliminary requests:
      *
-     * - What schemas (Prisma or DTO) are missing that you need?
+     * - What schemas (database or DTO) are missing that you need?
      * - Why do you need them for planning?
      * - Be brief - state the gap, don't list everything you have.
      *
@@ -63,7 +63,7 @@ export namespace IAutoBeRealizeTransformerPlanApplication {
      *
      * Determines which action to perform:
      *
-     * - "getPrismaSchemas": Retrieve Prisma table schemas for DB structure
+     * - "getDatabaseSchemas": Retrieve database table schemas for DB structure
      * - "getInterfaceSchemas": Retrieve DTO type definitions for API contracts
      * - "complete": Generate final transformer plan
      *
@@ -72,7 +72,7 @@ export namespace IAutoBeRealizeTransformerPlanApplication {
      */
     request:
       | IComplete
-      | IAutoBePreliminaryGetPrismaSchemas
+      | IAutoBePreliminaryGetDatabaseSchemas
       | IAutoBePreliminaryGetInterfaceSchemas;
   }
 
@@ -80,8 +80,8 @@ export namespace IAutoBeRealizeTransformerPlanApplication {
    * Request to complete transformer planning.
    *
    * Generates comprehensive plan listing ALL DTOs analyzed, including both
-   * transformable and non-transformable DTOs. Transformable DTOs have a Prisma
-   * schema name, while non-transformable DTOs have null.
+   * transformable and non-transformable DTOs. Transformable DTOs have a
+   * database schema name, while non-transformable DTOs have null.
    */
   export interface IComplete {
     /** Type discriminator for completion request. */
@@ -94,10 +94,11 @@ export namespace IAutoBeRealizeTransformerPlanApplication {
      *
      * - DTO type name analyzed
      * - Chain of thought explaining the analysis
-     * - Prisma schema name if transformable, or null if not
+     * - Database schema name if transformable, or null if not
      *
      * Include ALL DTOs from the operation response, both transformable and
-     * non-transformable. Use prismaSchemaName to distinguish:
+     * non-transformable. Use databaseSchemaName to distinguish:
+     *
      * - Non-null: Transformable DTO, transformer will be generated
      * - Null: Non-transformable DTO, no transformer needed
      */
@@ -123,30 +124,31 @@ export namespace IAutoBeRealizeTransformerPlanApplication {
      * Chain of thought for this DTO's planning decision.
      *
      * Explains the agent's reasoning:
-     * - For transformable DTOs: Why a transformer is needed, which Prisma table
+     *
+     * - For transformable DTOs: Why a transformer is needed, which database table
      *   it maps to
-     * - For non-transformable DTOs: Why no transformer is needed (request
-     *   param, pagination wrapper, business logic, etc.)
+     * - For non-transformable DTOs: Why no transformer is needed (request param,
+     *   pagination wrapper, business logic, etc.)
      *
      * Example (transformable): "Transforms shopping_sales to IShoppingSale with
      * nested category and tags"
      *
-     * Example (non-transformable): "IPage.IRequest is pagination parameter,
-     * not database-backed"
+     * Example (non-transformable): "IPage.IRequest is pagination parameter, not
+     * database-backed"
      */
     thinking: string;
 
     /**
-     * Prisma schema name if transformable, null if not.
+     * Database schema name if transformable, null if not.
      *
-     * - **Non-null**: The Prisma table name this DTO maps to. A transformer
+     * - **Non-null**: The database table name this DTO maps to. A transformer
      *   will be generated for this DTO.
      * - **Null**: This DTO is non-transformable (request param, pagination
      *   wrapper, business logic type). No transformer will be generated.
      *
-     * Example (transformable): "shopping_sales", "shopping_categories"
-     * Example (non-transformable): null
+     * Example (transformable): "shopping_sales", "shopping_categories" Example
+     * (non-transformable): null
      */
-    prismaSchemaName: string | null;
+    databaseSchemaName: string | null;
   }
 }

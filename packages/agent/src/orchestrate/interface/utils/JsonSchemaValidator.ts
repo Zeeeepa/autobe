@@ -37,7 +37,7 @@ export namespace JsonSchemaValidator {
 
   export interface IProps {
     errors: IValidation.IError[];
-    prismaSchemas: Set<string>;
+    databaseSchemas: Set<string>;
     operations: AutoBeOpenApi.IOperation[];
     typeName: string;
     schema: AutoBeOpenApi.IJsonSchemaDescriptive;
@@ -219,18 +219,18 @@ export namespace JsonSchemaValidator {
   };
 
   const validatePrismaSchema = (props: IProps): void => {
-    // fulfill error messages for "x-autobe-prisma-schema" misplacement
+    // fulfill error messages for "x-autobe-database-schema" misplacement
     for (const e of props.errors) {
-      if (e.path.endsWith(`.properties["x-autobe-prisma-schema"]`) === false)
+      if (e.path.endsWith(`.properties["x-autobe-database-schema"]`) === false)
         continue;
       e.expected =
         "undefined value (remove this property and re-define it in the root schema)";
       e.description = StringUtil.trim`
-        You have defined a property named "x-autobe-prisma-schema"
+        You have defined a property named "x-autobe-database-schema"
         somewhere wrong place.
         
-        You have defined a property name "x-autobe-prisma-schema" as 
-        an object type. However, this "x-autobe-prisma-schema" property
+        You have defined a property name "x-autobe-database-schema" as 
+        an object type. However, this "x-autobe-database-schema" property
         must be defined only in the root schema object as a metadata,
         not in the nested object property.
 
@@ -239,12 +239,12 @@ export namespace JsonSchemaValidator {
         
         - Current path (wrong): ${e.path}
         - Must be (object root): ${e.path.replace(
-          `.properties["x-autobe-prisma-schema"]`,
-          `["x-autobe-prisma-schema"]`,
-        )} 
+          `.properties["x-autobe-database-schema"]`,
+          `["x-autobe-database-schema"]`,
+        )}
       `;
     }
-    // check prisma schema existence
+    // check database schema existence
     const key: string = props.typeName;
     const value: AutoBeOpenApi.IJsonSchemaDescriptive = props.schema;
     AutoBeOpenApiTypeChecker.skim({
@@ -253,26 +253,29 @@ export namespace JsonSchemaValidator {
       closure: (schema, accessor) => {
         if (AutoBeOpenApiTypeChecker.isObject(schema) === false) return;
         else if (
-          schema["x-autobe-prisma-schema"] !== null &&
-          schema["x-autobe-prisma-schema"] !== undefined &&
-          props.prismaSchemas.has(schema["x-autobe-prisma-schema"]) === false
+          schema["x-autobe-database-schema"] !== null &&
+          schema["x-autobe-database-schema"] !== undefined &&
+          props.databaseSchemas.has(schema["x-autobe-database-schema"]) ===
+            false
         )
           props.errors.push({
             path: accessor,
-            expected: Array.from(props.prismaSchemas)
+            expected: Array.from(props.databaseSchemas)
               .map((s) => JSON.stringify(s))
               .join(" | "),
-            value: schema["x-autobe-prisma-schema"],
+            value: schema["x-autobe-database-schema"],
             description: StringUtil.trim`
-              You've referenced a non-existing Prisma schema name
-              ${JSON.stringify(schema["x-autobe-prisma-schema"])} in
-              "x-autobe-prisma-schema" property.
+              You've referenced a non-existing database schema name
+              ${JSON.stringify(schema["x-autobe-database-schema"])} in
+              "x-autobe-database-schema" property. Make sure that the
+              referenced database schema name exists in your database schema files.
 
-              Make sure that the referenced Prisma schema name exists
-              in your Prisma schema files.
+              Never assume non-existing models. This is not recommendation,
+              but an instruction you must follow. Never repeat the same
+              value again. I repeat that, you have to choose one of below:
 
-              Existing Prisma schema names are:
-              - ${Array.from(props.prismaSchemas).join("\n- ")}
+              Existing database schema names are:
+              - ${Array.from(props.databaseSchemas).join("\n- ")}
             `,
           });
       },

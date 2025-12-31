@@ -1,10 +1,10 @@
 import { AgenticaExecuteHistory, MicroAgenticaHistory } from "@agentica/core";
 import {
   AutoBeAnalyzeFile,
+  AutoBeDatabase,
   AutoBeEventSource,
   AutoBeOpenApi,
   AutoBePreliminaryKind,
-  AutoBePrisma,
   AutoBeRealizeCollectorFunction,
   AutoBeRealizeTransformerFunction,
 } from "@autobe/interface";
@@ -63,26 +63,26 @@ export const orchestratePreliminary = async <
     }
     // PRISMA SCHEMAS
     else if (isPrismaSchemas(props.preliminary, exec.arguments)) {
-      const pp: AutoBePreliminaryController<"prismaSchemas"> =
+      const pp: AutoBePreliminaryController<"databaseSchemas"> =
         props.preliminary;
       orchestratePrismaSchemas(ctx, {
         source: props.source,
         source_id: props.source_id,
         trial: props.trial,
-        all: pp.getAll().prismaSchemas,
-        local: pp.getLocal().prismaSchemas,
+        all: pp.getAll().databaseSchemas,
+        local: pp.getLocal().databaseSchemas,
         arguments: exec.arguments,
         previous: false,
       });
     } else if (isPreviousPrismaSchemas(props.preliminary, exec.arguments)) {
-      const pp: AutoBePreliminaryController<"previousPrismaSchemas"> =
+      const pp: AutoBePreliminaryController<"previousDatabaseSchemas"> =
         props.preliminary;
       orchestratePrismaSchemas(ctx, {
         source: props.source,
         source_id: props.source_id,
         trial: props.trial,
-        all: pp.getAll().previousPrismaSchemas,
-        local: pp.getLocal().previousPrismaSchemas,
+        all: pp.getAll().previousDatabaseSchemas,
+        local: pp.getLocal().previousDatabaseSchemas,
         arguments: exec.arguments,
         previous: true,
       });
@@ -204,22 +204,22 @@ const isPreviousAnalysisFiles = (
 const isPrismaSchemas = (
   preliminary: AutoBePreliminaryController<any>,
   input: unknown,
-): preliminary is AutoBePreliminaryController<"prismaSchemas"> =>
-  typia.is<IAutoBePreliminaryRequest<"prismaSchemas">>(input) &&
+): preliminary is AutoBePreliminaryController<"databaseSchemas"> =>
+  typia.is<IAutoBePreliminaryRequest<"databaseSchemas">>(input) &&
   preliminary.getAll()[
     typia.misc.literals<
-      Extract<keyof IAutoBePreliminaryCollection, "prismaSchemas">
+      Extract<keyof IAutoBePreliminaryCollection, "databaseSchemas">
     >()[0]
   ] !== undefined;
 
 const isPreviousPrismaSchemas = (
   preliminary: AutoBePreliminaryController<any>,
   input: unknown,
-): preliminary is AutoBePreliminaryController<"previousPrismaSchemas"> =>
-  typia.is<IAutoBePreliminaryRequest<"previousPrismaSchemas">>(input) &&
+): preliminary is AutoBePreliminaryController<"previousDatabaseSchemas"> =>
+  typia.is<IAutoBePreliminaryRequest<"previousDatabaseSchemas">>(input) &&
   preliminary.getAll()[
     typia.misc.literals<
-      Extract<keyof IAutoBePreliminaryCollection, "previousPrismaSchemas">
+      Extract<keyof IAutoBePreliminaryCollection, "previousDatabaseSchemas">
     >()[0]
   ] !== undefined;
 
@@ -346,8 +346,8 @@ const orchestratePrismaSchemas = (
     source: Exclude<AutoBeEventSource, "facade" | "preliminary">;
     source_id: string;
     trial: number;
-    all: AutoBePrisma.IModel[];
-    local: AutoBePrisma.IModel[];
+    all: AutoBeDatabase.IModel[];
+    local: AutoBeDatabase.IModel[];
     arguments: unknown;
     previous: boolean;
   },
@@ -355,20 +355,20 @@ const orchestratePrismaSchemas = (
   if (props.previous) {
     if (
       false ===
-      typia.is<IAutoBePreliminaryRequest<"previousPrismaSchemas">>(
+      typia.is<IAutoBePreliminaryRequest<"previousDatabaseSchemas">>(
         props.arguments,
       )
     )
       return;
   } else if (
     false ===
-    typia.is<IAutoBePreliminaryRequest<"prismaSchemas">>(props.arguments)
+    typia.is<IAutoBePreliminaryRequest<"databaseSchemas">>(props.arguments)
   )
     return;
 
   const existing: string[] = props.local.map((m) => m.name);
   for (const name of props.arguments.request.schemaNames) {
-    const model: AutoBePrisma.IModel | undefined = props.all.find(
+    const model: AutoBeDatabase.IModel | undefined = props.all.find(
       (m) => m.name === name,
     );
     if (model === undefined) continue;
@@ -378,7 +378,7 @@ const orchestratePrismaSchemas = (
   ctx.dispatch({
     type: "preliminary",
     id: v7(),
-    function: props.previous ? "previousPrismaSchemas" : "prismaSchemas",
+    function: props.previous ? "previousDatabaseSchemas" : "databaseSchemas",
     source: props.source,
     source_id: props.source_id,
     existing,

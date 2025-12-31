@@ -1,6 +1,6 @@
 import {
+  AutoBeDatabase,
   AutoBeOpenApi,
-  AutoBePrisma,
   AutoBeRealizeTransformerFunction,
 } from "@autobe/interface";
 import { StringUtil } from "@autobe/utils";
@@ -20,15 +20,15 @@ export const transformRealizeTransformerCorrectHistory = async (
     function: AutoBeRealizeTransformerFunction;
     neighbors: AutoBeRealizeTransformerFunction[];
     failures: IAutoBeRealizeFunctionFailure<AutoBeRealizeTransformerFunction>[];
-    preliminary: AutoBePreliminaryController<"prismaSchemas">;
+    preliminary: AutoBePreliminaryController<"databaseSchemas">;
   },
 ): Promise<IAutoBeOrchestrateHistory> => {
-  const application: AutoBePrisma.IApplication =
-    ctx.state().prisma!.result.data;
-  const model: AutoBePrisma.IModel = application.files
+  const application: AutoBeDatabase.IApplication =
+    ctx.state().database!.result.data;
+  const model: AutoBeDatabase.IModel = application.files
     .map((f) => f.models)
     .flat()
-    .find((m) => m.name === props.function.plan.prismaSchemaName)!;
+    .find((m) => m.name === props.function.plan.databaseSchemaName)!;
   const document: AutoBeOpenApi.IDocument = ctx.state().interface!.document;
   const dto: Record<string, string> =
     await AutoBeRealizeTransformerProgrammer.writeStructures(
@@ -76,7 +76,7 @@ export const transformRealizeTransformerCorrectHistory = async (
                 n.location,
                 {
                   dtoTypeName: n.plan.dtoTypeName,
-                  prismaSchemaName: n.plan.prismaSchemaName,
+                  databaseSchemaName: n.plan.databaseSchemaName,
                   content: n.content,
                 },
               ]),
@@ -84,7 +84,7 @@ export const transformRealizeTransformerCorrectHistory = async (
           )}
           \`\`\`
 
-          Here is the list of Prisma schema members you have to consider
+          Here is the list of database schema members you have to consider
           when writing select() function:
 
           Member | Kind | Nullable
@@ -135,8 +135,8 @@ export const transformRealizeTransformerCorrectHistory = async (
       ${props.function.content}
       \`\`\`
 
-      Remember: Transformers transform Prisma Payload → DTO. Focus on:
-      - Field mapping between Prisma.${props.function.plan.prismaSchemaName}GetPayload and ${props.function.plan.dtoTypeName}
+      Remember: Transformers transform Database Payload → DTO. Focus on:
+      - Field mapping between Prisma.${props.function.plan.databaseSchemaName}GetPayload and ${props.function.plan.dtoTypeName}
       - Date to ISO string conversion (.toISOString())
       - Nested object transformation using neighbor transformers
       - select() query completeness (all fields used in transform must be selected)

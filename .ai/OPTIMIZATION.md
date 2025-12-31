@@ -439,7 +439,7 @@ AutoBE state can become large (100MB+ for complex projects). Load selectively:
 ```typescript
 interface AutoBeState {
   analyze: AutoBeAnalyzeHistory | null;
-  prisma: AutoBePrismaHistory | null;
+  prisma: AutoBeDatabaseHistory | null;
   interface: AutoBeInterfaceHistory | null;
   test: AutoBeTestHistory | null;
   realize: AutoBeRealizeHistory | null;
@@ -451,7 +451,7 @@ function getState(): AutoBeState {
 }
 
 // ✅ Good - loads only needed phase
-function getPhaseState(phase: "analyze" | "prisma" | ...): AutoBeHistory {
+function getPhaseState(phase: "analyze" | "database" | ...): AutoBeHistory {
   const state = JSON.parse(fs.readFileSync("state.json"));
   return state[phase];
 }

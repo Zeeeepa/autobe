@@ -3,9 +3,9 @@ import { tags } from "typia";
 
 import { IAutoBePreliminaryGetAnalysisFiles } from "../../common/structures/IAutoBePreliminaryGetAnalysisFiles";
 import { IAutoBePreliminaryGetPreviousAnalysisFiles } from "../../common/structures/IAutoBePreliminaryGetPreviousAnalysisFiles";
+import { IAutoBePreliminaryGetPreviousDatabaseSchemas } from "../../common/structures/IAutoBePreliminaryGetPreviousDatabaseSchemas";
 import { IAutoBePreliminaryGetPreviousInterfaceOperations } from "../../common/structures/IAutoBePreliminaryGetPreviousInterfaceOperations";
-import { IAutoBePreliminaryGetPreviousPrismaSchemas } from "../../common/structures/IAutoBePreliminaryGetPreviousPrismaSchemas";
-import { IAutoBePreliminaryGetPrismaSchemas } from "../../common/structures/IAutoBePreliminaryGetPrismaSchemas";
+import { IAutoBePreliminaryGetDatabaseSchemas } from "../../common/structures/IAutoBePreliminaryGetDatabaseSchemas";
 
 export interface IAutoBeInterfaceOperationApplication {
   /**
@@ -28,7 +28,7 @@ export namespace IAutoBeInterfaceOperationApplication {
      * Before requesting preliminary data or completing your task, reflect on
      * your current state and explain your reasoning:
      *
-     * For preliminary requests (getAnalysisFiles, getPrismaSchemas, etc.):
+     * For preliminary requests (getAnalysisFiles, getDatabaseSchemas, etc.):
      *
      * - What critical information is missing that you don't already have?
      * - Why do you need it specifically right now?
@@ -50,17 +50,17 @@ export namespace IAutoBeInterfaceOperationApplication {
      * Type discriminator for the request.
      *
      * Determines which action to perform: preliminary data retrieval
-     * (getAnalysisFiles, getPrismaSchemas, getPreviousAnalysisFiles,
-     * getPreviousPrismaSchemas) or final operation generation (complete). When
-     * preliminary returns empty array, that type is removed from the union,
-     * physically preventing repeated calls.
+     * (getAnalysisFiles, getDatabaseSchemas, getPreviousAnalysisFiles,
+     * getPreviousDatabaseSchemas) or final operation generation (complete).
+     * When preliminary returns empty array, that type is removed from the
+     * union, physically preventing repeated calls.
      */
     request:
       | IComplete
       | IAutoBePreliminaryGetAnalysisFiles
-      | IAutoBePreliminaryGetPrismaSchemas
+      | IAutoBePreliminaryGetDatabaseSchemas
       | IAutoBePreliminaryGetPreviousAnalysisFiles
-      | IAutoBePreliminaryGetPreviousPrismaSchemas
+      | IAutoBePreliminaryGetPreviousDatabaseSchemas
       | IAutoBePreliminaryGetPreviousInterfaceOperations;
   }
 
@@ -92,7 +92,7 @@ export namespace IAutoBeInterfaceOperationApplication {
      * - Path: Resource-centric URL path (e.g., "/resources/{resourceId}")
      * - Method: HTTP method (get, post, put, delete, patch)
      * - Description: Extremely detailed multi-paragraph description referencing
-     *   Prisma schema comments
+     *   database schema comments
      * - Summary: Concise one-sentence summary of the endpoint
      * - Parameters: Array of all necessary parameters with descriptions and
      *   schema definitions
@@ -102,7 +102,7 @@ export namespace IAutoBeInterfaceOperationApplication {
      *
      * All operations follow strict quality standards:
      *
-     * 1. Detailed descriptions referencing Prisma schema comments
+     * 1. Detailed descriptions referencing database schema comments
      * 2. Accurate parameter definitions matching path parameters
      * 3. Appropriate request/response body type references
      * 4. Consistent patterns for CRUD operations
@@ -148,11 +148,10 @@ export namespace IAutoBeInterfaceOperationApplication {
    * }
    * ```
    */
-  export interface IOperation
-    extends Omit<
-      AutoBeOpenApi.IOperation,
-      "authorizationActor" | "prerequisites"
-    > {
+  export interface IOperation extends Omit<
+    AutoBeOpenApi.IOperation,
+    "authorizationActor" | "prerequisites"
+  > {
     /**
      * Authorization actors required to access this API operation.
      *
@@ -179,10 +178,10 @@ export namespace IAutoBeInterfaceOperationApplication {
      * - ✅ GOOD: Single public endpoint `[]` with actor-based filtering in
      *   business logic
      *
-     * **DO NOT enumerate all possible actors when the Prisma schema uses a
+     * **DO NOT enumerate all possible actors when the database schema uses a
      * single User table:**
      *
-     * - If Prisma has a User table with role/permission fields, you likely only
+     * - If database has a User table with role/permission fields, you likely only
      *   need `["user"]`
      * - Avoid listing `["admin", "seller", "buyer", "moderator", ...]`
      *   unnecessarily

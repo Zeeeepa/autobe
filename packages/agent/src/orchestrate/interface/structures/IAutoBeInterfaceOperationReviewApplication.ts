@@ -2,9 +2,9 @@ import { AutoBeOpenApi } from "@autobe/interface";
 
 import { IAutoBePreliminaryGetAnalysisFiles } from "../../common/structures/IAutoBePreliminaryGetAnalysisFiles";
 import { IAutoBePreliminaryGetPreviousAnalysisFiles } from "../../common/structures/IAutoBePreliminaryGetPreviousAnalysisFiles";
+import { IAutoBePreliminaryGetPreviousDatabaseSchemas } from "../../common/structures/IAutoBePreliminaryGetPreviousDatabaseSchemas";
 import { IAutoBePreliminaryGetPreviousInterfaceOperations } from "../../common/structures/IAutoBePreliminaryGetPreviousInterfaceOperations";
-import { IAutoBePreliminaryGetPreviousPrismaSchemas } from "../../common/structures/IAutoBePreliminaryGetPreviousPrismaSchemas";
-import { IAutoBePreliminaryGetPrismaSchemas } from "../../common/structures/IAutoBePreliminaryGetPrismaSchemas";
+import { IAutoBePreliminaryGetDatabaseSchemas } from "../../common/structures/IAutoBePreliminaryGetDatabaseSchemas";
 
 export interface IAutoBeInterfaceOperationReviewApplication {
   /**
@@ -28,7 +28,7 @@ export namespace IAutoBeInterfaceOperationReviewApplication {
      * Before requesting preliminary data or completing your task, reflect on
      * your current state and explain your reasoning:
      *
-     * For preliminary requests (getAnalysisFiles, getPrismaSchemas, etc.):
+     * For preliminary requests (getAnalysisFiles, getDatabaseSchemas, etc.):
      *
      * - What critical information is missing that you don't already have?
      * - Why do you need it specifically right now?
@@ -50,16 +50,16 @@ export namespace IAutoBeInterfaceOperationReviewApplication {
      * Type discriminator for the request.
      *
      * Determines which action to perform: preliminary data retrieval
-     * (getAnalysisFiles, getPrismaSchemas) or final operation review
+     * (getAnalysisFiles, getDatabaseSchemas) or final operation review
      * (complete). When preliminary returns empty array, that type is removed
      * from the union, physically preventing repeated calls.
      */
     request:
       | IComplete
       | IAutoBePreliminaryGetAnalysisFiles
-      | IAutoBePreliminaryGetPrismaSchemas
+      | IAutoBePreliminaryGetDatabaseSchemas
       | IAutoBePreliminaryGetPreviousAnalysisFiles
-      | IAutoBePreliminaryGetPreviousPrismaSchemas
+      | IAutoBePreliminaryGetPreviousDatabaseSchemas
       | IAutoBePreliminaryGetPreviousInterfaceOperations;
   }
 
@@ -101,7 +101,7 @@ export namespace IAutoBeInterfaceOperationReviewApplication {
      *   implemented
      * - **Logic Corrections Made**: Return types match operation intent, HTTP
      *   methods align with semantics, parameters properly utilized
-     * - **Schema Alignment Verified**: All fields exist in Prisma schema, types
+     * - **Schema Alignment Verified**: All fields exist in database schema, types
      *   correctly mapped, relationships properly defined
      * - **Quality Improvements Added**: Enhanced documentation, format
      *   specifications, validation rules, consistent naming patterns
@@ -132,7 +132,7 @@ export namespace IAutoBeInterfaceOperationReviewApplication {
      * - **Logic Validation**: Return type consistency (list operations returning
      *   arrays, single retrieval returning single items), HTTP method semantics
      *   alignment, parameter usage verification
-     * - **Schema Compliance**: Field existence in Prisma schema, type accuracy,
+     * - **Schema Compliance**: Field existence in database schema, type accuracy,
      *   relationship validity, required field handling
      * - **Quality Assessment**: Documentation completeness, naming conventions,
      *   error handling patterns, pagination standards

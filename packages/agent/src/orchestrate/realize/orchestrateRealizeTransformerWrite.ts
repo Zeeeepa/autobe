@@ -1,8 +1,8 @@
 import {
+  AutoBeDatabase,
   AutoBeEventSource,
   AutoBeInterfaceHistory,
   AutoBeOpenApi,
-  AutoBePrisma,
   AutoBeProgressEventBase,
   AutoBeRealizeTransformerFunction,
   AutoBeRealizeTransformerPlan,
@@ -76,22 +76,22 @@ async function process(
     progress: AutoBeProgressEventBase;
   },
 ): Promise<AutoBeRealizeTransformerFunction> {
-  const models: AutoBePrisma.IModel[] = ctx
+  const models: AutoBeDatabase.IModel[] = ctx
     .state()
-    .prisma!.result.data.files.map((f) => f.models)
+    .database!.result.data.files.map((f) => f.models)
     .flat();
   const document: AutoBeOpenApi.IDocument = ctx.state().interface!.document;
   const dtoTypeName: string = props.plan.dtoTypeName;
-  const preliminary: AutoBePreliminaryController<"prismaSchemas"> =
+  const preliminary: AutoBePreliminaryController<"databaseSchemas"> =
     new AutoBePreliminaryController({
       state: ctx.state(),
       source: SOURCE,
       application:
         typia.json.application<IAutoBeRealizeTransformerWriteApplication>(),
-      kinds: ["prismaSchemas"],
+      kinds: ["databaseSchemas"],
       local: {
-        prismaSchemas: models.filter(
-          (m) => m.name === props.plan.prismaSchemaName,
+        databaseSchemas: models.filter(
+          (m) => m.name === props.plan.databaseSchemaName,
         ),
       },
     });
@@ -103,7 +103,7 @@ async function process(
     const result: AutoBeContext.IResult = await ctx.conversate({
       source: "realizeWrite",
       controller: createController({
-        application: ctx.state().prisma!.result.data,
+        application: ctx.state().database!.result.data,
         document,
         plan: props.plan,
         neighbors: props.neighbors,
@@ -154,12 +154,12 @@ async function process(
 }
 
 function createController(props: {
-  application: AutoBePrisma.IApplication;
+  application: AutoBeDatabase.IApplication;
   document: AutoBeOpenApi.IDocument;
   plan: AutoBeRealizeTransformerPlan;
   neighbors: AutoBeRealizeTransformerPlan[];
   build: (next: IAutoBeRealizeTransformerWriteApplication.IComplete) => void;
-  preliminary: AutoBePreliminaryController<"prismaSchemas">;
+  preliminary: AutoBePreliminaryController<"databaseSchemas">;
 }): ILlmController {
   const validate: Validator = (input) => {
     const result: IValidation<IAutoBeRealizeTransformerWriteApplication.IProps> =

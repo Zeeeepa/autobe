@@ -16,7 +16,7 @@ const DIRECTORY = path.resolve(__dirname, "../prompts");
 //     root: path.resolve(`${directory}`),
 //     extension: "md",
 //   });
-//   const prisma = await new AutoBePrismaCompiler().compile({
+//   const prisma = await new AutoBeDatabaseCompiler().compile({
 //     files: await FileSystemIterator.read({
 //       root: path.resolve(`${directory}/prisma/schema`),
 //       extension: "prisma",
@@ -40,7 +40,7 @@ const DIRECTORY = path.resolve(__dirname, "../prompts");
 //       diagrams: prisma.diagrams,
 //       document: prisma.document,
 //     }),
-//     [`EXAMPLE_${title.toUpperCase()}_PRISMA_SCHEMAS`]: JSON.stringify(
+//     [`EXAMPLE_${title.toUpperCase()}_DATABASE_SCHEMAS`]: JSON.stringify(
 //       prisma.schemas,
 //     ),
 //     [`EXAMPLE_${title.toUpperCase()}_INTERFACE_ENDPOINTS`]: JSON.stringify({

@@ -8,16 +8,16 @@ This agent achieves its goal through function calling. **Function calling is MAN
 
 **EXECUTION STRATEGY**:
 1. **Analyze Compilation Errors**: Review the TypeScript diagnostics and identify error patterns in authentication code
-2. **Identify Schema Dependencies**: Determine which Prisma table schemas might be needed to fix authorization errors
-3. **Request Prisma Schemas** (when needed):
-   - Use `process({ request: { type: "getPrismaSchemas", schemaNames: [...] } })` to retrieve specific table schemas
+2. **Identify Schema Dependencies**: Determine which database table schemas might be needed to fix authorization errors
+3. **Request Database Schemas** (when needed):
+   - Use `process({ request: { type: "getDatabaseSchemas", schemaNames: [...] } })` to retrieve specific table schemas
    - Request ONLY when errors indicate schema-related issues (missing fields, wrong table relationships)
    - DO NOT request schemas you already have from previous calls
 4. **Execute Correction Function**: Call `process({ request: { type: "complete", provider: {...}, decorator: {...}, payload: {...} } })` after analysis
 
 **REQUIRED ACTIONS**:
 - ✅ Analyze compilation errors systematically in authentication code
-- ✅ Request Prisma schemas when schema-related issues are detected
+- ✅ Request database schemas when schema-related issues are detected
 - ✅ Execute `process({ request: { type: "complete", ... } })` immediately after gathering necessary context
 - ✅ Generate the corrected authentication code directly through the function call
 
@@ -44,11 +44,11 @@ This is a required self-reflection step that helps you:
 - Verify you have everything needed before completion
 - Think through gaps before acting
 
-**For preliminary requests** (getPrismaSchemas):
+**For preliminary requests** (getDatabaseSchemas):
 ```typescript
 {
   thinking: "Missing actor field types to fix JWT payload errors. Don't have them.",
-  request: { type: "getPrismaSchemas", schemaNames: ["users", "admins"] }
+  request: { type: "getDatabaseSchemas", schemaNames: ["users", "admins"] }
 }
 ```
 - State what's MISSING that you don't already have
@@ -79,7 +79,7 @@ thinking: "Fixed JWT error in join, password error in login, session error in re
 ```
 
 **IMPORTANT: Strategic Schema Retrieval**:
-- NOT every compilation error needs Prisma schema information
+- NOT every compilation error needs database schema information
 - ONLY request schemas when errors specifically indicate authorization schema issues:
   - Role table field errors
   - User table relationship errors
@@ -106,9 +106,9 @@ export namespace IAutoBeRealizeAuthorizationApplication {
      * Type discriminator for the request.
      *
      * Determines which action to perform: preliminary data retrieval
-     * (getPrismaSchemas) or final error correction (complete).
+     * (getDatabaseSchemas) or final error correction (complete).
      */
-    request: IComplete | IAutoBePreliminaryGetPrismaSchemas;
+    request: IComplete | IAutoBePreliminaryGetDatabaseSchemas;
   }
 
   /**
@@ -142,16 +142,16 @@ export namespace IAutoBeRealizeAuthorizationApplication {
 }
 
 /**
- * Request to retrieve Prisma database schema definitions for context.
+ * Request to retrieve database schema definitions for context.
  */
-export interface IAutoBePreliminaryGetPrismaSchemas {
+export interface IAutoBePreliminaryGetDatabaseSchemas {
   /**
    * Type discriminator indicating this is a preliminary data request.
    */
-  type: "getPrismaSchemas";
+  type: "getDatabaseSchemas";
 
   /**
-   * List of Prisma table names to retrieve.
+   * List of database table names to retrieve.
    *
    * CRITICAL: DO NOT request the same schema names that you have already
    * requested in previous calls.
@@ -166,9 +166,9 @@ export interface IAutoBePreliminaryGetPrismaSchemas {
 
 The `request` property is a **discriminated union** that can be one of two types:
 
-**1. IAutoBePreliminaryGetPrismaSchemas** - Retrieve Prisma schema information:
-- **type**: `"getPrismaSchemas"` - Discriminator indicating preliminary data request
-- **schemaNames**: Array of Prisma table names to retrieve (e.g., `["admins", "users", "user_sessions"]`)
+**1. IAutoBePreliminaryGetDatabaseSchemas** - Retrieve database schema information:
+- **type**: `"getDatabaseSchemas"` - Discriminator indicating preliminary data request
+- **schemaNames**: Array of database table names to retrieve (e.g., `["admins", "users", "user_sessions"]`)
 - **Purpose**: Request specific database schema definitions needed for fixing authorization-related errors
 - **When to use**: When compilation errors indicate role table, user table, or session table issues
 - **Strategy**: Request only schemas related to the specific authorization errors you're fixing
@@ -201,12 +201,12 @@ Corrected authentication Payload Type configuration containing:
 
 You must call the `process()` function with your structured output:
 
-**Phase 1: Request Prisma schemas (when schema-related errors detected)**:
+**Phase 1: Request database schemas (when schema-related errors detected)**:
 ```typescript
 process({
   thinking: "Need admins schema to fix authorization field errors.",
   request: {
-    type: "getPrismaSchemas",
+    type: "getDatabaseSchemas",
     schemaNames: ["admins", "users"]
   }
 });
@@ -509,10 +509,10 @@ import { jwtAuthorize } from "./jwtAuthorize";
 
 **Symptom**: `Property 'user_id' does not exist on type`
 
-**Root Cause**: Using wrong query field or Prisma schema doesn't have expected field
+**Root Cause**: Using wrong query field or database schema doesn''t have expected field
 
 **Fix Strategy**:
-1. Check Prisma schema for role table structure
+1. Check database schema for role table structure
 2. Identify if role table has foreign key to user table
 3. Use correct field (`user_id` vs `id`)
 4. Or remove the non-existent field if it shouldn't be there

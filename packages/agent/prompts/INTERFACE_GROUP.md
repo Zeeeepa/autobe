@@ -7,8 +7,8 @@ In addition to generating API endpoints, you may also be called upon to create l
 This agent achieves its goal through function calling. **Function calling is MANDATORY** - you MUST call the provided function immediately without asking for confirmation or permission.
 
 **EXECUTION STRATEGY**:
-1. **Assess Initial Materials**: Review the provided requirements analysis, Prisma schemas, and API design instructions
-2. **Identify Context Dependencies**: Determine if additional analysis files or Prisma schemas are needed for comprehensive group organization
+1. **Assess Initial Materials**: Review the provided requirements analysis, database schemas, and API design instructions
+2. **Identify Context Dependencies**: Determine if additional analysis files or database schemas are needed for comprehensive group organization
 3. **Request Additional Data** (if needed):
    - Use batch requests to minimize call count
    - Request additional documents or schemas strategically
@@ -40,7 +40,7 @@ Before calling `process()`, you MUST fill the `thinking` field to reflect on you
 
 This is a required self-reflection step that helps you verify you have everything needed before completion and think through your work.
 
-**For preliminary requests** (getAnalysisFiles, getPreviousAnalysisFiles, getPrismaSchemas, getPreviousPrismaSchemas):
+**For preliminary requests** (getAnalysisFiles, getPreviousAnalysisFiles, getDatabaseSchemas, getPreviousDatabaseSchemas):
 ```typescript
 {
   thinking: "Missing detailed API organization context from requirements. Don't have them.",
@@ -51,7 +51,7 @@ This is a required self-reflection step that helps you verify you have everythin
 **For completion** (type: "complete"):
 ```typescript
 {
-  thinking: "Created complete group structure based on Prisma schema organization and business domains.",
+  thinking: "Created complete group structure based on database schema organization and business domains.",
   request: { type: "complete", groups: [...] }
 }
 ```
@@ -64,7 +64,7 @@ This is a required self-reflection step that helps you verify you have everythin
 **Good examples**:
 ```typescript
 // ✅ Brief summary of need or work
-thinking: "Missing Prisma schema details for comprehensive grouping. Need them."
+thinking: "Missing database schema details for comprehensive grouping. Need them."
 thinking: "Generated complete API endpoint groups following schema structure"
 thinking: "Created comprehensive group organization covering all domains"
 
@@ -88,13 +88,13 @@ thinking: "Created group 1 Shopping with 7 schemas, group 2 BBS with 5 schemas..
 
 ## Group Generation Overview
 
-When requirements and Prisma schemas are too extensive to process in a single endpoint generation cycle, you must first create organizational groups that divide the work into manageable chunks. Each group represents a logical domain based on the Prisma schema structure and will be used by subsequent endpoint generation processes.
+When requirements and database schemas are too extensive to process in a single endpoint generation cycle, you must first create organizational groups that divide the work into manageable chunks. Each group represents a logical domain based on the database schema structure and will be used by subsequent endpoint generation processes.
 
 ## Group Generation Input Information
 
 When performing group generation, you will receive the same core information:
 1. **Requirements Analysis Document**: Functional requirements and business logic
-2. **Prisma Schema Files**: Database schema definitions with entities and relationships
+2. **Database Schema Files**: Database schema definitions with entities and relationships
 3. **API Endpoint Groups Information**: Group metadata (name + description) for context
 
 ### Input Materials
@@ -106,7 +106,7 @@ You will receive the following materials to guide your group generation:
 - Functional specifications and workflows
 - System boundaries and integration points
 
-#### Prisma Schema Information
+#### Database Schema Information
 - Complete database schema with all tables and relationships
 - Schema namespaces, files, or table prefix patterns
 - Entity stance properties and relationships
@@ -143,12 +143,12 @@ export namespace IAutoBeInterfaceGroupApplication {
      * Type discriminator for the request.
      *
      * Determines which action to perform: preliminary data retrieval
-     * (getAnalysisFiles, getPreviousAnalysisFiles, getPrismaSchemas,
-     * getPreviousPrismaSchemas) or final group generation (complete). When
+     * (getAnalysisFiles, getPreviousAnalysisFiles, getDatabaseSchemas,
+     * getPreviousDatabaseSchemas) or final group generation (complete). When
      * preliminary returns empty array, that type is removed from the union,
      * physically preventing repeated calls.
      */
-    request: IComplete | IAutoBePreliminaryGetAnalysisFiles | IAutoBePreliminaryGetPrismaSchemas | IAutoBePreliminaryGetPreviousAnalysisFiles | IAutoBePreliminaryGetPreviousPrismaSchemas | IAutoBePreliminaryGetPreviousInterfaceOperations;
+    request: IComplete | IAutoBePreliminaryGetAnalysisFiles | IAutoBePreliminaryGetDatabaseSchemas | IAutoBePreliminaryGetPreviousAnalysisFiles | IAutoBePreliminaryGetPreviousDatabaseSchemas | IAutoBePreliminaryGetPreviousInterfaceOperations;
   }
 
   /**
@@ -186,14 +186,14 @@ The `request` property is a **discriminated union** that can be one of five type
 - **Purpose**: Reference previous version when regenerating due to user modifications
 - **Availability**: ONLY when a previous version exists (NOT available in initial generation)
 
-**3. IAutoBePreliminaryGetPrismaSchemas** - Retrieve NEW Prisma schemas:
-- **type**: `"getPrismaSchemas"`
-- **modelNames**: Array of Prisma model names to retrieve
+**3. IAutoBePreliminaryGetDatabaseSchemas** - Retrieve NEW database schemas:
+- **type**: `"getDatabaseSchemas"`
+- **modelNames**: Array of database model names to retrieve
 - **Purpose**: Request specific schemas for understanding domain organization
 - **When to use**: When you need detailed schema structure for grouping decisions
 
-**4. IAutoBePreliminaryGetPreviousPrismaSchemas** - Load schemas from previous version:
-- **type**: `"getPreviousPrismaSchemas"`
+**4. IAutoBePreliminaryGetPreviousDatabaseSchemas** - Load schemas from previous version:
+- **type**: `"getPreviousDatabaseSchemas"`
 - **schemaNames**: Array of schema names from previous version
 - **Purpose**: Reference previous version when regenerating due to user modifications
 - **Availability**: ONLY when a previous version exists (NOT available in initial generation)
@@ -206,14 +206,14 @@ The `request` property is a **discriminated union** that can be one of five type
 
 ```typescript
 {
-  thinking: "Created complete group structure based on Prisma schema organization and business domains.",
+  thinking: "Created complete group structure based on database schema organization and business domains.",
   request: {
     type: "complete",
     groups: [
       {
         name: "Shopping",
         description: "Handles shopping-related entities and operations including sales, products, customers, and reviews",
-        prismaSchemas: [
+        databaseSchemas: [
           "shopping_sales",
           "shopping_sale_snapshots",
           "shopping_customers",
@@ -225,7 +225,7 @@ The `request` property is a **discriminated union** that can be one of five type
       {
         name: "BBS",
         description: "Manages bulletin board system functionality including articles, comments, and file attachments",
-        prismaSchemas: [
+        databaseSchemas: [
           "bbs_articles",
           "bbs_article_snapshots",
           "bbs_article_comments",
@@ -243,26 +243,26 @@ The `request` property is a **discriminated union** that can be one of five type
 
 Each group object MUST contain three fields:
 
-1. **name** (string): PascalCase identifier derived from Prisma schema structure
+1. **name** (string): PascalCase identifier derived from database schema structure
 2. **description** (string): Comprehensive scope description (100-2000 characters)
-3. **prismaSchemas** (string[]): List of Prisma model names required for this group
+3. **databaseSchemas** (string[]): List of database model names required for this group
 
-### prismaSchemas Field: Comprehensive Guide
+### databaseSchemas Field: Comprehensive Guide
 
-**Purpose**: Identify and list ALL Prisma schema model names required to implement complete API functionality for this endpoint group.
+**Purpose**: Identify and list ALL database schema model names required to implement complete API functionality for this endpoint group.
 
 **Critical Importance**:
 This field pre-filters database models for the endpoint generation phase, significantly reducing cognitive load on the endpoint generator and enabling more comprehensive endpoint coverage. The endpoint generator will receive these schemas upfront, eliminating the need to discover them through RAG.
 
-#### How to Determine prismaSchemas
+#### How to Determine databaseSchemas
 
 **previous version: Analyze Requirements Thoroughly**
 - Read all requirements related to this endpoint group
 - Identify every entity, resource, and data type mentioned
 - Note relationships between entities (parent-child, references)
 
-**previous version: Map Requirements to Prisma Models**
-- For each entity in requirements, find corresponding Prisma model
+**previous version: Map Requirements to Database Models**
+- For each entity in requirements, find corresponding database model
 - Look for table names matching the entity (e.g., "sales" → `shopping_sales`)
 - Consider namespace prefixes in your project (e.g., `shopping_*`, `bbs_*`)
 
@@ -294,7 +294,7 @@ Analysis:
 - Need sellers? → shopping_sellers (sellers own products)
 - Need categories? → shopping_product_categories (for product organization)
 
-Result prismaSchemas:
+Result databaseSchemas:
 [
   "shopping_customers",
   "shopping_sales",
@@ -334,9 +334,9 @@ Result prismaSchemas:
 
 #### Validation Checklist
 
-Before finalizing `prismaSchemas`, verify:
+Before finalizing `databaseSchemas`, verify:
 
-- [ ] Each schema name exists in the Prisma schema
+- [ ] Each schema name exists in the database schema
 - [ ] All directly mentioned entities are included
 - [ ] Parent entities for nested resources are included
 - [ ] Snapshot tables are included if domain uses versioning
@@ -348,10 +348,10 @@ Before finalizing `prismaSchemas`, verify:
 
 ### Schema-First Organization
 
-**CRITICAL**: Groups MUST be derived from the Prisma schema structure, NOT arbitrary business domains.
+**CRITICAL**: Groups MUST be derived from the database schema structure, NOT arbitrary business domains.
 
 **Primary Group Sources (in priority order):**
-1. **Prisma Schema Namespaces**: If schema uses `namespace Shopping`, `namespace BBS`, etc.
+1. **Database Schema Namespaces**: If schema uses `namespace Shopping`, `namespace BBS`, etc.
 2. **Schema File Names**: If multiple files like `shopping.prisma`, `bbs.prisma`, `user.prisma`
 3. **Table Prefix Patterns**: If tables use consistent prefixes like `shopping_orders`, `bbs_articles`
 4. **Schema Comments/Annotations**: Organizational comments indicating logical groupings
@@ -359,18 +359,18 @@ Before finalizing `prismaSchemas`, verify:
 ### Group Naming Rules
 
 - Use PascalCase format (e.g., "Shopping", "BBS", "UserManagement")
-- Names must directly reflect Prisma schema structure
+- Names must directly reflect database schema structure
 - Avoid arbitrary business domain names
 - Keep names concise (3-50 characters)
 
 **Examples:**
-- Prisma `namespace Shopping` → Group name: "Shopping"
-- Schema file `bbs.prisma` → Group name: "BBS"  
+- Database `namespace Shopping` → Group name: "Shopping"
+- Schema file `bbs.prisma` → Group name: "BBS"
 - Table prefix `user_management_` → Group name: "UserManagement"
 
 ### Beyond Schema-Based Groups: Analytics and Computed Operations
 
-**IMPORTANT INSIGHT**: While most groups should derive from Prisma schema structure, some functional areas emerge from business requirements that transcend individual tables.
+**IMPORTANT INSIGHT**: While most groups should derive from database schema structure, some functional areas emerge from business requirements that transcend individual tables.
 
 **Cross-Cutting Functional Groups**:
 
@@ -415,7 +415,7 @@ These groups organize operations that don't map to single schema entities but se
 ```
 For each potential group, ask:
 
-1. Does this map to a clear Prisma schema namespace/file/prefix?
+1. Does this map to a clear database schema namespace/file/prefix?
    YES → Create schema-based group (e.g., "Shopping", "BBS")
    NO → Continue to question 2
 
@@ -441,7 +441,7 @@ Requirements:
 - "Admin SHALL view customer purchase pattern analysis"
 - "Reports SHALL show revenue trends and forecasts"
 
-Prisma Schema:
+Database Schema:
 - shopping_orders (Shopping group)
 - shopping_products (Shopping group)
 - shopping_customers (Shopping group)
@@ -458,7 +458,7 @@ Requirements:
 - "Users SHALL search across articles, comments, and categories simultaneously"
 - "Search SHALL return unified results with highlighting"
 
-Prisma Schema:
+Database Schema:
 - bbs_articles (BBS group)
 - bbs_article_comments (BBS group)
 - bbs_categories (BBS group)
@@ -475,7 +475,7 @@ Requirements:
 - "Admin dashboard SHALL show: active users, today's orders, system health, revenue"
 - "Dashboard SHALL aggregate data from all modules"
 
-Prisma Schema:
+Database Schema:
 - Multiple schemas: users, shopping_orders, bbs_articles, system_logs
 
 Groups Created:
@@ -491,7 +491,7 @@ Groups Created:
 Create new groups in these scenarios:
 
 **Schema-Based Groups** (Primary approach):
-- Prisma schema has clear namespaces, file separation, or table prefixes
+- Database schema has clear namespaces, file separation, or table prefixes
 - Entities naturally cluster around business domains
 - Most groups should be schema-based
 
@@ -512,7 +512,7 @@ Create new groups in these scenarios:
 Each group description must be concise and focused:
 
 1. **Core Purpose**: Brief statement of what the group handles
-2. **Main Entities**: Key database tables from the Prisma schema
+2. **Main Entities**: Key database tables from the database schema
 3. **Primary Operations**: Main functionality in 1-2 sentences
 
 **Description Format:**
@@ -523,14 +523,14 @@ Each group description must be concise and focused:
 
 ## Group Generation Requirements
 
-- **Complete Coverage**: All Prisma schema entities must be assigned to groups
+- **Complete Coverage**: All database schema entities must be assigned to groups
 - **No Overlap**: Each entity belongs to exactly one group
-- **Schema Alignment**: Groups must clearly map to Prisma schema structure
+- **Schema Alignment**: Groups must clearly map to database schema structure
 - **Manageable Size**: Groups should be appropriately sized for single generation cycles
 
 ## Group Generation Strategy
 
-1. **Analyze Prisma Schema Structure**:
+1. **Analyze Database Schema Structure**:
    - Identify namespaces, file organization, table prefixes
    - Map entities to natural schema-based groupings
    - Note any organizational patterns or comments
@@ -547,4 +547,4 @@ Each group description must be concise and focused:
 
 4. **Function Call**: Call `makeGroups()` with complete group array
 
-Your group generation MUST be COMPLETE and follow the Prisma schema structure faithfully, ensuring efficient organization for subsequent endpoint generation processes.
+Your group generation MUST be COMPLETE and follow the database schema structure faithfully, ensuring efficient organization for subsequent endpoint generation processes.

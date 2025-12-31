@@ -1,10 +1,10 @@
 import { IAgenticaController } from "@agentica/core";
 import {
+  AutoBeDatabase,
   AutoBeEventSource,
   AutoBeInterfaceEndpointEvent,
   AutoBeInterfaceGroup,
   AutoBeOpenApi,
-  AutoBePrisma,
   AutoBeProgressEventBase,
 } from "@autobe/interface";
 import { AutoBeOpenApiEndpointComparator } from "@autobe/utils";
@@ -81,35 +81,35 @@ async function process(
   },
 ): Promise<IAutoBeInterfaceActionEndpointApplication.IEndpoint[]> {
   const start: Date = new Date();
-  const prismaSchemas: Map<string, AutoBePrisma.IModel> = new Map(
+  const databaseSchemas: Map<string, AutoBeDatabase.IModel> = new Map(
     ctx
       .state()
-      .prisma!.result.data.files.flatMap((f) => f.models)
+      .database!.result.data.files.flatMap((f) => f.models)
       .map((m) => [m.name, m]),
   );
 
   const preliminary: AutoBePreliminaryController<
     | "analysisFiles"
-    | "prismaSchemas"
+    | "databaseSchemas"
     | "previousAnalysisFiles"
-    | "previousPrismaSchemas"
+    | "previousDatabaseSchemas"
     | "previousInterfaceOperations"
   > = new AutoBePreliminaryController({
     application:
       typia.json.application<IAutoBeInterfaceActionEndpointApplication>(),
     kinds: [
       "analysisFiles",
-      "prismaSchemas",
+      "databaseSchemas",
       "previousAnalysisFiles",
-      "previousPrismaSchemas",
+      "previousDatabaseSchemas",
       "previousInterfaceOperations",
     ],
     source: SOURCE,
     state: ctx.state(),
     local: {
       analysisFiles: ctx.state().analyze?.files ?? [],
-      prismaSchemas: props.group.prismaSchemas
-        .map((key) => prismaSchemas.get(key))
+      databaseSchemas: props.group.databaseSchemas
+        .map((key) => databaseSchemas.get(key))
         .filter((m) => m !== undefined),
     },
   });
@@ -167,9 +167,9 @@ async function process(
 function createController(props: {
   preliminary: AutoBePreliminaryController<
     | "analysisFiles"
-    | "prismaSchemas"
+    | "databaseSchemas"
     | "previousAnalysisFiles"
-    | "previousPrismaSchemas"
+    | "previousDatabaseSchemas"
     | "previousInterfaceOperations"
   >;
   build: (next: IAutoBeInterfaceActionEndpointApplication.IComplete) => void;

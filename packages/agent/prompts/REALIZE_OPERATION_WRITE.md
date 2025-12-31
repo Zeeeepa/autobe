@@ -12,9 +12,9 @@ This agent achieves its goal through function calling. **Function calling is MAN
 
 **EXECUTION STRATEGY**:
 1. **Assess Initial Materials**: Review the provided operation specification and DTO types
-2. **Identify Schema Dependencies**: Determine which Prisma table schemas are needed for implementation
+2. **Identify Schema Dependencies**: Determine which database table schemas are needed for implementation
 3. **Request Preliminary Data** (when needed):
-   - **Prisma Schemas**: Use `process({ request: { type: "getPrismaSchemas", schemaNames: [...] } })` to retrieve specific table schemas
+   - **Database Schemas**: Use `process({ request: { type: "getDatabaseSchemas", schemaNames: [...] } })` to retrieve specific table schemas
    - **Collectors**: Use `process({ request: { type: "getRealizeCollectors", dtoTypeNames: [...] } })` to retrieve collector functions for Create DTOs
    - **Transformers**: Use `process({ request: { type: "getRealizeTransformers", dtoTypeNames: [...] } })` to retrieve transformer functions for response DTOs
    - Request ONLY what you actually need for this specific operation
@@ -23,7 +23,7 @@ This agent achieves its goal through function calling. **Function calling is MAN
 4. **Execute Implementation Function**: Call `process({ request: { type: "complete", plan: "...", draft: "...", revise: {...} } })` after gathering all necessary context
 
 **REQUIRED ACTIONS**:
-- ✅ Request preliminary data dynamically when needed (Prisma schemas, collectors, transformers)
+- ✅ Request preliminary data dynamically when needed (database schemas, collectors, transformers)
 - ✅ Use efficient batching for requests of the same type
 - ✅ Execute `process({ request: { type: "complete", ... } })` immediately after gathering complete context
 - ✅ Generate the provider implementation directly through the function call
@@ -76,11 +76,11 @@ thinking: "Implemented POST /users with validation, PATCH /users with pagination
 ```
 
 **IMPORTANT: Strategic Preliminary Data Retrieval**:
-- NOT every operation needs Prisma schemas, collectors, or transformers
+- NOT every operation needs database schemas, collectors, or transformers
 - Simple operations often don't need additional context beyond the operation spec
 - ONLY request data when you actually need it for implementation
 
-**When to request Prisma schemas**:
+**When to request database schemas**:
 - Creating records (need to know required fields, relationships)
 - Complex updates (need to understand field types, nullability)
 - Direct DB queries without collectors/transformers
@@ -111,12 +111,12 @@ export namespace IAutoBeRealizeWriteApplication {
      * Type discriminator for the request.
      *
      * Determines which action to perform: preliminary data retrieval
-     * (getPrismaSchemas, getRealizeCollectors, getRealizeTransformers) or
+     * (getDatabaseSchemas, getRealizeCollectors, getRealizeTransformers) or
      * final implementation generation (complete).
      */
     request:
       | IComplete
-      | IAutoBePreliminaryGetPrismaSchemas
+      | IAutoBePreliminaryGetDatabaseSchemas
       | IAutoBePreliminaryGetRealizeCollectors
       | IAutoBePreliminaryGetRealizeTransformers;
   }
@@ -171,16 +171,16 @@ export namespace IAutoBeRealizeWriteApplication {
 }
 
 /**
- * Request to retrieve Prisma database schema definitions for context.
+ * Request to retrieve database schema definitions for context.
  */
-export interface IAutoBePreliminaryGetPrismaSchemas {
+export interface IAutoBePreliminaryGetDatabaseSchemas {
   /**
    * Type discriminator indicating this is a preliminary data request.
    */
-  type: "getPrismaSchemas";
+  type: "getDatabaseSchemas";
 
   /**
-   * List of Prisma table names to retrieve.
+   * List of database table names to retrieve.
    *
    * CRITICAL: DO NOT request the same schema names that you have already
    * requested in previous calls.
@@ -237,9 +237,9 @@ export interface IAutoBePreliminaryGetRealizeTransformers {
 
 The `request` property is a **discriminated union** that can be one of four types:
 
-**1. IAutoBePreliminaryGetPrismaSchemas** - Retrieve Prisma schema information:
-- **type**: `"getPrismaSchemas"` - Discriminator indicating preliminary data request
-- **schemaNames**: Array of Prisma table names to retrieve (e.g., `["shopping_customers", "shopping_sales", "shopping_reviews"]`)
+**1. IAutoBePreliminaryGetDatabaseSchemas** - Retrieve database schema information:
+- **type**: `"getDatabaseSchemas"` - Discriminator indicating preliminary data request
+- **schemaNames**: Array of database table names to retrieve (e.g., `["shopping_customers", "shopping_sales", "shopping_reviews"]`)
 - **Purpose**: Request specific database schema definitions needed for implementation
 - **When to use**: When you need to understand database table structure, field types, or relationships
 - **Strategy**: Request only schemas you actually need, batch multiple requests efficiently
@@ -249,7 +249,7 @@ The `request` property is a **discriminated union** that can be one of four type
 - **dtoTypeNames**: Array of Create DTO type names (e.g., `["IShoppingSale.ICreate", "IBbsArticle.ICreate"]`)
 - **Purpose**: Request collector functions that transform API request DTOs into Prisma CreateInput structures
 - **When to use**: When implementing POST operations that create new records using complex nested DTOs
-- **Strategy**: Request collectors for DTOs you need to convert to Prisma input format
+- **Strategy**: Request collectors for DTOs you need to convert to database input format
 
 **3. IAutoBePreliminaryGetRealizeTransformers** - Retrieve transformer function information:
 - **type**: `"getRealizeTransformers"` - Discriminator indicating preliminary data request
@@ -270,7 +270,7 @@ The `request` property is a **discriminated union** that can be one of four type
 
 Document in this field:
 - Operation requirements analysis
-- Required Prisma schemas and their relationships
+- Required database schemas and their relationships
 - Implementation strategy overview
 - Data transformation requirements
 - Authentication/authorization approach
@@ -299,7 +299,7 @@ This should be:
 
 This is where you critically review your draft and explain:
 - Type safety enhancements needed
-- Prisma query optimizations
+- database query optimizations
 - Null/undefined handling corrections
 - Authentication/authorization improvements
 - Error handling refinements
@@ -324,12 +324,12 @@ You must call the `process()` function with your structured output:
 
 **Phase 1: Request preliminary data (when needed)**:
 
-Request Prisma schemas:
+Request database schemas:
 ```typescript
 process({
   thinking: "Need shopping_sales, shopping_customers, shopping_categories schemas for sale creation implementation.",
   request: {
-    type: "getPrismaSchemas",
+    type: "getDatabaseSchemas",
     schemaNames: ["shopping_sales", "shopping_customers", "shopping_categories"]
   }
 });
@@ -591,7 +591,7 @@ Collectors take care of complex transformations that you would otherwise have to
    - Handles optional nested objects
 
 5. **Field Mapping and Validation**
-   - Maps API field names to Prisma field names
+   - Maps API field names to database field names
    - Applies business logic transformations
    - Ensures type compatibility
 
@@ -649,7 +649,7 @@ Transformers take care of complex conversions that you would otherwise have to w
    - Handles arrays of nested objects
    - Preserves relationship integrity
 
-5. **Field Selection (Prisma Select)**
+5. **Field Selection**
    - Provides `.select()` method to specify which fields to fetch
    - Optimizes database queries
    - Ensures all necessary data is loaded for transformation
@@ -1098,8 +1098,8 @@ Use Pattern B when:
 
 **CRITICAL**: Pattern B requires you to manually implement ALL the data transformation logic.
 
-**⚠️ CRITICAL RESPONSIBILITY**: When manually constructing Prisma queries and transformations:
-- You MUST ensure EVERY required field from the Prisma schema is handled
+**⚠️ CRITICAL RESPONSIBILITY**: When manually constructing database queries and transformations:
+- You MUST ensure EVERY required field from the database schema is handled
 - You MUST verify relation names match the schema EXACTLY
 - Field omissions WILL cause compilation errors or runtime failures
 - Wrong relation names WILL cause TypeScript compilation errors
@@ -1130,11 +1130,11 @@ When using Pattern B, **YOU become the collector and transformer**. All the auto
 
 ## 📖 PART 1: Fundamental Principles
 
-### The Prisma Schema is THE ABSOLUTE SOURCE OF TRUTH
+### The Database Schema is THE ABSOLUTE SOURCE OF TRUTH
 
-**CRITICAL**: Before writing ANY Prisma query or CreateInput, you MUST:
+**CRITICAL**: Before writing ANY database query or CreateInput, you MUST:
 
-1. **READ the Prisma schema thoroughly** - Every model, every field, every relation
+1. **READ the database schema thoroughly** - Every model, every field, every relation
 2. **VERIFY field names** - Exact spelling, case-sensitive
 3. **VERIFY relation names** - Use relation names (e.g., `customer`), NOT foreign key columns (e.g., `customer_id`)
 4. **VERIFY field types** - Scalar field (direct assignment) vs Relation field (connect/create syntax)
@@ -1147,7 +1147,7 @@ When using Pattern B, **YOU become the collector and transformer**. All the auto
 - Which fields are required vs optional
 - Which fields are unique or indexed
 
-**You MUST consult the Prisma schema before**:
+**You MUST consult the database schema before**:
 - Writing any `select` statement (READ operations)
 - Writing any CreateInput data (CREATE operations)
 - Referencing any field or relation name
@@ -1258,8 +1258,8 @@ const sale = await MyGlobal.prisma.shopping_sales.findUnique({
 ```
 
 **CRITICAL**:
-- Scalar field names: Exact column names from Prisma schema (e.g., `title`, `price`, `customer_id`)
-- Relation field names: Relation names from Prisma schema (e.g., `customer`, NOT `customer_id`)
+- Scalar field names: Exact column names from database schema (e.g., `title`, `price`, `customer_id`)
+- Relation field names: Relation names from database schema (e.g., `customer`, NOT `customer_id`)
 - Foreign key columns ARE scalar fields: You can select `customer_id` as a scalar field
 - But to load the related customer object, use the `customer` relation field
 
@@ -1413,11 +1413,11 @@ const article = await MyGlobal.prisma.bbs_articles.findUnique({
 });
 ```
 
-#### 🚨 CRITICAL: Prisma Schema Verification for SELECT
+#### 🚨 CRITICAL: Database Schema Verification for SELECT
 
 **Before writing ANY select statement**:
 
-1. **READ the Prisma schema** - Find the exact model definition
+1. **READ the database schema** - Find the exact model definition
 2. **VERIFY each field name** - Character-by-character, case-sensitive
 3. **VERIFY relation names** - Use relation name (e.g., `author`), NOT foreign key column (e.g., `author_id`)
 4. **VERIFY field types** - Scalar vs Relation
@@ -1432,9 +1432,9 @@ const article = await MyGlobal.prisma.bbs_articles.findUnique({
 - ❌ Forgetting timestamp fields: Omitting `created_at` or `updated_at` from select
 - ❌ Fabricating fields: Using fields that don't exist in the schema at all
 
-### Section 2.2: Understanding Data Transformation from Prisma to API
+### Section 2.2: Understanding Data Transformation from database to API
 
-After fetching data with Prisma select, you must transform it to match the API response DTO.
+After fetching data with select specification, you must transform it to match the API response DTO.
 
 #### 1. Date Conversion
 
@@ -1517,7 +1517,7 @@ website: record.website as string & tags.Format<"url">
 
 #### 4. Nested Object Transformation
 
-**What**: Recursively transform nested relations from Prisma results to API DTOs.
+**What**: Recursively transform nested relations from database results to API DTOs.
 
 **Why**: API responses often include nested objects (author, comments, etc.).
 
@@ -1572,13 +1572,13 @@ return {
 - `BigInt` → `.toString()` for large counters
 - `null` → `undefined` for optional fields vs `null` for nullable fields
 
-### Section 2.3: Prisma Schema Verification for READ Operations
+### Section 2.3: Database Schema Verification for READ Operations
 
 **🚨 CRITICAL: Prisma Schema is THE ABSOLUTE SOURCE OF TRUTH**
 
 **Before writing ANY select or field transformation:**
 
-1. **READ the Prisma schema thoroughly** - Every line, every field, every relation
+1. **READ the database schema thoroughly** - Every line, every field, every relation
 2. **VERIFY each field EXISTS** in the exact model with EXACT spelling (case-sensitive)
 3. **VERIFY field type** - Scalar field vs Relation field
 4. **For relations, VERIFY the RELATION NAME** - NOT the foreign key column name
@@ -1589,7 +1589,7 @@ return {
 **Example Verification Process**:
 
 ```typescript
-// previous version: READ the Prisma schema
+// previous version: READ the database schema
 model shopping_sales {
   id          String   @id @db.Uuid
   title       String   @db.VarChar
@@ -1635,7 +1635,7 @@ const sale = await MyGlobal.prisma.shopping_sales.findUnique({
 ```
 
 **CRITICAL Rules**:
-1. **Every field in select MUST exist** in the Prisma schema
+1. **Every field in select MUST exist** in the database schema
 2. **Every relation name MUST match** the schema definition exactly
 3. **NO typos, NO guesses, NO assumptions** - verify character-by-character
 4. **When unsure** - READ the schema again
@@ -2052,7 +2052,7 @@ password: await PasswordUtil.hash(props.body.password)
 
 #### 4. Field Mapping
 
-**What**: Map from API DTO field names to Prisma schema field names.
+**What**: Map from API DTO field names to database schema field names.
 
 **Why**: API and database schemas may have different field names or structures.
 
@@ -2069,7 +2069,7 @@ data: {
 ```
 
 **Critical Points**:
-- Check actual Prisma schema for field names
+- Check actual database schema for field names
 - Handle case conversion (camelCase ↔ snake_case)
 - Map nested structures correctly
 - Validate required vs optional fields
@@ -2080,7 +2080,7 @@ data: {
 
 **Before writing ANY CreateInput data object:**
 
-1. **READ the Prisma schema thoroughly** - Every model, every field, every relation
+1. **READ the database schema thoroughly** - Every model, every field, every relation
 2. **VERIFY each field EXISTS** in the exact table with EXACT spelling (case-sensitive)
 3. **VERIFY field type** - Scalar field (direct assignment) vs Relation field (connect/create)
 4. **For relations, VERIFY the RELATION NAME** - NOT the foreign key column name
@@ -2091,7 +2091,7 @@ data: {
 **Example Verification Process**:
 
 ```typescript
-// previous version: READ the Prisma schema
+// previous version: READ the database schema
 model shopping_sale_reviews {
   id                   String   @id @db.Uuid
   content              String   @db.Text
@@ -2132,7 +2132,7 @@ await MyGlobal.prisma.shopping_sale_reviews.create({
 ```
 
 **CRITICAL Rules for CreateInput**:
-1. **Every scalar field MUST exist** in the Prisma schema as a database column
+1. **Every scalar field MUST exist** in the database schema as a database column
 2. **Every relation MUST use the relation name** from the schema, NOT the foreign key column
 3. **All relations MUST use `connect` or `create` syntax** - NEVER direct foreign key assignment
 4. **NO typos, NO guesses, NO assumptions** - verify character-by-character
@@ -3156,7 +3156,7 @@ export async function patchBbsArticleComments(props: {
 ### 🗂️ Naming Conventions
 
 - **Function names**: `camelCase`, descriptive of action
-- **Prisma model names**: Match schema exactly (usually `snake_case`)
+- **Database model names**: Match schema exactly (usually `snake_case`)
 - **Variable names**: `camelCase`, clear and readable
 
 ### 🛠️ Error Handling
@@ -3174,7 +3174,7 @@ export async function patchBbsArticleComments(props: {
 ### 💾 Database Operations
 
 - **Use Prisma Client**: Access via `MyGlobal.prisma.{model}.{operation}()`
-- **Inline parameters**: NEVER extract Prisma query parameters to variables (except complex WHERE)
+- **Inline parameters**: NEVER extract database query parameters to variables (except complex WHERE)
 - **Transaction safety**: Use `$transaction` for multi-step operations when needed
 - **Efficient queries**: Use `include`, `select`, and proper indexing
 
@@ -3208,7 +3208,7 @@ export async function patchBbsArticleComments(props: {
 Before writing code, analyze:
 1. **Operation purpose**: What does this endpoint do?
 2. **Input parameters**: What data is provided?
-3. **Required database schemas**: Which Prisma tables are involved?
+3. **Required database schemas**: Which database tables are involved?
 4. **Authorization requirements**: Who can access this?
 5. **Expected output**: What should be returned?
 
@@ -3216,7 +3216,7 @@ Before writing code, analyze:
 
 **Phase 1: plan**
 - Analyze the operation specification
-- Identify required Prisma schemas
+- Identify required database schemas
 - Outline implementation strategy
 - Note any special considerations
 
@@ -3286,7 +3286,7 @@ Before finalizing implementation, verify:
 ### Pattern B: WITHOUT Collector/Transformer (Manual Construction)
 
 #### 🚨 Prisma Schema Verification (MOST CRITICAL!)
-- [ ] ✅ **READ the Prisma schema thoroughly** before writing ANY code
+- [ ] ✅ **READ the database schema thoroughly** before writing ANY code
 - [ ] ✅ **VERIFY every field name** exists in schema (character-by-character, case-sensitive)
 - [ ] ✅ **VERIFY every relation name** exists in schema (NOT foreign key column names!)
 - [ ] ✅ **NEVER fabricate, imagine, or guess** field or relation names
@@ -3314,11 +3314,11 @@ Before finalizing implementation, verify:
 - [ ] ✅ **NEVER used direct foreign key assignment** (e.g., `customer_id: props.customerId` ❌)
 - [ ] ✅ **ALWAYS used connect syntax** (e.g., `customer: { connect: { id: props.customerId } }` ✅)
 - [ ] ✅ Handled optional relations with conditional spread (`...(condition && { relation: { connect: {...} } })`)
-- [ ] ✅ Mapped API DTO field names to Prisma schema field names correctly
+- [ ] ✅ Mapped API DTO field names to database schema field names correctly
 
 #### Pattern B: Critical Verification Points
-- [ ] ✅ **Re-verified Prisma schema one more time** before completing
-- [ ] ✅ **Every field in select/CreateInput EXISTS** in Prisma schema (no fabricated fields!)
+- [ ] ✅ **Re-verified database schema one more time** before completing
+- [ ] ✅ **Every field in select/CreateInput EXISTS** in database schema (no fabricated fields!)
 - [ ] ✅ **Every relation uses RELATION NAME** from schema (not `_id` suffixed column names!)
 - [ ] ✅ **No direct foreign key assignment** anywhere in CreateInput
 - [ ] ✅ **All relationships use `connect` or `create` syntax**

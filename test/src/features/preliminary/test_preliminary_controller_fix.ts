@@ -15,7 +15,7 @@ export const test_preliminary_controller_fix_of_chatgpt = async () => {
     (await AutoBeExampleStorage.has({
       vendor: TestGlobal.vendorModel,
       project: "todo",
-      phase: "prisma",
+      phase: "database",
     })) === false
   )
     return false;
@@ -29,7 +29,7 @@ export const test_preliminary_controller_fix_of_chatgpt = async () => {
     histories: await AutoBeExampleStorage.getHistories({
       vendor: TestGlobal.vendorModel,
       project: "todo",
-      phase: "prisma",
+      phase: "database",
     }),
   });
 
@@ -37,11 +37,11 @@ export const test_preliminary_controller_fix_of_chatgpt = async () => {
     typia.llm.application<IAutoBeInterfaceSchemaReviewApplication>();
   const preliminary: AutoBePreliminaryController<
     | "analysisFiles"
-    | "prismaSchemas"
+    | "databaseSchemas"
     | "interfaceOperations"
     | "interfaceSchemas"
     | "previousAnalysisFiles"
-    | "previousPrismaSchemas"
+    | "previousDatabaseSchemas"
     | "previousInterfaceOperations"
     | "previousInterfaceSchemas"
   > = new AutoBePreliminaryController({
@@ -50,11 +50,11 @@ export const test_preliminary_controller_fix_of_chatgpt = async () => {
     source: "interfaceSchemaReview",
     kinds: [
       "analysisFiles",
-      "prismaSchemas",
+      "databaseSchemas",
       "interfaceOperations",
       "interfaceSchemas",
       "previousAnalysisFiles",
-      "previousPrismaSchemas",
+      "previousDatabaseSchemas",
       "previousInterfaceOperations",
       "previousInterfaceSchemas",
     ],
@@ -73,7 +73,7 @@ export const test_preliminary_controller_fix_of_chatgpt = async () => {
     [
       "IAutoBeInterfaceSchemaReviewApplication.IComplete",
       "IAutoBePreliminaryGetAnalysisFiles",
-      "IAutoBePreliminaryGetPrismaSchemas",
+      "IAutoBePreliminaryGetDatabaseSchemas",
       "IAutoBePreliminaryGetInterfaceOperations",
       "IAutoBePreliminaryGetInterfaceSchemas",
     ].sort(),
@@ -84,7 +84,7 @@ export const test_preliminary_controller_fix_of_chatgpt = async () => {
     [
       "complete",
       "getAnalysisFiles",
-      "getPrismaSchemas",
+      "getDatabaseSchemas",
       "getInterfaceOperations",
       "getInterfaceSchemas",
     ].sort(),
@@ -94,12 +94,12 @@ export const test_preliminary_controller_fix_of_chatgpt = async () => {
     preliminary.getKinds().slice().sort(),
     [
       "analysisFiles",
-      "prismaSchemas",
+      "databaseSchemas",
       "interfaceOperations",
       "interfaceSchemas",
     ].sort() as Array<
       | "analysisFiles"
-      | "prismaSchemas"
+      | "databaseSchemas"
       | "interfaceOperations"
       | "interfaceSchemas"
     >,

@@ -24,7 +24,7 @@ Participants successfully generated complete backend applications using only nat
 Therefore, while this hackathon demonstrated AutoBE's code generation capabilities, we recognized the need for more in-depth critical evaluation in realistic development environments.
 
 ### 1.2. Open Source Contest
-We hosted an Agentica open-source contest in partnership with the Korean government. Agentica is an agentic AI framework specialized in function calling that serves as AutoBE's core engine. It particularly handles critical functions such as generating compiler AST structures like [`AutoBePrisma.IApplication`](https://github.com/wrtnlabs/autobe/blob/main/packages/interface/src/prisma/AutoBePrisma.ts), [`AutoBeOpenApi.IDocument`](https://github.com/wrtnlabs/autobe/blob/main/packages/interface/src/openapi/AutoBeOpenApi.ts), and [`AutoBeTest.IFunction`](https://github.com/wrtnlabs/autobe/blob/main/packages/interface/src/test/AutoBeTest.ts) through function calling, and automatically correcting type errors.
+We hosted an Agentica open-source contest in partnership with the Korean government. Agentica is an agentic AI framework specialized in function calling that serves as AutoBE's core engine. It particularly handles critical functions such as generating compiler AST structures like [`AutoBeDatabase.IApplication`](https://github.com/wrtnlabs/autobe/blob/main/packages/interface/src/database/AutoBeDatabase.ts), [`AutoBeOpenApi.IDocument`](https://github.com/wrtnlabs/autobe/blob/main/packages/interface/src/openapi/AutoBeOpenApi.ts), and [`AutoBeTest.IFunction`](https://github.com/wrtnlabs/autobe/blob/main/packages/interface/src/test/AutoBeTest.ts) through function calling, and automatically correcting type errors.
 
 The contest was conducted as a competition for developing AI chatbots and agent applications utilizing Agentica, with numerous teams participating and a total of 10 teams advancing to the finals. While collecting real-world use cases and feedback to explore Agentica's development direction, we plan to recommend participants who demonstrated exceptional capabilities in schema design for function calling and agent utilization to the Wrtn Technologies AX development team.
 
@@ -50,11 +50,11 @@ Benchmark data is directly reflected in agent system prompt improvements and orc
 ### 2.1. Direct Instruction
 In situations requiring precise technical specifications, users must be able to provide DB schemas or API specifications through direct instruction rather than natural language. While AutoBE has maintained backend generation through natural language interfaces as a core value, enterprise field testing confirmed the existence of situations where direct specification is essential.
 
-However, table schemas shared with existing systems (e.g., AI chatbot-related tables), mandatory API specifications for B2B integration, data structures that must be precisely defined for regulatory compliance, and legacy system compatibility constraints are difficult to express adequately through natural language. This is because AutoBE currently has a structure that extracts requirements from user conversations and passes them only to the Analyze agent. The Prisma (DB design) and Interface (API design) agents only receive Analyze's output and cannot receive users' direct technical specifications.
+However, table schemas shared with existing systems (e.g., AI chatbot-related tables), mandatory API specifications for B2B integration, data structures that must be precisely defined for regulatory compliance, and legacy system compatibility constraints are difficult to express adequately through natural language. This is because AutoBE currently has a structure that extracts requirements from user conversations and passes them only to the Analyze agent. The Database (DB design) and Interface (API design) agents only receive Analyze's output and cannot receive users' direct technical specifications.
 
 In Gamma, we plan to implement a specification extraction system to bridge this gap.
 
-We will analyze direct technical instructions from user conversations, routing natural language requirements to the Analyze agent as before, while extracting and organizing DB/API specifications for direct delivery to Prisma and Interface agents.
+We will analyze direct technical instructions from user conversations, routing natural language requirements to the Analyze agent as before, while extracting and organizing DB/API specifications for direct delivery to Database and Interface agents.
 
 This enables a hybrid workflow where users can specify both high-level intent and low-level technical constraints simultaneously, maintaining accessibility while allowing users to directly control essential architectural decisions in business contexts.
 
@@ -87,7 +87,7 @@ Commercial models like `openai/gpt-4.1` handle JSON Schema generation reliably, 
 > Phase | Generated | Token Usage | Elapsed Time | FCSR
 > :-----|:----------|------------:|-------------:|------:
 > 🟢 Analyze | `actors`: 1, `documents`: 3 | 111.6K | 32s | 100%
-> 🟢 Prisma | `namespaces`: 2, `models`: 3 | 114.5K | 8m 34s | 29%
+> 🟢 Database | `namespaces`: 2, `models`: 3 | 114.5K | 8m 34s | 29%
 > 🟢 Interface | `operations`: 8, `schemas`: 12 | 3.95M | 45m 3s | 65%
 > 🟢 Test | `functions`: 2 | 2.39M | 7m 31s | 77%
 > 🟢 Realize | `functions`: 8 | 1.78M | 7m 11s | 97%
@@ -130,7 +130,7 @@ Gamma introduces an iterative, retrieval-augmented generation workflow where age
 ```typescript showLineNumbers
 interface IAutoBeInterfaceOperationApplication {
   getDocuments(filenames: string[]): Record<string, string>;
-  getModels(names: string[]): AutoBePrisma.IModel[];
+  getModels(names: string[]): AutoBeDatabase.IModel[];
   complete(operations: AutoBeOpenApi.IOperation[]): void;
   halt(reason: string): void;
 }
@@ -140,7 +140,7 @@ interface IAutoBeInterfaceOperationApplication {
 ```typescript showLineNumbers
 interface IAutoBeTestScenarioApplication {
   getDocuments(filenames: string[]): Record<string, string>;
-  getModels(names: string[]): AutoBePrisma.IModel[];
+  getModels(names: string[]): AutoBeDatabase.IModel[];
   getOperation(endpoints: AutoBeOpenApi.IEndpoint[]): {
     operations: AutoBeOpenApi.IOperation[];
     schemas: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive>;

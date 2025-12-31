@@ -1,8 +1,8 @@
 import { IAgenticaController } from "@agentica/core";
 import {
+  AutoBeDatabase,
+  AutoBeDatabaseSchemaEvent,
   AutoBeEventSource,
-  AutoBePrisma,
-  AutoBePrismaSchemaEvent,
 } from "@autobe/interface";
 import { StringUtil } from "@autobe/utils";
 import { ILlmApplication, IValidation } from "@samchon/openapi";
@@ -14,13 +14,13 @@ import { AutoBeContext } from "../../context/AutoBeContext";
 import { executeCachedBatch } from "../../utils/executeCachedBatch";
 import { AutoBePreliminaryController } from "../common/AutoBePreliminaryController";
 import { transformPrismaSchemaHistory } from "./histories/transformPrismaSchemaHistory";
-import { IAutoBePrismaSchemaApplication } from "./structures/IAutoBePrismaSchemaApplication";
+import { IAutoBeDatabaseSchemaApplication } from "./structures/IAutoBeDatabaseSchemaApplication";
 
 export async function orchestratePrismaSchema(
   ctx: AutoBeContext,
   instruction: string,
-  componentList: AutoBePrisma.IComponent[],
-): Promise<AutoBePrismaSchemaEvent[]> {
+  componentList: AutoBeDatabase.IComponent[],
+): Promise<AutoBeDatabaseSchemaEvent[]> {
   const start: Date = new Date();
   const total: number = componentList
     .map((c) => c.tables.length)
@@ -33,7 +33,7 @@ export async function orchestratePrismaSchema(
         .filter((y) => component !== y)
         .map((c) => c.tables)
         .flat();
-      const event: AutoBePrismaSchemaEvent = await process(ctx, {
+      const event: AutoBeDatabaseSchemaEvent = await process(ctx, {
         instruction,
         component,
         otherTables,
@@ -52,26 +52,31 @@ async function process(
   ctx: AutoBeContext,
   props: {
     instruction: string;
-    component: AutoBePrisma.IComponent;
+    component: AutoBeDatabase.IComponent;
     otherTables: string[];
     start: Date;
     total: number;
     completed: IPointer<number>;
     promptCacheKey: string;
   },
-): Promise<AutoBePrismaSchemaEvent> {
+): Promise<AutoBeDatabaseSchemaEvent> {
   const preliminary: AutoBePreliminaryController<
-    "analysisFiles" | "previousAnalysisFiles" | "previousPrismaSchemas"
+    "analysisFiles" | "previousAnalysisFiles" | "previousDatabaseSchemas"
   > = new AutoBePreliminaryController({
-    application: typia.json.application<IAutoBePrismaSchemaApplication>(),
+    application: typia.json.application<IAutoBeDatabaseSchemaApplication>(),
     source: SOURCE,
-    kinds: ["analysisFiles", "previousAnalysisFiles", "previousPrismaSchemas"],
+    kinds: [
+      "analysisFiles",
+      "previousAnalysisFiles",
+      "previousDatabaseSchemas",
+    ],
     state: ctx.state(),
   });
   return await preliminary.orchestrate(ctx, async (out) => {
-    const pointer: IPointer<IAutoBePrismaSchemaApplication.IComplete | null> = {
-      value: null,
-    };
+    const pointer: IPointer<IAutoBeDatabaseSchemaApplication.IComplete | null> =
+      {
+        value: null,
+      };
     const result: AutoBeContext.IResult = await ctx.conversate({
       source: SOURCE,
       controller: createController({
@@ -116,24 +121,24 @@ async function process(
         completed: (props.completed.value += props.component.tables.length),
         total: props.total,
         step: ctx.state().analyze?.step ?? 0,
-      } satisfies AutoBePrismaSchemaEvent);
+      } satisfies AutoBeDatabaseSchemaEvent);
     return out(result)(null);
   });
 }
 
 function createController(props: {
   preliminary: AutoBePreliminaryController<
-    "analysisFiles" | "previousAnalysisFiles" | "previousPrismaSchemas"
+    "analysisFiles" | "previousAnalysisFiles" | "previousDatabaseSchemas"
   >;
-  targetComponent: AutoBePrisma.IComponent;
+  targetComponent: AutoBeDatabase.IComponent;
   otherTables: string[];
-  build: (next: IAutoBePrismaSchemaApplication.IComplete) => void;
+  build: (next: IAutoBeDatabaseSchemaApplication.IComplete) => void;
   dispatch: AutoBeContext["dispatch"];
 }): IAgenticaController.IClass {
   const validate = (
     input: unknown,
-  ): IValidation<IAutoBePrismaSchemaApplication.IProps> => {
-    const result: IValidation<IAutoBePrismaSchemaApplication.IProps> =
+  ): IValidation<IAutoBeDatabaseSchemaApplication.IProps> => {
+    const result: IValidation<IAutoBeDatabaseSchemaApplication.IProps> =
       defaultValidate(input);
     if (result.success === false) return result;
     else if (result.data.request.type !== "complete")
@@ -142,7 +147,7 @@ function createController(props: {
         request: result.data.request,
       });
 
-    const actual: AutoBePrisma.IModel[] = result.data.request.models;
+    const actual: AutoBeDatabase.IModel[] = result.data.request.models;
     const expected: string[] = props.targetComponent.tables;
     const missed: string[] = expected.filter(
       (x) => actual.some((a) => a.name === x) === false,
@@ -150,7 +155,7 @@ function createController(props: {
     if (missed.length === 0) return result;
 
     props.dispatch({
-      type: "prismaInsufficient",
+      type: "databaseInsufficient",
       id: v7(),
       created_at: new Date().toISOString(),
       component: props.targetComponent,
@@ -164,7 +169,7 @@ function createController(props: {
         {
           path: "$input.request.models",
           value: result.data.request.models,
-          expected: `Array<AutoBePrisma.IModel>`,
+          expected: `Array<AutoBeDatabase.IModel>`,
           description: StringUtil.trim`
             You missed some tables from the current domain's component.
 
@@ -190,7 +195,7 @@ function createController(props: {
     };
   };
   const application: ILlmApplication = props.preliminary.fixApplication(
-    typia.llm.application<IAutoBePrismaSchemaApplication>({
+    typia.llm.application<IAutoBeDatabaseSchemaApplication>({
       validate: {
         process: validate,
       },
@@ -204,15 +209,15 @@ function createController(props: {
       process: (next) => {
         if (next.request.type === "complete") props.build(next.request);
       },
-    } satisfies IAutoBePrismaSchemaApplication,
+    } satisfies IAutoBeDatabaseSchemaApplication,
   };
 }
 
 type Validator = (
   input: unknown,
-) => IValidation<IAutoBePrismaSchemaApplication.IProps>;
+) => IValidation<IAutoBeDatabaseSchemaApplication.IProps>;
 
 const defaultValidate: Validator =
-  typia.createValidate<IAutoBePrismaSchemaApplication.IProps>();
+  typia.createValidate<IAutoBeDatabaseSchemaApplication.IProps>();
 
-const SOURCE = "prismaSchema" satisfies AutoBeEventSource;
+const SOURCE = "databaseSchema" satisfies AutoBeEventSource;

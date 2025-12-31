@@ -1,8 +1,8 @@
 import {
+  AutoBeDatabase,
   AutoBeEventSource,
   AutoBeInterfaceHistory,
   AutoBeOpenApi,
-  AutoBePrisma,
   AutoBeProgressEventBase,
   AutoBeRealizeCollectorFunction,
   AutoBeRealizeCollectorPlan,
@@ -79,22 +79,22 @@ async function process(
     progress: AutoBeProgressEventBase;
   },
 ): Promise<AutoBeRealizeCollectorFunction> {
-  const models: AutoBePrisma.IModel[] = ctx
+  const models: AutoBeDatabase.IModel[] = ctx
     .state()
-    .prisma!.result.data.files.map((f) => f.models)
+    .database!.result.data.files.map((f) => f.models)
     .flat();
   const dtoTypeName: string = props.plan.dtoTypeName;
   const location: string = `src/collectors/${AutoBeRealizeCollectorProgrammer.getName(dtoTypeName)}.ts`;
-  const preliminary: AutoBePreliminaryController<"prismaSchemas"> =
+  const preliminary: AutoBePreliminaryController<"databaseSchemas"> =
     new AutoBePreliminaryController({
       state: ctx.state(),
       source: SOURCE,
       application:
         typia.json.application<IAutoBeRealizeCollectorWriteApplication>(),
-      kinds: ["prismaSchemas"],
+      kinds: ["databaseSchemas"],
       local: {
-        prismaSchemas: models.filter(
-          (m) => m.name === props.plan.prismaSchemaName,
+        databaseSchemas: models.filter(
+          (m) => m.name === props.plan.databaseSchemaName,
         ),
       },
     });
@@ -157,7 +157,7 @@ function createController(
     plan: AutoBeRealizeCollectorPlan;
     neighbors: AutoBeRealizeCollectorPlan[];
     build: (next: IAutoBeRealizeCollectorWriteApplication.IComplete) => void;
-    preliminary: AutoBePreliminaryController<"prismaSchemas">;
+    preliminary: AutoBePreliminaryController<"databaseSchemas">;
   },
 ): ILlmController {
   const validate = (
@@ -174,7 +174,7 @@ function createController(
 
     const errors: IValidation.IError[] =
       AutoBeRealizeCollectorProgrammer.validate({
-        application: ctx.state().prisma!.result.data,
+        application: ctx.state().database!.result.data,
         mappings: result.data.request.mappings,
         plan: props.plan,
         neighbors: props.neighbors,

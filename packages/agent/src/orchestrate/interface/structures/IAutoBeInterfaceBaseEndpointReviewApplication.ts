@@ -2,9 +2,9 @@ import { AutoBeOpenApi } from "@autobe/interface";
 
 import { IAutoBePreliminaryGetAnalysisFiles } from "../../common/structures/IAutoBePreliminaryGetAnalysisFiles";
 import { IAutoBePreliminaryGetPreviousAnalysisFiles } from "../../common/structures/IAutoBePreliminaryGetPreviousAnalysisFiles";
+import { IAutoBePreliminaryGetPreviousDatabaseSchemas } from "../../common/structures/IAutoBePreliminaryGetPreviousDatabaseSchemas";
 import { IAutoBePreliminaryGetPreviousInterfaceOperations } from "../../common/structures/IAutoBePreliminaryGetPreviousInterfaceOperations";
-import { IAutoBePreliminaryGetPreviousPrismaSchemas } from "../../common/structures/IAutoBePreliminaryGetPreviousPrismaSchemas";
-import { IAutoBePreliminaryGetPrismaSchemas } from "../../common/structures/IAutoBePreliminaryGetPrismaSchemas";
+import { IAutoBePreliminaryGetDatabaseSchemas } from "../../common/structures/IAutoBePreliminaryGetDatabaseSchemas";
 
 export interface IAutoBeInterfaceBaseEndpointReviewApplication {
   /**
@@ -29,7 +29,7 @@ export namespace IAutoBeInterfaceBaseEndpointReviewApplication {
      * Before requesting preliminary data or modifying endpoints, reflect on
      * your current state and explain your descriptioning:
      *
-     * For preliminary requests (getAnalysisFiles, getPrismaSchemas):
+     * For preliminary requests (getAnalysisFiles, getDatabaseSchemas):
      *
      * - What critical information is missing that you don't already have?
      * - Why do you need it specifically right now?
@@ -51,15 +51,15 @@ export namespace IAutoBeInterfaceBaseEndpointReviewApplication {
      * Determines which action to perform:
      *
      * - `getAnalysisFiles`: Request requirement documents
-     * - `getPrismaSchemas`: Request database schema information
+     * - `getDatabaseSchemas`: Request database schema information
      * - `complete`: Finish the review with all actions
      */
     request:
       | IComplete
       | IAutoBePreliminaryGetAnalysisFiles
-      | IAutoBePreliminaryGetPrismaSchemas
+      | IAutoBePreliminaryGetDatabaseSchemas
       | IAutoBePreliminaryGetPreviousAnalysisFiles
-      | IAutoBePreliminaryGetPreviousPrismaSchemas
+      | IAutoBePreliminaryGetPreviousDatabaseSchemas
       | IAutoBePreliminaryGetPreviousInterfaceOperations;
   }
 
@@ -71,7 +71,7 @@ export namespace IAutoBeInterfaceBaseEndpointReviewApplication {
    *
    * Use this when you identify a missing endpoint that should exist based on
    * requirements analysis. This is rare for base endpoint review since base
-   * endpoints are generated from Prisma schemas, but may be needed if:
+   * endpoints are generated from database schemas, but may be needed if:
    *
    * - A required CRUD operation was accidentally omitted
    * - A nested endpoint path is needed for subsidiary entities
@@ -116,8 +116,8 @@ export namespace IAutoBeInterfaceBaseEndpointReviewApplication {
      * The original endpoint to modify.
      *
      * ⚠️ CRITICAL: Must be from the "Endpoints for Review" list provided above.
-     * DO NOT reference endpoints that are not in the provided list.
-     * Must match exactly (path + method).
+     * DO NOT reference endpoints that are not in the provided list. Must match
+     * exactly (path + method).
      */
     original: AutoBeOpenApi.IEndpoint;
 
@@ -163,8 +163,8 @@ export namespace IAutoBeInterfaceBaseEndpointReviewApplication {
      * The endpoint to remove.
      *
      * ⚠️ CRITICAL: Must be from the "Endpoints for Review" list provided above.
-     * DO NOT reference endpoints that are not in the provided list.
-     * Must match exactly (path + method).
+     * DO NOT reference endpoints that are not in the provided list. Must match
+     * exactly (path + method).
      */
     endpoint: AutoBeOpenApi.IEndpoint;
 

@@ -49,9 +49,9 @@ export const fixPreliminaryApplication = <
         eraseMetadata("getPreviousAnalysisFiles");
         eraseKind(kind);
       }
-    } else if (kind === "previousPrismaSchemas") {
-      if (props.state.previousPrisma === null) {
-        eraseMetadata("getPreviousPrismaSchemas");
+    } else if (kind === "previousDatabaseSchemas") {
+      if (props.state.previousDatabase === null) {
+        eraseMetadata("getPreviousDatabaseSchemas");
         eraseKind(kind);
       }
     } else if (kind === "previousInterfaceOperations") {

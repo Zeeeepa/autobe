@@ -8,7 +8,7 @@ export function createPreliminaryCollection(
   if (state === null)
     return {
       analysisFiles: (defined?.analysisFiles ?? []).slice(),
-      prismaSchemas: (defined?.prismaSchemas ?? []).slice(),
+      databaseSchemas: (defined?.databaseSchemas ?? []).slice(),
       interfaceOperations: (defined?.interfaceOperations ?? []).slice(),
       interfaceSchemas: Object.fromEntries(
         Object.entries(defined?.interfaceSchemas ?? {}),
@@ -16,7 +16,7 @@ export function createPreliminaryCollection(
       realizeCollectors: (defined?.realizeCollectors ?? []).slice(),
       realizeTransformers: (defined?.realizeTransformers ?? []).slice(),
       previousAnalysisFiles: (defined?.previousAnalysisFiles ?? []).slice(),
-      previousPrismaSchemas: (defined?.previousPrismaSchemas ?? []).slice(),
+      previousDatabaseSchemas: (defined?.previousDatabaseSchemas ?? []).slice(),
       previousInterfaceSchemas: Object.fromEntries(
         Object.entries(defined?.previousInterfaceSchemas ?? {}),
       ),
@@ -26,9 +26,9 @@ export function createPreliminaryCollection(
     };
   return {
     analysisFiles: defined?.analysisFiles ?? state.analyze?.files ?? [],
-    prismaSchemas:
-      defined?.prismaSchemas ??
-      state.prisma?.result.data.files.map((f) => f.models).flat() ??
+    databaseSchemas:
+      defined?.databaseSchemas ??
+      state.database?.result.data.files.map((f) => f.models).flat() ??
       [],
     interfaceOperations:
       defined?.interfaceOperations ??
@@ -47,8 +47,9 @@ export function createPreliminaryCollection(
       state.realize?.functions.filter((f) => f.type === "transformer") ??
       [],
     previousAnalysisFiles: state.previousAnalyze?.files ?? [],
-    previousPrismaSchemas:
-      state.previousPrisma?.result.data.files.map((f) => f.models).flat() ?? [],
+    previousDatabaseSchemas:
+      state.previousDatabase?.result.data.files.map((f) => f.models).flat() ??
+      [],
     previousInterfaceSchemas:
       state.previousInterface?.document.components.schemas ?? {},
     previousInterfaceOperations:

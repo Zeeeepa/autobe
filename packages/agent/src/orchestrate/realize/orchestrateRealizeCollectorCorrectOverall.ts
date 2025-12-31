@@ -61,20 +61,20 @@ export const orchestrateRealizeCollectorCorrectOverall = async (
       // No additional files needed for collectors (unlike operations)
       additional: (_functions) => ({}),
 
-      // Create preliminary controller with only prismaSchemas support
+      // Create preliminary controller with only databaseSchemas support
       preliminary: (next) =>
-        new AutoBePreliminaryController<"prismaSchemas">({
+        new AutoBePreliminaryController<"databaseSchemas">({
           source: next.source,
           application:
             typia.json.application<IAutoBeRealizeCollectorCorrectApplication>(),
-          kinds: ["prismaSchemas"],
+          kinds: ["databaseSchemas"],
           state: ctx.state(),
           local: {
-            prismaSchemas: ctx
+            databaseSchemas: ctx
               .state()
-              .prisma!.result.data.files.map((f) => f.models)
+              .database!.result.data.files.map((f) => f.models)
               .flat()
-              .filter((m) => m.name === next.function.plan.prismaSchemaName),
+              .filter((m) => m.name === next.function.plan.databaseSchemaName),
           },
         }),
 
@@ -109,7 +109,7 @@ export const orchestrateRealizeCollectorCorrectOverall = async (
               neighbors: props.functions.map((f) => f.plan),
               draft: result.data.request.draft,
               revise: result.data.request.revise,
-              application: ctx.state().prisma!.result.data,
+              application: ctx.state().database!.result.data,
             });
           return errors.length
             ? {

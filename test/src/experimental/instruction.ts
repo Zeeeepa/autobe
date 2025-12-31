@@ -16,7 +16,13 @@ import typia from "typia";
 
 import { TestGlobal } from "../TestGlobal";
 
-const SEQUENCE = ["analyze", "prisma", "interface", "test", "realize"] as const;
+const SEQUENCE = [
+  "analyze",
+  "database",
+  "interface",
+  "test",
+  "realize",
+] as const;
 
 const getStateMessage = (phase: AutoBePhase | null): string => {
   const index: number = phase ? SEQUENCE.indexOf(phase) : -1;
@@ -56,8 +62,8 @@ const main = async (): Promise<void> => {
           description: "Analysis completed successfully.",
         };
       },
-      prisma: async (props) => {
-        currentPhase.value = "prisma";
+      database: async (props) => {
+        currentPhase.value = "database";
         instructions.prisma = props.instruction;
         return {
           type: "success",
