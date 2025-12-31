@@ -207,26 +207,17 @@ export const orchestrateInterface =
       completed: 0,
       total: 0,
     };
-    while (true) {
-      if (missedOpenApiSchemas(document).length === 0) break;
+    while (missedOpenApiSchemas(document).length !== 0) {
+      // @todo remove console.log
+      console.log("try complementation loop", missedOpenApiSchemas(document));
 
       // COMPLEMENT OMITTED
-      const oldbie: Set<string> = new Set(
-        Object.keys(document.components.schemas),
-      );
       const complemented: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive> =
         await orchestrateInterfaceComplement(ctx, {
           instruction: props.instruction,
           progress: complementProgress,
           document,
         });
-      const newbie: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive> =
-        Object.fromEntries(
-          Object.keys(complemented)
-            .filter((key) => oldbie.has(key) === false)
-            .map((key) => [key, complemented[key]]),
-        );
-      if (Object.keys(complemented).length === 0) break;
       assign(complemented);
 
       // REVIEW COMPLEMENTED
@@ -239,7 +230,7 @@ export const orchestrateInterface =
           await orchestrateInterfaceSchemaReview(ctx, config, {
             instruction: props.instruction,
             document,
-            schemas: newbie,
+            schemas: complemented,
             progress: reviewProgress,
           }),
         );
