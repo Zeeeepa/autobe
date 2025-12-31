@@ -42,14 +42,17 @@ export * from "./AutoBePrismaStartEvent";
 export * from "./AutoBePrismaValidateEvent";
 
 // INTERFACE
+export * from "./AutoBeInterfaceAuthorizationEvent";
 export * from "./AutoBeInterfaceComplementEvent";
 export * from "./AutoBeInterfaceCompleteEvent";
 export * from "./AutoBeInterfaceEndpointEvent";
+export * from "./AutoBeInterfaceEndpointReviewEvent";
 export * from "./AutoBeInterfaceGroupEvent";
 export * from "./AutoBeInterfaceOperationEvent";
 export * from "./AutoBeInterfaceOperationReviewEvent";
 export * from "./AutoBeInterfaceSchemaEvent";
 export * from "./AutoBeInterfaceSchemaRenameEvent";
+export * from "./AutoBeInterfaceSchemaReviewEvent";
 export * from "./AutoBeInterfaceStartEvent";
 
 // TEST
