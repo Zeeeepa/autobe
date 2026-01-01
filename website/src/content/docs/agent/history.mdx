@@ -98,7 +98,7 @@ The `step` property indicates which iteration of the requirements analysis repor
   <code>AutoBeDatabaseHistory</code>,
   <code>AutoBeDatabase</code>,
   <code>IAutoBeDatabaseValidation</code>,
-  <code>IAutoBeDatabaseCompileResult</code>,
+  <code>IAutoBePrismaCompileResult</code>,
 ]}>
   <Tabs.Tab>
     <LocalSource
@@ -120,7 +120,7 @@ The `step` property indicates which iteration of the requirements analysis repor
   </Tabs.Tab>
   <Tabs.Tab>
     <LocalSource
-      path="packages/interface/src/compiler/IAutoBeDatabaseCompileResult.ts"
+      path="packages/interface/src/compiler/IAutoBePrismaCompileResult.ts"
       filename="@autobe/interface"
       showLineNumbers />
   </Tabs.Tab>
@@ -130,7 +130,7 @@ The `step` property indicates which iteration of the requirements analysis repor
 
 `@autobe` constructs data of type [`AutoBeDatabase.IApplication`](/api/interfaces/_autobe_interface.AutoBeDatabase.IApplication.html) through AI function calling, validates it, and then generates prisma schema files. The validation results are stored in the `result` property as type [`IAutoBeDatabaseValidation`](/api/types/_autobe_interface.IAutoBeDatabaseValidation-1.html), and the results of converting this to prisma schema files (code generation) are stored in the `schemas` property.
 
-Note that `@autobe` generally creates valid [`AutoBeDatabase.IApplication`](/api/interfaces/_autobe_interface.AutoBeDatabase.IApplication.html) data through a validation feedback process. However, when using very small AI models, the [`IAutoBeDatabaseValidation`](/api/types/_autobe_interface.IAutoBeDatabaseValidation-1.html) result might have `success := false`. Additionally, the results of compiling the prisma schema files are stored in the `compiled` property as type [`IAutoBeDatabaseCompileResult`](/api/types/_autobe_interface.IAutoBeDatabaseCompileResult-1.html), which should always compile successfully. If compilation fails, it would be a bug in `@autobe`, so please report it as an issue.
+Note that `@autobe` generally creates valid [`AutoBeDatabase.IApplication`](/api/interfaces/_autobe_interface.AutoBeDatabase.IApplication.html) data through a validation feedback process. However, when using very small AI models, the [`IAutoBeDatabaseValidation`](/api/types/_autobe_interface.IAutoBeDatabaseValidation-1.html) result might have `success := false`. Additionally, the results of compiling the prisma schema files are stored in the `compiled` property as type [`IAutoBePrismaCompileResult`](/api/types/_autobe_interface.IAutoBePrismaCompileResult-1.html), which should always compile successfully. If compilation fails, it would be a bug in `@autobe`, so please report it as an issue.
 
 The `step` property indicates which requirements analysis report iteration the database design was performed for. If the [`AutoBeDatabaseHistory.step`](/api/interfaces/_autobe_interface.AutoBeDatabaseHistory.html#step) value is lower than [`AutoBeAnalyzeHistory.step`](/api/interfaces/_autobe_interface.AutoBeAnalyzeHistory.html#step), it means the database design has not yet been updated to reflect the latest requirements.
 
