@@ -9,7 +9,7 @@ import { AutoBePreliminaryController } from "../../common/AutoBePreliminaryContr
 export const transformInterfaceComplementHistory = (props: {
   state: AutoBeState;
   instruction: string;
-  missed: string;
+  typeName: string;
   preliminary: AutoBePreliminaryController<
     | "analysisFiles"
     | "databaseSchemas"
@@ -61,7 +61,7 @@ export const transformInterfaceComplementHistory = (props: {
 
         You need to create a schema definition for this missing type:
 
-        **${props.missed}**
+        **${props.typeName}**
 
         This type is referenced in API operations but not yet defined in
         components.schemas. Create a complete JSON schema definition for it.
@@ -69,11 +69,11 @@ export const transformInterfaceComplementHistory = (props: {
     },
   ],
   userMessage: StringUtil.trim`
-    Complete the missing schema type ${JSON.stringify(props.missed)} 
+    Complete the missing schema type ${JSON.stringify(props.typeName)} 
     based on the provided API design instructions.
 
     Note that, not making "Record<string, AutoBeOpenApi.IJsonSchemaDescriptive>"
     type, but making "AutoBeOpenApi.IJsonSchemaDescriptive" type directly for
-    the ${JSON.stringify(props.missed)} type.
+    the ${JSON.stringify(props.typeName)} type.
   `,
 });

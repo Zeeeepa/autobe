@@ -1,6 +1,7 @@
 import { IAgenticaController } from "@agentica/core";
 import {
   AutoBeEventSource,
+  AutoBeInterfaceComplementEvent,
   AutoBeOpenApi,
   AutoBeProgressEventBase,
 } from "@autobe/interface";
@@ -40,7 +41,7 @@ export const orchestrateInterfaceComplement = async (
       result[it] = await process(ctx, {
         instruction: props.instruction,
         document: props.document,
-        missed: it,
+        typeName: it,
         progress: props.progress,
         promptCacheKey,
       });
@@ -54,7 +55,7 @@ async function process(
   props: {
     instruction: string;
     document: AutoBeOpenApi.IDocument;
-    missed: string;
+    typeName: string;
     progress: AutoBeProgressEventBase;
     promptCacheKey: string;
   },
@@ -90,8 +91,8 @@ async function process(
     local: {
       interfaceOperations: props.document.operations.filter(
         (o) =>
-          o.requestBody?.typeName === props.missed ||
-          o.responseBody?.typeName === props.missed,
+          o.requestBody?.typeName === props.typeName ||
+          o.responseBody?.typeName === props.typeName,
       ),
       interfaceSchemas: Object.fromEntries(
         Object.entries(props.document.components.schemas).filter(([_k, v]) => {
@@ -105,7 +106,7 @@ async function process(
             closure: (next) => {
               if (
                 AutoBeOpenApiTypeChecker.isReference(next) &&
-                next.$ref.split("/").pop() === props.missed
+                next.$ref.split("/").pop() === props.typeName
               )
                 found = true;
             },
@@ -122,7 +123,7 @@ async function process(
     const result: AutoBeContext.IResult = await ctx.conversate({
       source: SOURCE,
       controller: createController(ctx, {
-        typeName: props.missed,
+        typeName: props.typeName,
         operations: props.document.operations,
         build: (next) => {
           const container: Record<
@@ -130,13 +131,13 @@ async function process(
             AutoBeOpenApi.IJsonSchemaDescriptive
           > = (OpenApiV3_1Emender.convertComponents({
             schemas: {
-              [props.missed]: next,
+              [props.typeName]: next,
             },
           }).schemas ?? {}) as Record<
             string,
             AutoBeOpenApi.IJsonSchemaDescriptive
           >;
-          pointer.value = container[props.missed];
+          pointer.value = container[props.typeName];
         },
         preliminary,
       }),
@@ -146,17 +147,17 @@ async function process(
         state: ctx.state(),
         instruction: props.instruction,
         preliminary,
-        missed: props.missed,
+        typeName: props.typeName,
       }),
     });
-    if (pointer.value === null) throw new Error("Complementation failed");
+    if (pointer.value === null)
+      throw new Error(`Complementation failed: ${props.typeName}`);
 
     ++props.progress.completed;
     ctx.dispatch({
       type: SOURCE,
       id: v7(),
-      missed: props.missed,
-      typeName: props.missed,
+      typeName: props.typeName,
       schema: pointer.value,
       metric: result.metric,
       tokenUsage: result.tokenUsage,
@@ -164,7 +165,7 @@ async function process(
       completed: props.progress.completed,
       total: props.progress.total,
       created_at: new Date().toISOString(),
-    });
+    } satisfies AutoBeInterfaceComplementEvent);
     return out(result)(pointer.value);
   });
 }
