@@ -48,7 +48,7 @@ The Prisma Compiler validates database schema definitions for:
 export class AutoBeDatabaseCompiler {
   public async compile(
     props: IAutoBeDatabaseCompileProps
-  ): Promise<IAutoBeDatabaseCompileResult> {
+  ): Promise<IAutoBePrismaCompileResult> {
     // 1. Write schema to temporary file
     const schemaPath = await this.writeSchema(props.schema);
 

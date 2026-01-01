@@ -9,8 +9,13 @@ packages:
   - website
 catalogs:
   agentica:
+<<<<<<< HEAD
     '@agentica/core': ^0.36.3
     '@agentica/rpc': ^0.36.3
+=======
+    '@agentica/core': ^0.36.4
+    '@agentica/rpc': ^0.36.4
+>>>>>>> 6e884c9134c367a1b30be6fd14ee93b6bceadd86
   samchon:
     '@nestia/benchmark': ^10.0.0
     '@nestia/core': ^10.0.0

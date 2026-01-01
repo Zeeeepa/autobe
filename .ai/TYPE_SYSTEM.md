@@ -475,10 +475,10 @@ export interface IAutoBeCompiler {
 }
 
 export interface IAutoBeDatabaseCompiler {
-  compile(props: IAutoBeDatabaseCompileProps): Promise<IAutoBeDatabaseCompileResult>;
+  compile(props: IAutoBeDatabaseCompileProps): Promise<IAutoBePrismaCompileResult>;
 }
 
-export interface IAutoBeDatabaseCompileResult {
+export interface IAutoBePrismaCompileResult {
   type: "success" | "failure";
   schemas?: PrismaSchema[];  // If success
   diagnostics?: IDiagnostic[];  // If failure
