@@ -1,0 +1,278 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: wrtnlabs-postgres
+    environment:
+      POSTGRES_DB: wrtnlabs
+      POSTGRES_USER: wrtnlabs_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-wrtnlabs_secure_password_2025}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infrastructure/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wrtnlabs_user -d wrtnlabs"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - wrtnlabs-network
+    restart: unless-stopped
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: wrtnlabs-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - wrtnlabs-network
+    restart: unless-stopped
+
+  # ChromaDB Vector Store
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: wrtnlabs-chromadb
+    environment:
+      - CHROMA_SERVER_HOST=0.0.0.0
+      - CHROMA_SERVER_PORT=8000
+    volumes:
+      - chromadb_data:/chroma/chroma
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - wrtnlabs-network
+    restart: unless-stopped
+
+  # Backend Service (Core API)
+  backend:
+    build:
+      context: .
+      dockerfile: ./infrastructure/docker/Dockerfile.backend
+    container_name: wrtnlabs-backend
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://wrtnlabs_user:${POSTGRES_PASSWORD:-wrtnlabs_secure_password_2025}@postgres:5432/wrtnlabs
+      REDIS_URL: redis://redis:6379
+      PORT: 3000
+    volumes:
+      - ./services/backend:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - wrtnlabs-network
+    restart: unless-stopped
+
+  # AutoBE Service (AI Coding Agent)
+  autobe:
+    build:
+      context: .
+      dockerfile: ./infrastructure/docker/Dockerfile.autobe
+    container_name: wrtnlabs-autobe
+    environment:
+      NODE_ENV: production
+      BACKEND_URL: http://backend:3000
+      ZAI_API_KEY: ${ZAI_API_KEY}
+      ZAI_MODEL: ${ZAI_MODEL:-glm-4.6}
+      ZAI_BASE_URL: ${ZAI_BASE_URL:-https://api.z.ai/v1}
+      PORT: 3001
+    volumes:
+      - ./services/autobe:/app
+      - /app/node_modules
+    ports:
+      - "3001:3001"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - wrtnlabs-network
+    restart: unless-stopped
+
+  # Agentica Service (AI Function Framework)
+  agentica:
+    build:
+      context: .
+      dockerfile: ./infrastructure/docker/Dockerfile.agentica
+    container_name: wrtnlabs-agentica
+    environment:
+      NODE_ENV: production
+      BACKEND_URL: http://backend:3000
+      ZAI_API_KEY: ${ZAI_API_KEY}
+      PORT: 3002
+    volumes:
+      - ./services/agentica:/app
+      - /app/node_modules
+    ports:
+      - "3002:3002"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - wrtnlabs-network
+    restart: unless-stopped
+
+  # Vector Store Service
+  vector-store:
+    build:
+      context: .
+      dockerfile: ./infrastructure/docker/Dockerfile.vector-store
+    container_name: wrtnlabs-vector-store
+    environment:
+      NODE_ENV: production
+      CHROMADB_URL: http://chromadb:8000
+      BACKEND_URL: http://backend:3000
+      PORT: 3003
+    volumes:
+      - ./services/vector-store:/app
+      - /app/node_modules
+    ports:
+      - "3003:3003"
+    depends_on:
+      chromadb:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3003/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - wrtnlabs-network
+    restart: unless-stopped
+
+  # Connectors Service
+  connectors:
+    build:
+      context: .
+      dockerfile: ./infrastructure/docker/Dockerfile.connectors
+    container_name: wrtnlabs-connectors
+    environment:
+      NODE_ENV: production
+      BACKEND_URL: http://backend:3000
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
+      SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN}
+      PORT: 3004
+    volumes:
+      - ./services/connectors:/app
+      - /app/node_modules
+    ports:
+      - "3004:3004"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3004/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - wrtnlabs-network
+    restart: unless-stopped
+
+  # AutoView Service (UI Renderer)
+  autoview:
+    build:
+      context: .
+      dockerfile: ./infrastructure/docker/Dockerfile.autoview
+    container_name: wrtnlabs-autoview
+    environment:
+      NODE_ENV: production
+      BACKEND_URL: http://backend:3000
+      AUTOBE_URL: http://autobe:3001
+      PORT: 3005
+    volumes:
+      - ./services/autoview:/app
+      - /app/node_modules
+    ports:
+      - "3005:3005"
+    depends_on:
+      backend:
+        condition: service_healthy
+      autobe:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3005/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - wrtnlabs-network
+    restart: unless-stopped
+
+  # Nginx API Gateway
+  nginx:
+    image: nginx:alpine
+    container_name: wrtnlabs-nginx
+    volumes:
+      - ./infrastructure/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./infrastructure/nginx/conf.d:/etc/nginx/conf.d:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - backend
+      - autobe
+      - agentica
+      - vector-store
+      - connectors
+      - autoview
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - wrtnlabs-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  chromadb_data:
+    driver: local
+
+networks:
+  wrtnlabs-network:
+    driver: bridge
+
