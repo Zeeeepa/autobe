@@ -181,6 +181,9 @@ async function process(
     if (pointer.value === null) return out(result)(null);
 
     props.progress.completed += pointer.value.length;
+    if (pointer.value.length > 1)
+      props.progress.total += pointer.value.length - 1;
+
     ctx.dispatch({
       type: SOURCE,
       id: v7(),
