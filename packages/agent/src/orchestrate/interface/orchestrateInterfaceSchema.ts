@@ -32,16 +32,21 @@ export async function orchestrateInterfaceSchema(
   JsonSchemaNamingConvention.operations(props.operations);
 
   // gather type names
-  const gathered: Set<string> = new Set();
+  const collection: Set<string> = new Set();
+  const gather = (key: string): void => {
+    if (JsonSchemaValidator.isPage(key))
+      collection.add(JsonSchemaFactory.getPageName(key));
+    collection.add(key);
+  };
   for (const op of props.operations) {
-    if (op.requestBody !== null) gathered.add(op.requestBody.typeName);
-    if (op.responseBody !== null) gathered.add(op.responseBody.typeName);
+    if (op.requestBody !== null) gather(op.requestBody.typeName);
+    if (op.responseBody !== null) gather(op.responseBody.typeName);
   }
   const presets: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive> =
-    JsonSchemaFactory.presets(gathered);
+    JsonSchemaFactory.presets(collection);
 
   // divide and conquer
-  const typeNames: string[] = Array.from(gathered).filter(
+  const typeNames: string[] = Array.from(collection).filter(
     (k) => JsonSchemaValidator.isPreset(k) === false,
   );
   const progress: AutoBeProgressEventBase = {
@@ -54,10 +59,14 @@ export async function orchestrateInterfaceSchema(
   await executeCachedBatch(
     ctx,
     typeNames.map((it) => async (promptCacheKey) => {
+      const predicate = (key: string) =>
+        key === it ||
+        (JsonSchemaValidator.isPage(key) &&
+          JsonSchemaFactory.getPageName(key) === it);
       const operations: AutoBeOpenApi.IOperation[] = props.operations.filter(
         (op) =>
-          (op.requestBody && op.requestBody.typeName === it) ||
-          (op.responseBody && op.responseBody.typeName === it),
+          (op.requestBody && predicate(op.requestBody.typeName)) ||
+          (op.responseBody && predicate(op.responseBody.typeName)),
       );
       const row: AutoBeOpenApi.IJsonSchemaDescriptive = await process(ctx, {
         operations,
@@ -130,32 +139,31 @@ async function process(
         otherTypeNames: props.otherTypeNames,
       }),
     });
-    if (pointer.value !== null) {
-      const container: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive> = ((
-        OpenApiV3_1Emender.convertComponents({
-          schemas: {
-            [props.typeName]: pointer.value,
-          },
-        }) as AutoBeOpenApi.IComponents
-      ).schemas ?? {}) as Record<string, AutoBeOpenApi.IJsonSchemaDescriptive>;
-      const schema: AutoBeOpenApi.IJsonSchemaDescriptive =
-        container[props.typeName];
+    if (pointer.value === null) return out(result)(null);
 
-      ctx.dispatch({
-        type: SOURCE,
-        id: v7(),
-        typeName: props.typeName,
-        schema,
-        metric: result.metric,
-        tokenUsage: result.tokenUsage,
-        completed: ++props.progress.completed,
-        total: props.progress.total,
-        step: ctx.state().database?.step ?? 0,
-        created_at: new Date().toISOString(),
-      } satisfies AutoBeInterfaceSchemaEvent);
-      return out(result)(schema);
-    }
-    return out(result)(null);
+    const container: Record<string, AutoBeOpenApi.IJsonSchemaDescriptive> = ((
+      OpenApiV3_1Emender.convertComponents({
+        schemas: {
+          [props.typeName]: pointer.value,
+        },
+      }) as AutoBeOpenApi.IComponents
+    ).schemas ?? {}) as Record<string, AutoBeOpenApi.IJsonSchemaDescriptive>;
+    const schema: AutoBeOpenApi.IJsonSchemaDescriptive =
+      container[props.typeName];
+
+    ctx.dispatch({
+      type: SOURCE,
+      id: v7(),
+      typeName: props.typeName,
+      schema,
+      metric: result.metric,
+      tokenUsage: result.tokenUsage,
+      completed: ++props.progress.completed,
+      total: props.progress.total,
+      step: ctx.state().database?.step ?? 0,
+      created_at: new Date().toISOString(),
+    } satisfies AutoBeInterfaceSchemaEvent);
+    return out(result)(schema);
   });
 }
 
