@@ -29,7 +29,7 @@ export const enum AutoBeConfigConstant {
    * (fundamentally misunderstood requirements) fail fast rather than wasting
    * resources.
    */
-  RETRY = 4,
+  RETRY = 5,
 
   /**
    * Batch count for parallel operation processing.
@@ -71,5 +71,5 @@ export const enum AutoBeConfigConstant {
    * limits and memory usage. Too high causes rate limit errors and resource
    * exhaustion; too low wastes potential parallelism.
    */
-  SEMAPHORE = 16,
+  SEMAPHORE = 8,
 }

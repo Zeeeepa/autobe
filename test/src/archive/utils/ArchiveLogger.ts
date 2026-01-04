@@ -25,7 +25,8 @@ export namespace ArchiveLogger {
         )}`,
       );
     // FUNCTION CALLING
-    if (event.type === "consentFunctionCall")
+    if (event.type === "assistantMessage") content.push(event.text);
+    else if (event.type === "consentFunctionCall")
       content.push(
         `  - consent: ${event.assistantMessage} -> ${event.result?.type === "consent" ? event.result.message : "null"} `,
       );

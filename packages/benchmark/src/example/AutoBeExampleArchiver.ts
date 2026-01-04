@@ -212,16 +212,23 @@ export namespace AutoBeExampleArchiver {
         c: string | AutoBeUserConversateContent | AutoBeUserConversateContent[],
       ): Promise<boolean> => {
         const result: AutoBeHistory[] = await agent.conversate(c);
-        return result.some((h) => h.type === props.phase);
+        return (
+          result.some((h) => h.type === props.phase) ||
+          result.every((h) => h.type !== "assistantMessage")
+        );
       };
+
       const done: boolean = await props.trial(go);
-      if (done === false)
+      const histories: AutoBeHistory[] = agent.getHistories();
+      if (
+        done === false ||
+        histories.some((h) => h.type === props.phase) === false
+      )
         throw new Error(
           `Failed to function calling in the "${props.phase}" phase of the "${ctx.project}" project.`,
         );
 
       // AGGREGATE
-      const histories: AutoBeHistory[] = agent.getHistories();
       try {
         await FileSystemIterator.save({
           root: `${
@@ -287,14 +294,13 @@ export namespace AutoBeExampleArchiver {
           | AutoBeUserConversateContent[],
       ) => Promise<boolean>,
     ): Promise<boolean> =>
-      await conversate(await AutoBeExampleStorage.getUserMessage(props));
-  //  ||
-  // (await conversate(
-  //   "Don't ask me to do that, and just do it right now.",
-  // )) ||
-  // (await conversate(
-  //   `I already told you to do ${props.phase} process. Never ask me anything, and just do it right now. Go go go!`,
-  // ));
+      (await conversate(await AutoBeExampleStorage.getUserMessage(props))) ||
+      (await conversate(
+        "Don't ask me to do that, and just do it right now.",
+      )) ||
+      (await conversate(
+        `I already told you to do ${props.phase} process. Never ask me anything, and just do it right now. Go go go!`,
+      ));
 
   const getAsset = async (props: {
     vendor: string;
