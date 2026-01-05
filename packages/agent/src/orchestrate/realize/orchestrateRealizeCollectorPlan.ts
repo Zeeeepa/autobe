@@ -12,12 +12,10 @@ import { IPointer } from "tstl";
 import typia from "typia";
 import { v4 } from "uuid";
 
-import { AutoBeConfigConstant } from "../../constants/AutoBeConfigConstant";
 import { AutoBeContext } from "../../context/AutoBeContext";
-import { divideArray } from "../../utils/divideArray";
 import { executeCachedBatch } from "../../utils/executeCachedBatch";
 import { AutoBePreliminaryController } from "../common/AutoBePreliminaryController";
-import { transformRealizeCollectorPlanHistories } from "./histories/transformRealizeCollectorPlanHistories";
+import { transformRealizeCollectorPlanHistory } from "./histories/transformRealizeCollectorPlanHistory";
 import { AutoBeRealizeCollectorProgrammer } from "./programmers/AutoBeRealizeCollectorProgrammer";
 import { IAutoBeRealizeCollectorPlanApplication } from "./structures/IAutoBeRealizeCollectorPlanApplication";
 
@@ -43,17 +41,13 @@ export async function orchestrateRealizeCollectorPlan(
       .map((m) => m.name),
   );
 
-  const matrix: string[][] = divideArray({
-    array: Array.from(dtoTypeNames),
-    capacity: AutoBeConfigConstant.INTERFACE_CAPACITY * 2,
-  });
   const result: AutoBeRealizeCollectorPlan[][] = await executeCachedBatch(
     ctx,
-    matrix.map(
+    Array.from(dtoTypeNames).map(
       (it) => (promptCacheKey) =>
         process(ctx, {
           document,
-          dtoTypeNames: it,
+          dtoTypeName: it,
           prismaSchemaNames,
           promptCacheKey,
           progress: props.progress,
@@ -67,7 +61,7 @@ async function process(
   ctx: AutoBeContext,
   props: {
     document: AutoBeOpenApi.IDocument;
-    dtoTypeNames: string[];
+    dtoTypeName: string;
     prismaSchemaNames: Set<string>;
     promptCacheKey: string;
     progress: AutoBeProgressEventBase;
@@ -83,13 +77,11 @@ async function process(
     kinds: ["databaseSchemas", "interfaceSchemas", "interfaceOperations"],
     local: {
       interfaceOperations: props.document.operations.filter(
-        (op) =>
-          op.requestBody !== null &&
-          props.dtoTypeNames.includes(op.requestBody.typeName),
+        (op) => op.requestBody?.typeName === props.dtoTypeName,
       ),
       interfaceSchemas: Object.fromEntries(
-        Object.entries(props.document.components.schemas).filter(([key]) =>
-          props.dtoTypeNames.includes(key),
+        Object.entries(props.document.components.schemas).filter(
+          ([key]) => key === props.dtoTypeName,
         ),
       ),
     },
@@ -103,17 +95,18 @@ async function process(
       source: "realizePlan",
       controller: createController({
         prismaSchemaNames: props.prismaSchemaNames,
-        dtoTypeNames: props.dtoTypeNames,
+        dtoTypeName: props.dtoTypeName,
         build: (next) => {
           pointer.value = next;
         },
         preliminary,
       }),
       enforceFunctionCall: true,
-      promptCacheKey: "collector-plan",
-      ...transformRealizeCollectorPlanHistories({
+      promptCacheKey: props.promptCacheKey,
+      ...transformRealizeCollectorPlanHistory({
         state: ctx.state(),
         preliminary,
+        dtoTypeName: props.dtoTypeName,
       }),
     });
     if (pointer.value === null) return out(result)(null);
@@ -133,7 +126,7 @@ async function process(
       plans,
       metric: result.metric,
       tokenUsage: result.tokenUsage,
-      completed: (props.progress.completed += props.dtoTypeNames.length),
+      completed: ++props.progress.completed,
       total: props.progress.total,
       step: ctx.state().analyze?.step ?? 0,
       created_at: new Date().toISOString(),
@@ -145,7 +138,7 @@ async function process(
 
 function createController(props: {
   prismaSchemaNames: Set<string>;
-  dtoTypeNames: string[];
+  dtoTypeName: string;
   build: (next: IAutoBeRealizeCollectorPlanApplication.IComplete) => void;
   preliminary: AutoBePreliminaryController<
     "databaseSchemas" | "interfaceSchemas" | "interfaceOperations"
@@ -163,17 +156,17 @@ function createController(props: {
 
     const errors: IValidation.IError[] = [];
     result.data.request.plans.map((plan, i) => {
-      if (props.dtoTypeNames.includes(plan.dtoTypeName) === false)
+      if (props.dtoTypeName !== plan.dtoTypeName)
         errors.push({
           path: `$input.request.plans[${i}].dtoTypeName`,
           value: plan.dtoTypeName,
-          expected: props.dtoTypeNames
-            .map((s) => JSON.stringify(s))
-            .join(" | "),
+          expected: JSON.stringify(props.dtoTypeName),
           description: StringUtil.trim`
-            The DTO type name must be one of the available DTOs in the interface schema.
+            The DTO type name must be ${JSON.stringify(props.dtoTypeName)}.
 
-            ${props.dtoTypeNames.map((s) => `- ${s}`).join("\n")}
+            If you have planned other DTO type's collector, 
+            please entirely remake the plan with ONLY the DTO type 
+            ${JSON.stringify(props.dtoTypeName)}.
           `,
         });
       if (
