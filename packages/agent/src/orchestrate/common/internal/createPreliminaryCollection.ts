@@ -25,34 +25,48 @@ export function createPreliminaryCollection(
       ).slice(),
     };
   return {
-    analysisFiles: defined?.analysisFiles ?? state.analyze?.files ?? [],
-    databaseSchemas:
+    analysisFiles: (
+      defined?.analysisFiles ??
+      state.analyze?.files ??
+      []
+    ).slice(),
+    databaseSchemas: (
       defined?.databaseSchemas ??
       state.database?.result.data.files.map((f) => f.models).flat() ??
-      [],
-    interfaceOperations:
+      []
+    ).slice(),
+    interfaceOperations: (
       defined?.interfaceOperations ??
       state.interface?.document.operations ??
-      [],
-    interfaceSchemas:
-      defined?.interfaceSchemas ??
-      state.interface?.document.components.schemas ??
-      {},
-    realizeCollectors:
+      []
+    ).slice(),
+    interfaceSchemas: Object.fromEntries(
+      Object.entries(
+        defined?.interfaceSchemas ??
+          state.interface?.document.components.schemas ??
+          {},
+      ),
+    ),
+    realizeCollectors: (
       defined?.realizeCollectors ??
       state.realize?.functions.filter((f) => f.type === "collector") ??
-      [],
-    realizeTransformers:
+      []
+    ).slice(),
+    realizeTransformers: (
       defined?.realizeTransformers ??
       state.realize?.functions.filter((f) => f.type === "transformer") ??
-      [],
-    previousAnalysisFiles: state.previousAnalyze?.files ?? [],
+      []
+    ).slice(),
+    previousAnalysisFiles: state.previousAnalyze?.files.slice() ?? [],
     previousDatabaseSchemas:
       state.previousDatabase?.result.data.files.map((f) => f.models).flat() ??
       [],
-    previousInterfaceSchemas:
-      state.previousInterface?.document.components.schemas ?? {},
+    previousInterfaceSchemas: Object.fromEntries(
+      Object.entries(
+        state.previousInterface?.document.components.schemas ?? {},
+      ),
+    ),
     previousInterfaceOperations:
-      state.previousInterface?.document.operations ?? [],
+      state.previousInterface?.document.operations.slice() ?? [],
   };
 }

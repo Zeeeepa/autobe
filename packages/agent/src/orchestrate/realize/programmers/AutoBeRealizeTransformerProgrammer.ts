@@ -208,10 +208,10 @@ ${Object.keys(props.schema.properties)
         | undefined = required.find((r) => r.member === m.member);
       if (metadata === undefined)
         props.errors.push({
-          path: `$input.request.selectmappings[${i}].member`,
+          path: `$input.request.selectMappings[${i}].member`,
           value: m.member,
           expected: required
-            .map((r) => `AutoBeRealizeMapping<"${r}">`)
+            .map((r) => `AutoBeRealizeMapping<"${r.member}">`)
             .join(" | "),
           description: StringUtil.trim`
             '${m.member}' is not a valid Prisma member.
@@ -224,7 +224,7 @@ ${Object.keys(props.schema.properties)
       else {
         if (metadata.kind !== m.kind)
           props.errors.push({
-            path: `$input.request.selectmappings[${i}].kind`,
+            path: `$input.request.selectMappings[${i}].kind`,
             value: m.kind,
             expected: `"${metadata.kind}"`,
             description: StringUtil.trim`
@@ -235,7 +235,7 @@ ${Object.keys(props.schema.properties)
           });
         if (metadata.nullable !== m.nullable)
           props.errors.push({
-            path: `$input.request.selectmappings[${i}].nullable`,
+            path: `$input.request.selectMappings[${i}].nullable`,
             value: m.nullable,
             expected: `${metadata.nullable}`,
             description: StringUtil.trim`
@@ -249,7 +249,7 @@ ${Object.keys(props.schema.properties)
     for (const r of required) {
       if (props.selectMappings.some((m) => m.member === r.member)) continue;
       props.errors.push({
-        path: "$input.request.selectmappings[]",
+        path: "$input.request.selectMappings[]",
         value: undefined,
         expected: StringUtil.trim`{
           member: "${r.member}";
