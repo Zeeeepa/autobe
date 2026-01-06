@@ -98,9 +98,7 @@ export namespace ArchiveLogger {
         `  - tables: ${event.components.map((c) => c.tables).flat().length}`,
       );
     else if (event.type === "databaseSchema")
-      content.push(
-        `  - schemas: ${event.models.map((m) => m.name).join(", ")}`,
-      );
+      content.push(`  - model: ${event.model.name}`);
     else if (event.type === "interfaceEndpoint")
       content.push(
         `  - kind: ${event.kind}`,
@@ -114,26 +112,8 @@ export namespace ArchiveLogger {
         `  - endpoints: ${event.designs.length}`,
         `  - revised:`,
         `    - create: ${event.revises.filter((r) => r.type === "create").length}`,
-        ...event.revises
-          .filter((r) => r.type === "create")
-          .map(
-            (c) =>
-              `      - ${c.endpoint.method.toUpperCase()} ${c.endpoint.path}`,
-          ),
         `    - update: ${event.revises.filter((r) => r.type === "update").length}`,
-        ...event.revises
-          .filter((r) => r.type === "update")
-          .map(
-            (u) =>
-              `      - ${u.original.method.toUpperCase()} ${u.original.path} -> ${u.updated.method.toUpperCase()} ${u.updated.path}`,
-          ),
         `    - erase: ${event.revises.filter((r) => r.type === "erase").length}`,
-        ...event.revises
-          .filter((r) => r.type === "erase")
-          .map(
-            (e) =>
-              `      - ${e.endpoint.method.toUpperCase()} ${e.endpoint.path}`,
-          ),
       );
     else if (event.type === "interfaceOperation")
       content.push(

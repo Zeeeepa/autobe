@@ -1,5 +1,4 @@
 import { AutoBeDatabase } from "@autobe/interface";
-import { tags } from "typia";
 
 import { IAutoBePreliminaryGetAnalysisFiles } from "../../common/structures/IAutoBePreliminaryGetAnalysisFiles";
 import { IAutoBePreliminaryGetPreviousAnalysisFiles } from "../../common/structures/IAutoBePreliminaryGetPreviousAnalysisFiles";
@@ -79,18 +78,17 @@ export namespace IAutoBeDatabaseSchemaApplication {
     /**
      * Strategic database design analysis and planning.
      *
-     * Contains the database architecture strategy including table structures,
-     * relationships, normalization approach, indexing strategies, and business
-     * requirement mapping. This planning phase defines the blueprint for schema
-     * implementation.
+     * Contains the database architecture strategy for the single target table,
+     * including structure, relationships, normalization approach, indexing
+     * strategies, and business requirement mapping. This planning phase defines
+     * the blueprint for the table model implementation.
      *
      * Key planning aspects:
      *
-     * - Assignment validation: Extract targetComponent.tables as complete
-     *   specification
-     * - Table count: Must create exactly targetComponent.tables.length models
-     * - Component references: Identify existing tables for foreign key
-     *   relationships
+     * - Assignment validation: Extract targetTable as the assignment
+     * - Table responsibility: Create exactly ONE table matching targetTable
+     * - Other tables: Identify existing tables from otherComponents for foreign
+     *   key relationships
      * - Normalization: Strict adherence to 1NF, 2NF, 3NF principles
      * - Snapshot architecture: Design for historical data preservation
      * - Junction tables: Plan M:N relationships with proper naming
@@ -100,17 +98,16 @@ export namespace IAutoBeDatabaseSchemaApplication {
     plan: string;
 
     /**
-     * Production-ready database schema models.
+     * Production-ready database schema model for a single table.
      *
-     * Complete AST representation of all database tables for the target
-     * component. Each model implements the planned structure, relationships,
+     * Complete AST representation of ONE database table for the target
+     * component. The model implements the planned structure, relationships,
      * indexes, and constraints following best practices.
      *
      * Implementation requirements:
      *
-     * - Model count: Exactly matches targetComponent.tables.length (plus junction
-     *   tables)
-     * - Table names: EXACT names from targetComponent.tables - no modifications
+     * - Exactly one model for the specific targetTable
+     * - Table name: EXACT name from targetTable parameter - no modifications
      * - Primary keys: Always UUID type with field name "id"
      * - Foreign keys: Proper IRelation configurations for all relationships
      * - Business fields: Only raw data fields - no calculated or derived values
@@ -133,6 +130,6 @@ export namespace IAutoBeDatabaseSchemaApplication {
      * - Proper historical data preservation where needed
      * - Optimized index strategy for expected query patterns
      */
-    models: AutoBeDatabase.IModel[] & tags.MinItems<1>;
+    model: AutoBeDatabase.IModel;
   }
 }

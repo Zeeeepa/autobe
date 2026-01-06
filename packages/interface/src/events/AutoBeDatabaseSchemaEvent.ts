@@ -4,21 +4,20 @@ import { AutoBeEventBase } from "./base/AutoBeEventBase";
 import { AutoBeProgressEventBase } from "./base/AutoBeProgressEventBase";
 
 /**
- * Event fired when the Database agent generates a complete schema file for a
- * specific business domain during the database design process.
+ * Event fired when the Database agent generates a single database table model
+ * during the database design process.
  *
  * This event occurs when the Database agent has successfully designed and
- * generated all database tables for a particular business domain (e.g., Sales,
- * Orders, Users). The agent follows a systematic 2-step process: strategic
- * planning (plan) and model generation (models), producing production-ready
- * database schemas that maintain data integrity and business logic accuracy.
- * The generated models will be reviewed by a separate review agent.
+ * generated ONE specific database table within a business domain. The agent
+ * follows a systematic 2-step process: strategic planning (plan) and model
+ * generation (model), producing a production-ready database table model that
+ * maintains data integrity and business logic accuracy. The generated model
+ * will be reviewed by a separate review agent.
  *
- * Each schema file represents a cohesive unit of database design focused on a
- * specific business area, following domain-driven design principles. The
- * progressive completion of schema files provides real-time visibility into the
- * database architecture development, enabling stakeholders to track progress
- * and validate domain-specific data models incrementally.
+ * Each event represents the completion of a single table within a namespace.
+ * Multiple events are emitted for each namespace, one per table, enabling
+ * fine-grained progress tracking and parallel generation of tables within the
+ * same business domain.
  *
  * @author Samchon
  */
@@ -28,55 +27,51 @@ export interface AutoBeDatabaseSchemaEvent
     AutoBeProgressEventBase,
     AutoBeAggregateEventBase {
   /**
-   * Strategic database design analysis and planning phase.
+   * Strategic database design analysis and planning phase for the target table.
    *
-   * Contains the AI agent's comprehensive analysis of the target business
-   * domain and its database design strategy. The agent evaluates the required
-   * tables, their relationships, normalization requirements, and performance
-   * considerations to create a well-architected database schema that aligns
-   * with business objectives and technical best practices.
+   * Contains the AI agent's comprehensive analysis of the specific table being
+   * designed and its database design strategy. The agent evaluates the table's
+   * structure, relationships with other tables, normalization requirements, and
+   * performance considerations to create a well-architected table model that
+   * aligns with business objectives and technical best practices.
    *
-   * This planning phase establishes the foundation for the entire schema
-   * design, ensuring proper table organization, relationship mapping, and
-   * adherence to database normalization principles while considering future
-   * scalability and maintainability requirements.
+   * This planning phase establishes the foundation for the single table design,
+   * ensuring proper field organization, relationship mapping, and adherence to
+   * database normalization principles while considering future scalability and
+   * maintainability requirements.
    */
   plan: string;
 
   /**
-   * Prisma schema models generated based on the strategic plan.
+   * Business domain namespace where this database table belongs.
    *
-   * Contains the production-ready AST representation of Prisma schema models
-   * generated following the strategic plan. These models implement all planned
-   * tables, relationships, and constraints using the AutoBeDatabase.IModel
-   * interface. The models are designed to be production-ready from the start.
+   * Identifies the logical business domain or functional area that this
+   * database table is part of. The namespace follows domain-driven design
+   * principles, grouping related tables together to maintain coherent schema
+   * organization and clear separation of concerns across different business
+   * areas.
    *
-   * The models include exact table names from requirements, proper UUID primary
-   * fields, foreign key relationships, business fields with appropriate types,
-   * strategic indexes, and comprehensive English-only descriptions.
+   * The namespace determines which Prisma schema file this table will be
+   * written to, enabling systematic development and maintainable database
+   * architecture. Each namespace typically corresponds to a major business
+   * domain such as "Actors", "Sales", or "Systematic".
    */
-  models: AutoBeDatabase.IModel[];
+  namespace: string;
 
   /**
-   * Generated Prisma schema file information for a specific business domain.
+   * Single Prisma schema model generated based on the strategic plan.
    *
-   * This field contains the complete schema file data including the filename,
-   * namespace, and the production-ready Prisma schema models. The AI agent has
-   * analyzed the requirements, designed the tables, and produced models that
-   * include all necessary relationships, indexes, and constraints.
+   * Contains the production-ready AST representation of a single Prisma schema
+   * model generated following the strategic plan. This model implements the
+   * planned table structure, relationships, and constraints using the
+   * AutoBeDatabase.IModel interface. The model is designed to be
+   * production-ready from the start.
    *
-   * The generated file follows the naming convention
-   * `schema-{number}-{domain}.prisma` where the number indicates dependency
-   * order and the domain represents the business area. The final models within
-   * the file follow Prisma conventions while incorporating enterprise patterns
-   * like snapshot tables and materialized views.
-   *
-   * Each model in the file.models array represents a table in the database with
-   * proper field definitions, relationships, indexes, and comprehensive
-   * documentation, designed to ensure production readiness from the initial
-   * generation.
+   * The model includes the exact table name from requirements, proper UUID
+   * primary field, foreign key relationships, business fields with appropriate
+   * types, strategic indexes, and comprehensive English-only descriptions.
    */
-  file: AutoBeDatabase.IFile;
+  model: AutoBeDatabase.IModel;
 
   /**
    * Iteration number of the requirements analysis this schema was generated

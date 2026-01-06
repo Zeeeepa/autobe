@@ -26,21 +26,26 @@ export async function orchestratePrismaSchema(
     .map((c) => c.tables.length)
     .reduce((x, y) => x + y, 0);
   const completed: IPointer<number> = { value: 0 };
+
+  // Flatten component list into individual table tasks
+  const tableTasks: Array<{
+    component: AutoBeDatabase.IComponent;
+    table: string;
+  }> = componentList.flatMap((component) =>
+    component.tables.map((table) => ({ component, table })),
+  );
+
   return await executeCachedBatch(
     ctx,
-    componentList.map((component) => async (promptCacheKey) => {
-      const otherTables: string[] = Array.from(
-        new Set(
-          componentList
-            .filter((y) => component !== y)
-            .map((c) => c.tables)
-            .flat(),
-        ),
+    tableTasks.map((task) => async (promptCacheKey) => {
+      const otherComponents: AutoBeDatabase.IComponent[] = componentList.filter(
+        (c) => c !== task.component,
       );
       const event: AutoBeDatabaseSchemaEvent = await process(ctx, {
         instruction,
-        component,
-        otherTables,
+        targetComponent: task.component,
+        targetTable: task.table,
+        otherComponents,
         start,
         total,
         completed,
@@ -56,8 +61,9 @@ async function process(
   ctx: AutoBeContext,
   props: {
     instruction: string;
-    component: AutoBeDatabase.IComponent;
-    otherTables: string[];
+    targetComponent: AutoBeDatabase.IComponent;
+    targetTable: string;
+    otherComponents: AutoBeDatabase.IComponent[];
     start: Date;
     total: number;
     completed: IPointer<number>;
@@ -85,8 +91,8 @@ async function process(
       source: SOURCE,
       controller: createController({
         preliminary,
-        targetComponent: props.component,
-        otherTables: props.otherTables,
+        targetComponent: props.targetComponent,
+        targetTable: props.targetTable,
         build: (next) => {
           pointer.value = next;
         },
@@ -95,15 +101,9 @@ async function process(
       enforceFunctionCall: true,
       promptCacheKey: props.promptCacheKey,
       ...transformPrismaSchemaHistory({
-        analysis:
-          ctx
-            .state()
-            .analyze?.files.map((file) => ({ [file.filename]: file.content }))
-            .reduce((acc, cur) => {
-              return Object.assign(acc, cur);
-            }, {}) ?? {},
-        targetComponent: props.component,
-        otherTables: props.otherTables,
+        targetComponent: props.targetComponent,
+        targetTable: props.targetTable,
+        otherComponents: props.otherComponents,
         instruction: props.instruction,
         preliminary,
       }),
@@ -114,15 +114,11 @@ async function process(
       id: v7(),
       created_at: props.start.toISOString(),
       plan: pointer.value.plan,
-      models: pointer.value.models,
-      file: {
-        filename: props.component.filename,
-        namespace: props.component.namespace,
-        models: pointer.value.models,
-      },
+      namespace: props.targetComponent.namespace,
+      model: pointer.value.model,
       metric: result.metric,
       tokenUsage: result.tokenUsage,
-      completed: (props.completed.value += props.component.tables.length),
+      completed: ++props.completed.value,
       total: props.total,
       step: ctx.state().analyze?.step ?? 0,
     } satisfies AutoBeDatabaseSchemaEvent);
@@ -134,15 +130,13 @@ function createController(props: {
     "analysisFiles" | "previousAnalysisFiles" | "previousDatabaseSchemas"
   >;
   targetComponent: AutoBeDatabase.IComponent;
-  otherTables: string[];
+  targetTable: string;
   build: (next: IAutoBeDatabaseSchemaApplication.IComplete) => void;
   dispatch: AutoBeContext["dispatch"];
 }): IAgenticaController.IClass {
-  const validate = (
-    input: unknown,
-  ): IValidation<IAutoBeDatabaseSchemaApplication.IProps> => {
+  const validate: Validator = (input) => {
     const result: IValidation<IAutoBeDatabaseSchemaApplication.IProps> =
-      defaultValidate(input);
+      typia.validate<IAutoBeDatabaseSchemaApplication.IProps>(input);
     if (result.success === false) return result;
     else if (result.data.request.type !== "complete")
       return props.preliminary.validate({
@@ -150,47 +144,34 @@ function createController(props: {
         request: result.data.request,
       });
 
-    const actual: AutoBeDatabase.IModel[] = result.data.request.models;
-    const expected: string[] = props.targetComponent.tables;
-    const missed: string[] = expected.filter(
-      (x) => actual.some((a) => a.name === x) === false,
-    );
-    if (missed.length === 0) return result;
+    // Validate that the generated model matches the target table name
+    const actual: AutoBeDatabase.IModel = result.data.request.model;
+    const expected: string = props.targetTable;
 
-    props.dispatch({
-      type: "databaseInsufficient",
-      id: v7(),
-      created_at: new Date().toISOString(),
-      component: props.targetComponent,
-      actual,
-      missed,
-    });
+    if (actual.name === expected) return result;
     return {
       success: false,
       data: result.data,
       errors: [
         {
-          path: "$input.request.models",
-          value: result.data.request.models,
-          expected: `Array<AutoBeDatabase.IModel>`,
+          path: "$input.request.model.name",
+          value: actual.name,
+          expected: JSON.stringify(expected),
           description: StringUtil.trim`
-            You missed some tables from the current domain's component.
+            You created a model with the wrong table name.
 
-            Look at the following details to fix the schemas. Never forget to
-            compose the \`missed\` tables at the next function calling.
+            You are responsible for creating exactly ONE table with the exact name specified.
 
             - filename: current domain's filename
             - namespace: current domain's namespace
-            - expected: expected tables in the current domain
-            - actual: actual tables you made
-            - missed: tables you have missed, and you have to compose again
+            - expected table name: ${expected}
+            - actual table name: ${actual.name}
 
             ${JSON.stringify({
               filename: props.targetComponent.filename,
               namespace: props.targetComponent.namespace,
-              expected,
-              actual,
-              missed,
+              targetTable: expected,
+              actualTableName: actual.name,
             })}
           `,
         },
@@ -219,8 +200,5 @@ function createController(props: {
 type Validator = (
   input: unknown,
 ) => IValidation<IAutoBeDatabaseSchemaApplication.IProps>;
-
-const defaultValidate: Validator =
-  typia.createValidate<IAutoBeDatabaseSchemaApplication.IProps>();
 
 const SOURCE = "databaseSchema" satisfies AutoBeEventSource;

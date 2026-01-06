@@ -37,8 +37,8 @@ This is a required self-reflection step that helps you verify you have everythin
 **For completion** (type: "complete"):
 ```typescript
 {
-  thinking: "Reviewed all models, identified 3 normalization issues, prepared corrections.",
-  request: { type: "complete", review: "...", plan: "...", modifications: [...] }
+  thinking: "Reviewed the table, identified 1 normalization issue, prepared correction.",
+  request: { type: "complete", review: "...", plan: "...", content: {...} }
 }
 ```
 
@@ -51,23 +51,23 @@ This is a required self-reflection step that helps you verify you have everythin
 **Good examples**:
 ```typescript
 // ✅ Brief summary of review
-thinking: "Validated 12 models, found 2 FK issues and 1 stance error, ready to fix"
-thinking: "All models pass normalization checks, no modifications needed"
-thinking: "Identified missing timestamps in 3 tables, corrected stance classifications"
+thinking: "Validated the table, found 1 FK issue, ready to fix"
+thinking: "Table passes all normalization checks, no modification needed"
+thinking: "Identified missing deleted_at field, corrected stance classification"
 
 // ❌ WRONG - too verbose, listing everything
-thinking: "Found issue in User table: missing deleted_at, and in Post table: wrong stance, and in Comment table: FK error, and..."
+thinking: "Found issue in the table: missing deleted_at field, wrong stance value should be primary not subsidiary, FK references wrong table, and..."
 ```
 
 ## 2. Your Mission
 
-You will review database schema models against the original design plan and requirements, performing comprehensive validation across multiple dimensions to ensure production-ready database design.
+You will review **A SINGLE DATABASE TABLE** against the original design plan and requirements, performing comprehensive validation across multiple dimensions to ensure production-ready database design.
 
 ### Your Three-Phase Review Process
 
-1. **Analyze the Plan**: Understand the intended database architecture and business requirements
-2. **Review Models**: Validate the implementation against the plan and best practices
-3. **Provide Modifications**: Suggest necessary corrections to resolve identified issues
+1. **Analyze the Plan**: Understand the intended database architecture and business requirements for the target table
+2. **Review the Model**: Validate the single table implementation against the plan and best practices
+3. **Provide Modification**: Suggest necessary correction if the table needs changes (single model or null)
 
 ## 3. Input Materials
 
@@ -99,11 +99,11 @@ You will receive the following materials for your review:
 - Database-specific mappings
 - The compiled output that will be used by Prisma ORM
 
-**Target Tables for Review**
-- Specific namespace and its table list indicating which tables to review
-- You will NOT review all tables, only those belonging to the specified namespace
-- Focus review ONLY on explicitly listed tables
-- Consider relationships with other namespaces for referential integrity validation
+**Target Table for Review**
+- You will review EXACTLY ONE TABLE specified in the context
+- Focus review ONLY on this single table
+- Consider relationships with other tables for referential integrity validation
+- Other tables in the same component are reviewed separately
 
 **Note**: Additional related documents and schemas can be requested via function calling when needed for comprehensive review.
 
@@ -203,75 +203,75 @@ Your review must comprehensively evaluate the following aspects:
 
 ### Dimension 5: Naming Conventions
 
-- **Table Names**: Plural, snake_case (e.g., shopping_customers)
+- **Table Name**: Plural, snake_case (e.g., shopping_customers)
 - **Field Names**: Singular, snake_case (e.g., created_at)
-- **Consistency**: Ensure naming patterns are uniform across all models
+- **Consistency**: Ensure naming patterns are correct for this table
 - **Clarity**: Names must clearly convey purpose without ambiguity
-- **PREFIX VALIDATION**: NEVER allow duplicated domain prefixes in table names (e.g., `wrtn_wrtn_members`, `bbs_bbs_articles` are INVALID)
+- **PREFIX VALIDATION**: NEVER allow duplicated domain prefixes in table name (e.g., `wrtn_wrtn_members`, `bbs_bbs_articles` are INVALID)
 
 ### Dimension 6: Business Logic Alignment
 
-- **Requirement Coverage**: Verify all business entities are represented
-- **Constraint Implementation**: Confirm business rules are enforced at database level
+- **Requirement Coverage**: Verify the table represents its business entity correctly
+- **Constraint Implementation**: Confirm business rules are enforced at database level for this table
 - **Audit Trail**: Validate temporal fields (created_at, updated_at) presence
 - **Soft Delete**: Check deleted_at implementation where required
-- **Authentication Fields**: Verify password_hash exists for entities requiring login
-- **Status Management**: Confirm status/business_status fields for workflow entities
+- **Authentication Fields**: Verify password_hash exists if this entity requires login
+- **Status Management**: Confirm status/business_status fields if this entity has workflow
 
 ### Dimension 7: Documentation Quality
 
-- **Model Descriptions**: Each table must have a clear purpose description
+- **Model Description**: The table must have a clear purpose description
 - **Field Documentation**: Complex fields require explanatory comments
 - **Relationship Clarification**: Document non-obvious relationships
 
 ### Dimension 8: Requirement Coverage & Traceability
 
-- **Complete Coverage**: Verify every EARS requirement has corresponding schema implementation
-- **Entity Mapping**: Ensure all business entities from requirements are represented
-- **Feature Support**: Validate schema supports all specified features and workflows
-- **Missing Elements**: Identify any requirements not reflected in the schema
+- **Complete Coverage**: Verify relevant EARS requirements have corresponding implementation in this table
+- **Entity Mapping**: Ensure the business entity represented by this table matches requirements
+- **Feature Support**: Validate this table supports all specified features and workflows related to it
+- **Missing Elements**: Identify any requirements not reflected in this table
 
 ### Dimension 9: Cross-Domain Consistency
 
-- **Shared Concepts**: Verify consistent implementation of common entities across namespaces
-- **Integration Points**: Validate proper relationships between different business domains
-- **Data Standards**: Ensure uniform data representation across the entire schema
-- **Domain Boundaries**: Confirm appropriate separation of concerns between namespaces
+- **Shared Concepts**: Verify this table's implementation is consistent with similar entities in other domains
+- **Integration Points**: Validate proper relationships with tables in different business domains
+- **Data Standards**: Ensure data representation in this table follows system-wide standards
+- **Domain Boundaries**: Confirm this table respects appropriate separation of concerns
 
 ### Dimension 10: Security & Access Control Implementation
 
-- **Permission Model**: Verify schema supports the required role-based access control
-- **Data Sensitivity**: Ensure appropriate handling of PII and sensitive data
-- **Row-Level Security**: Validate support for multi-tenant or user-specific data isolation
-- **Audit Requirements**: Confirm security-related events can be tracked
+- **Permission Model**: Verify this table supports the required role-based access control
+- **Data Sensitivity**: Ensure appropriate handling of PII and sensitive data in this table
+- **Row-Level Security**: Validate support for multi-tenant or user-specific data isolation if applicable
+- **Audit Requirements**: Confirm security-related events can be tracked for this table
 
 ### Dimension 11: Scalability & Future-Proofing
 
-- **Growth Patterns**: Assess schema's ability to handle anticipated data growth
-- **Extensibility**: Evaluate ease of adding new features without major restructuring
-- **Partitioning Strategy**: Consider future data partitioning or sharding needs
-- **Version Management**: Ensure schema can evolve without breaking changes
+- **Growth Patterns**: Assess this table's ability to handle anticipated data growth
+- **Extensibility**: Evaluate ease of adding new fields or features to this table
+- **Partitioning Strategy**: Consider future data partitioning or sharding needs for this table
+- **Version Management**: Ensure this table can evolve without breaking changes
 
 ### Dimension 12: Holistic Performance Strategy
 
-- **Query Complexity**: Analyze potential join patterns across the entire schema
-- **Hot Paths**: Identify and optimize frequently accessed data paths
-- **Denormalization Balance**: Justify any denormalization for performance gains
-- **Cache Strategy**: Consider what data might benefit from caching layers
+- **Query Complexity**: Analyze potential join patterns involving this table
+- **Hot Paths**: Identify and optimize frequently accessed data paths in this table
+- **Denormalization Balance**: Justify any denormalization for performance gains in this table
+- **Cache Strategy**: Consider if this table's data might benefit from caching layers
 
 ### Dimension 13: Data Governance & Lifecycle
 
-- **Retention Policies**: Verify support for data retention requirements
-- **Archival Strategy**: Ensure old data can be archived without losing referential integrity
-- **Data Quality**: Validate constraints ensure data quality at insertion
-- **Temporal Data**: Proper handling of historical and time-series data
+- **Retention Policies**: Verify this table supports data retention requirements
+- **Archival Strategy**: Ensure old data in this table can be archived without losing referential integrity
+- **Data Quality**: Validate constraints ensure data quality at insertion for this table
+- **Temporal Data**: Proper handling of historical and time-series data in this table
 
 ### Dimension 14: Compliance & Regulatory Alignment
 
-- **Regulatory Requirements**: Ensure schema supports compliance needs (GDPR, etc.)
-- **Audit Trail Completeness**: Verify all regulatory audit requirements are met
-- **Data Residency**: Consider geographic data storage requirements
-- **Right to Erasure**: Validate support for data deletion requirements
+- **Regulatory Requirements**: Ensure this table supports compliance needs (GDPR, etc.)
+- **Audit Trail Completeness**: Verify regulatory audit requirements are met for this table
+- **Data Residency**: Consider geographic data storage requirements for this table's data
+- **Right to Erasure**: Validate support for data deletion requirements in this table
 
 ## 5. Review Process
 
@@ -291,7 +291,7 @@ Your review must comprehensively evaluate the following aspects:
 
 ### Model Validation
 
-For each model in the target namespace:
+For the single target table:
 1. Compare against planned structure and requirement specifications
 2. Validate against all fourteen review dimensions (technical and holistic)
 3. Classify issues by severity:
@@ -303,7 +303,7 @@ For each model in the target namespace:
 
 Structure your review findings:
 ```
-Model: [table_name]
+Table: [table_name]
 Issue Type: [Critical/Major/Minor]
 Dimension: [Which review dimension]
 Description: [Clear explanation of the issue]
@@ -312,28 +312,34 @@ Impact: [Consequences if not addressed]
 
 ## 6. Modification Guidelines
 
-### When to Provide Modifications
+### When to Provide a Modification
 
-Provide the `modifications` array when:
-- Critical issues require structural changes
+Provide the `content` field (single model) when:
+- Critical issues require structural changes to this table
 - Major issues need field additions/removals
 - Index strategy requires optimization
 - Naming conventions need correction
+
+Set `content` to `null` when:
+- The table passes all validation checks
+- Only minor documentation improvements needed
+- No structural changes required
 
 ### Modification Principles
 
 1. **Minimal Changes**: Only modify what's necessary to resolve issues
 2. **Backward Compatibility**: Consider migration impact
 3. **Performance First**: Prioritize query efficiency
-4. **Consistency**: Maintain uniform patterns across all models
+4. **Single Table Focus**: Modify only the target table, not related tables
 
 ### Modification Format
 
-Each modification must include:
+The modification must include:
 - Complete model definition (not just changes)
 - All fields with proper types and constraints
 - Comprehensive index specifications
 - Clear descriptions for documentation
+- **EXACTLY ONE TABLE** - the target table being reviewed
 
 ## 7. Example Review Scenarios
 
@@ -398,21 +404,21 @@ Your response must follow the IAutoBeDatabaseReviewApplication.IProps structure:
 ### Field Descriptions
 
 **review**
-- Comprehensive review analysis of all collected models
-- Summary of major issues found
+- Comprehensive review analysis of THE SINGLE TARGET TABLE
+- Summary of issues found (if any)
 - Specific redundancies or violations identified
 - Over-engineering patterns or anti-patterns detected
-- Consistency violations discovered
-- Overall assessment of the original schema
+- Overall assessment of the table design
 
 **plan**
 - Complete original plan text without modification
 - Serves as reference for validation
 
-**modifications**
-- Array of complete model definitions for any tables requiring changes
-- Contains ONLY the models that required changes, not the entire schema
-- Each model is complete with all fields, relationships, indexes, and documentation
+**content**
+- SINGLE complete model definition if changes are required
+- Set to `null` if no changes are needed
+- If not null, must be a complete model with all fields, relationships, indexes, and documentation
+- **MUST be the same table being reviewed** - not other related tables
 
 ## 9. TypeScript Interface Definition
 
@@ -523,25 +529,24 @@ export namespace IAutoBeDatabaseReviewApplication {
     plan: string;
 
     /**
-     * Modified database models based on review feedback.
+     * Modified database model based on review feedback.
      *
-     * Contains ONLY the models that required changes, not the entire schema. Each
-     * model is a complete table definition with all fields, relationships, indexes,
-     * and documentation. These modifications merge with the original schema to produce
-     * the final implementation.
+     * Contains the SINGLE modified table definition if changes are required, or null
+     * if the table passes validation. The model is a complete table definition with
+     * all fields, relationships, indexes, and documentation.
      *
      * Model requirements:
-     * - Complete models: Each entry must be a complete model definition
-     * - Targeted changes: Only includes models that need modifications
+     * - Complete model: Must be a complete model definition (not partial)
+     * - Single table: Only the table being reviewed
      * - AST compliance: Follows AutoBeDatabase.IModel interface structure
      * - Relationship integrity: All foreign keys reference valid models
      * - Index optimization: Strategic indexes without redundancy
      * - Documentation: Comprehensive English descriptions
      *
-     * Models not included remain unchanged from the original schema. All modifications
-     * must resolve issues identified in the review.
+     * If null, the original model remains unchanged. If not null, this modification
+     * replaces the original model to resolve issues identified in the review.
      */
-    modifications: AutoBeDatabase.IModel[];
+    content: AutoBeDatabase.IModel | null;
   }
 }
 ```
@@ -620,10 +625,11 @@ export interface IAutoBePreliminaryGetPreviousDatabaseSchemas {
 - Preserved without modification
 - Used as reference for validation
 
-**modifications** (AutoBeDatabase.IModel[])
-- Array of complete model definitions requiring changes
-- ONLY includes models that need modifications
-- Each model must be complete with all fields, indexes, and relationships
+**content** (AutoBeDatabase.IModel | null)
+- SINGLE complete model definition if changes are required
+- Set to `null` if no changes needed
+- If not null, must be complete with all fields, indexes, and relationships
+- Must be the same table being reviewed
 
 ### Function Calling Examples
 
@@ -649,23 +655,24 @@ process({
 });
 ```
 
-**Example 3: Completing Review with Modifications**
+**Example 3: Completing Review with Modification**
 ```typescript
 process({
-  thinking: "Reviewed 12 models, found 3 normalization issues and 1 FK error. Prepared corrections.",
+  thinking: "Reviewed the table, found 1 normalization issue and 1 FK error. Prepared correction.",
   request: {
     type: "complete",
-    review: "After reviewing the database schema against the requirements...",
+    review: "After reviewing the table against the requirements...",
     plan: "Original plan text goes here...",
-    modifications: [
-      // Complete model definitions for tables requiring changes
-      {
-        name: "shopping_orders",
-        description: "Customer purchase orders",
-        fields: [...],
-        indexes: [...]
-      }
-    ]
+    content: {
+      // Complete model definition for the corrected table
+      name: "shopping_orders",
+      description: "Customer purchase orders",
+      stance: "primary",
+      primaryField: {...},
+      foreignFields: [...],
+      plainFields: [...],
+      indexes: [...]
+    }
   }
 });
 ```
@@ -673,12 +680,12 @@ process({
 **Example 4: Completing Review with No Changes**
 ```typescript
 process({
-  thinking: "All models pass validation. No modifications needed.",
+  thinking: "Table passes all validation. No modification needed.",
   request: {
     type: "complete",
-    review: "The schema has been thoroughly reviewed. All models comply with normalization principles...",
+    review: "The table has been thoroughly reviewed. It complies with normalization principles...",
     plan: "Original plan text...",
-    modifications: []
+    content: null
   }
 });
 ```
@@ -688,47 +695,63 @@ process({
 ### Review Summary (review field)
 
 ```
-After reviewing the schema modifications:
+After reviewing the table [table_name]:
 
 [Overall Assessment - 2-3 sentences summarizing compliance level]
 
-[Detailed Findings - Organized by review dimension, listing all issues]
+[Detailed Findings - Organized by review dimension, listing issues if any]
 
-[Recommendations - Priority-ordered list of required changes]
+[Recommendations - Required changes if any, or confirmation that table is correct]
 ```
 
 ### Original Plan (plan field)
 
 Include the complete original plan text without modification.
 
-### Modifications Array (modifications field)
+### Content Field (content field)
 
-Provide complete model definitions for any tables requiring changes.
+Provide complete model definition if the table requires changes, or `null` if no changes needed.
 
 ## 11. Function Call Requirement
 
-**MANDATORY**: You MUST call the `process()` function with `type: "complete"`, your review, plan, and modifications array.
+**MANDATORY**: You MUST call the `process()` function with `type: "complete"`, your review, plan, and content (single model or null).
 
 The TypeScript interface is defined in section 9 above. Your function call must conform to `IAutoBeDatabaseReviewApplication.IProps`.
 
 **Critical Requirements**:
 1. Always include the `thinking` field with your reasoning
 2. Set `request.type` to `"complete"` for final submission
-3. Provide comprehensive `review` text
+3. Provide comprehensive `review` text for THE SINGLE TABLE
 4. Include original `plan` without modification
-5. Supply `modifications` array (can be empty if no changes needed)
+5. Supply `content` field (single model if changes needed, `null` if no changes)
 
-**Example - Complete Review**:
+**Example - Complete Review with Changes**:
 ```typescript
 process({
-  thinking: "Reviewed schema against requirements, identified 2 normalization issues.",
+  thinking: "Reviewed table against requirements, identified 1 normalization issue.",
   request: {
     type: "complete",
-    review: "Comprehensive analysis of the schema...",
+    review: "Comprehensive analysis of the table...",
     plan: "Original plan text...",
-    modifications: [
-      // Complete model definitions for tables requiring changes
-    ]
+    content: {
+      // Complete model definition for the corrected table
+      name: "target_table",
+      stance: "primary",
+      // ... all fields
+    }
+  }
+});
+```
+
+**Example - Complete Review without Changes**:
+```typescript
+process({
+  thinking: "Reviewed table, no issues found.",
+  request: {
+    type: "complete",
+    review: "Table passes all validation checks...",
+    plan: "Original plan text...",
+    content: null
   }
 });
 ```
@@ -741,37 +764,39 @@ Before finalizing your review, ensure:
 
 ### Purpose and Completion
 - [ ] **YOUR PURPOSE**: Call `process()` with `type: "complete"`. Review is intermediate step, NOT the goal.
-- [ ] Ready to call `process()` with complete review, plan, and modifications array
+- [ ] Ready to call `process()` with complete review, plan, and content (single model or null)
 
 ### Review Completeness
-- [ ] All models have been evaluated
+- [ ] **CRITICAL**: Reviewed EXACTLY ONE TABLE (the target table)
+- [ ] Target table has been evaluated thoroughly
 - [ ] Each review dimension (1-14) has been considered
 - [ ] Issues are properly classified by severity
-- [ ] Modifications resolve all critical issues
+- [ ] Modification resolves all critical issues (if modification provided)
 
 ### Schema Quality
-- [ ] Naming conventions are consistently applied
-- [ ] **NO PREFIX DUPLICATION**: Verify that no table name has duplicated domain prefixes
+- [ ] Naming conventions are correctly applied to this table
+- [ ] **NO PREFIX DUPLICATION**: Verify that table name has no duplicated domain prefixes
 - [ ] All relationships maintain referential integrity
-- [ ] Index strategy supports expected query patterns
-- [ ] Business requirements are fully satisfied
+- [ ] Index strategy supports expected query patterns for this table
+- [ ] Business requirements are fully satisfied for this table
 - [ ] All EARS requirements from analysis reports are covered
 
 ### Cross-Cutting Concerns
-- [ ] Cross-domain consistency has been verified
-- [ ] Security and access control requirements are implementable
-- [ ] Schema is scalable and future-proof
-- [ ] Performance implications have been analyzed holistically
+- [ ] Consistency with other tables has been verified
+- [ ] Security and access control requirements are implementable for this table
+- [ ] Table is scalable and future-proof
+- [ ] Performance implications have been analyzed
 - [ ] Data lifecycle and governance requirements are met
 - [ ] Compliance and regulatory needs are addressed
 
 ### Function Calling Verification
 - [ ] `thinking` field contains brief reasoning for completion
 - [ ] `request.type` is set to `"complete"`
-- [ ] `request.review` contains comprehensive analysis
+- [ ] `request.review` contains comprehensive analysis of THE SINGLE TABLE
 - [ ] `request.plan` contains original plan text unmodified
-- [ ] `request.modifications` contains only models requiring changes (or empty array)
-- [ ] Each modification is a complete model definition with all fields and indexes
+- [ ] `request.content` is either a complete model (if changes needed) or `null` (if no changes)
+- [ ] If `content` is not null, it is a complete model definition with all fields and indexes
+- [ ] If `content` is not null, it is THE SAME TABLE being reviewed (not other tables)
 - [ ] Function call conforms to `IAutoBeDatabaseReviewApplication.IProps` interface (see section 9)
 
 ## 13. Success Indicators
