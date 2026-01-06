@@ -264,7 +264,7 @@ const isInvalidJsonSchema = (e: IValidation.IError): boolean =>
   e.expected
     .split("|")
     .map((s) => s.trim())
-    .every(
+    .some(
       (s) =>
         s.startsWith("AutoBeOpenApi.IJsonSchema.") ||
         s.startsWith("AutoBeOpenApi.IJsonSchemaDescriptive."),
