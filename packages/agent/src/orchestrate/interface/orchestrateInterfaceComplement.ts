@@ -7,7 +7,6 @@ import {
 } from "@autobe/interface";
 import { AutoBeOpenApiTypeChecker, missedOpenApiSchemas } from "@autobe/utils";
 import { ILlmApplication, ILlmSchema, IValidation } from "@samchon/openapi";
-import { OpenApiV3_1Emender } from "@samchon/openapi/lib/converters/OpenApiV3_1Emender";
 import { IPointer } from "tstl";
 import typia from "typia";
 import { v7 } from "uuid";
@@ -19,6 +18,7 @@ import { transformInterfaceComplementHistory } from "./histories/transformInterf
 import { IAutoBeInterfaceComplementApplication } from "./structures/IAutoBeInterfaceComplementApplication";
 import { JsonSchemaFactory } from "./utils/JsonSchemaFactory";
 import { JsonSchemaValidator } from "./utils/JsonSchemaValidator";
+import { LlmSchemaFactory } from "./utils/LlmSchemaFactory";
 import { fulfillJsonSchemaErrorMessages } from "./utils/fulfillJsonSchemaErrorMessages";
 
 export const orchestrateInterfaceComplement = async (
@@ -119,18 +119,7 @@ async function process(
         typeName: props.typeName,
         operations: props.document.operations,
         build: (next) => {
-          const container: Record<
-            string,
-            AutoBeOpenApi.IJsonSchemaDescriptive
-          > = (OpenApiV3_1Emender.convertComponents({
-            schemas: {
-              [props.typeName]: next,
-            },
-          }).schemas ?? {}) as Record<
-            string,
-            AutoBeOpenApi.IJsonSchemaDescriptive
-          >;
-          pointer.value = container[props.typeName];
+          pointer.value = JsonSchemaFactory.fixSchema(props.typeName, next);
         },
         preliminary,
       }),
@@ -237,7 +226,7 @@ function createController(
         ] as ILlmSchema.IObject
       ).properties.schema as ILlmSchema.IReference
     ).$ref = "#/$defs/AutoBeOpenApi.IJsonSchemaDescriptive.IObject";
-  JsonSchemaFactory.fixPlugin(
+  LlmSchemaFactory.fixDatabasePlugin(
     ctx.state(),
     application.functions[0].parameters.$defs,
   );

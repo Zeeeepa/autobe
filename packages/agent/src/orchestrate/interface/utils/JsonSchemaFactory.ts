@@ -1,14 +1,9 @@
 import { AutoBeDatabase, AutoBeOpenApi } from "@autobe/interface";
 import { AutoBeOpenApiTypeChecker, StringUtil } from "@autobe/utils";
-import {
-  ILlmSchema,
-  LlmTypeChecker,
-  OpenApi,
-  OpenApiTypeChecker,
-} from "@samchon/openapi";
+import { OpenApi, OpenApiTypeChecker } from "@samchon/openapi";
+import { OpenApiV3_1Emender } from "@samchon/openapi/lib/converters/OpenApiV3_1Emender";
 import typia, { tags } from "typia";
 
-import { AutoBeState } from "../../../context/AutoBeState";
 import { JsonSchemaValidator } from "./JsonSchemaValidator";
 
 export namespace JsonSchemaFactory {
@@ -249,30 +244,36 @@ export namespace JsonSchemaFactory {
   /* -----------------------------------------------------------
     PLUGIN
   ----------------------------------------------------------- */
-  export const fixPlugin = (
-    state: AutoBeState,
-    $defs: Record<string, ILlmSchema>,
-  ): void => {
-    if (state.database === null) return;
-    const models: string[] = state.database.result.data.files
-      .map((f) => f.models.map((m) => m.name))
-      .flat()
-      .sort();
-    const fix = (obj: ILlmSchema | undefined) => {
-      if (obj === undefined || LlmTypeChecker.isObject(obj) === false) return;
-
-      const property = obj.properties["x-autobe-database-schema"];
-      if (property === undefined || LlmTypeChecker.isAnyOf(property) === false)
-        return;
-
-      const str: ILlmSchema.IString | undefined = property.anyOf.filter((s) =>
-        LlmTypeChecker.isString(s),
-      )[0];
-      if (str === undefined) return;
-      str.enum = models;
-    };
-    fix($defs["AutoBeOpenApi.IJsonSchema.IObject"]);
-    fix($defs["AutoBeOpenApi.IJsonSchemaDescriptive.IObject"]);
+  export const fixSchema = (
+    key: string,
+    value: AutoBeOpenApi.IJsonSchemaDescriptive,
+  ): AutoBeOpenApi.IJsonSchemaDescriptive => {
+    const emended: AutoBeOpenApi.IJsonSchemaDescriptive = (
+      ((
+        OpenApiV3_1Emender.convertComponents({
+          schemas: {
+            [key]: value,
+          },
+        }) as AutoBeOpenApi.IComponents
+      ).schemas ?? {}) as Record<string, AutoBeOpenApi.IJsonSchemaDescriptive>
+    )[key];
+    AutoBeOpenApiTypeChecker.visit({
+      components: {
+        authorizations: [],
+        schemas: {},
+      },
+      schema: emended,
+      closure(next) {
+        for (const k of Object.keys(next))
+          if (
+            k === "x-autobe-database-schema" &&
+            AutoBeOpenApiTypeChecker.isObject(next)
+          )
+            continue;
+          else if (k.startsWith("x-")) delete (next as any)[k];
+      },
+    });
+    return emended;
   };
 }
 
