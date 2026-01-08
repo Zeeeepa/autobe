@@ -81,8 +81,13 @@ export namespace ArchiveLogger {
       content.push(
         `  - kind: ${event.kind}`,
         `  - function: ${event.function.type}`,
+        `  - file: ${event.function.location}`,
+        `  - diagnostics:`,
+        JSON.stringify(event.result.diagnostics, null, 2)
+          .split("\n")
+          .map((line) => `    ${line}`)
+          .join("\n"),
       );
-      console.log(event.result.diagnostics);
     } else if (event.type === "interfaceComplement")
       content.push(`  - typeName: ${event.typeName}`);
     else if (event.type === "interfaceSchemaReview")
@@ -130,6 +135,11 @@ export namespace ArchiveLogger {
       );
     else if (event.type === "interfaceSchema")
       content.push(`  - typeName: ${event.typeName}`);
+    else if (event.type === "testScenario")
+      content.push(
+        `  - functions: ${event.scenarios.length}`,
+        ...event.scenarios.map((s) => `    - ${s.functionName}`),
+      );
     else if (event.type === "realizePlan")
       content.push(`  - plan: ${event.plans[0]?.type}`);
     else if (event.type === "realizeWrite")
@@ -138,7 +148,12 @@ export namespace ArchiveLogger {
     else if (event.type === "interfaceComplete")
       content.push(`  - missed: ${event.missed.join(", ")}`);
     else if (event.type === "testComplete" && event.compiled.type === "failure")
-      console.log(JSON.stringify(event.compiled.diagnostics, null, 2));
+      content.push(
+        JSON.stringify(event.compiled.diagnostics, null, 2)
+          .split("\n")
+          .map((line) => `    ${line}`)
+          .join("\n"),
+      );
     // PRINT
     console.log(content.join("\n"));
   };

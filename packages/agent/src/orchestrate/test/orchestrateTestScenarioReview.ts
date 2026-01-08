@@ -1,151 +1,214 @@
 import { IAgenticaController } from "@agentica/core";
 import {
   AutoBeEventSource,
+  AutoBeInterfaceAuthorization,
+  AutoBeOpenApi,
   AutoBeProgressEventBase,
   AutoBeTestScenario,
+  AutoBeTestScenarioReviewEvent,
 } from "@autobe/interface";
-import { AutoBeOpenApiEndpointComparator } from "@autobe/utils";
 import { ILlmApplication, IValidation } from "@samchon/openapi";
-import { HashMap, IPointer, Pair } from "tstl";
+import { HashMap, IPointer } from "tstl";
 import typia from "typia";
 import { v7 } from "uuid";
 
 import { AutoBeContext } from "../../context/AutoBeContext";
+import { executeCachedBatch } from "../../utils/executeCachedBatch";
 import { AutoBePreliminaryController } from "../common/AutoBePreliminaryController";
 import { transformTestScenarioReviewHistory } from "./histories/transformTestScenarioReviewHistory";
-import { IAutoBeTestScenarioApplication } from "./structures/IAutoBeTestScenarioApplication";
+import { AutoBeTestScenarioProgrammer } from "./programmers/AutoBeTestScenarioProgrammer";
 import { IAutoBeTestScenarioReviewApplication } from "./structures/IAutoBeTestScenarioReviewApplication";
 
-export const orchestrateTestScenarioReview = async (
+/**
+ * Orchestrate test scenario review for multiple scenarios in parallel.
+ *
+ * Reviews each test scenario individually using executeCachedBatch for optimal
+ * performance. Each scenario is validated for:
+ *
+ * - Authentication correctness (authorizationActor alignment)
+ * - Dependency completeness (all prerequisites included)
+ * - Execution order (proper sequencing)
+ * - Business logic coverage
+ *
+ * @param ctx - AutoBe context for LLM interactions and state management
+ * @param props - Review configuration
+ * @param props.dict - Endpoint to operation lookup map
+ * @param props.document - Complete OpenAPI document
+ * @param props.scenarios - Array of test scenarios to review
+ * @param props.progress - Progress tracking for batch operations
+ * @param props.instruction - E2E-test-specific instructions from requirements
+ * @returns Promise resolving to an array of reviewed test scenarios
+ */
+export async function orchestrateTestScenarioReview(
   ctx: AutoBeContext,
   props: {
-    preliminary: AutoBePreliminaryController<
-      "analysisFiles" | "interfaceOperations" | "interfaceSchemas"
-    >;
-    groups: IAutoBeTestScenarioApplication.IScenarioGroup[];
+    dict: HashMap<AutoBeOpenApi.IEndpoint, AutoBeOpenApi.IOperation>;
+    document: AutoBeOpenApi.IDocument;
+    scenarios: AutoBeTestScenario[];
     progress: AutoBeProgressEventBase;
     instruction: string;
   },
-): Promise<IAutoBeTestScenarioApplication.IScenarioGroup[]> => {
-  try {
-    return await process(ctx, props);
-  } catch {
-    props.progress.completed += props.groups.length;
-    return props.groups;
-  }
-};
+): Promise<AutoBeTestScenario[]> {
+  return await executeCachedBatch(
+    ctx,
+    props.scenarios.map((scenario) => async (promptCacheKey) => {
+      try {
+        return await process(ctx, {
+          dict: props.dict,
+          document: props.document,
+          operation: props.dict.get(scenario.endpoint),
+          scenario,
+          progress: props.progress,
+          instruction: props.instruction,
+          promptCacheKey,
+        });
+      } catch {
+        return scenario;
+      }
+    }),
+  );
+}
 
-const process = (
+/**
+ * Process single scenario review with LLM agent.
+ *
+ * Executes the review workflow:
+ *
+ * 1. Provides scenario and prerequisites to review agent
+ * 2. Agent analyzes for correctness issues
+ * 3. Agent returns an improved scenario, or the original if improvements fail
+ * 4. Creates and dispatches review event
+ *
+ * @param ctx - AutoBe context
+ * @param props - Review configuration with single scenario
+ * @returns Reviewed test scenario (improved or original if review failed)
+ */
+async function process(
   ctx: AutoBeContext,
   props: {
-    preliminary: AutoBePreliminaryController<
-      "analysisFiles" | "interfaceOperations" | "interfaceSchemas"
-    >;
-    groups: IAutoBeTestScenarioApplication.IScenarioGroup[];
+    dict: HashMap<AutoBeOpenApi.IEndpoint, AutoBeOpenApi.IOperation>;
+    document: AutoBeOpenApi.IDocument;
+    operation: AutoBeOpenApi.IOperation;
+    scenario: AutoBeTestScenario;
     progress: AutoBeProgressEventBase;
     instruction: string;
+    promptCacheKey: string;
   },
-): Promise<IAutoBeTestScenarioApplication.IScenarioGroup[]> =>
-  props.preliminary.orchestrate(ctx, async (out) => {
-    const pointer: IPointer<IAutoBeTestScenarioReviewApplication.IComplete | null> =
-      {
-        value: null,
-      };
+): Promise<AutoBeTestScenario> {
+  const authorizations: AutoBeInterfaceAuthorization[] =
+    ctx.state().interface?.authorizations ?? [];
+
+  const preliminary: AutoBePreliminaryController<
+    "analysisFiles" | "interfaceOperations" | "interfaceSchemas"
+  > = new AutoBePreliminaryController({
+    application: typia.json.application<IAutoBeTestScenarioReviewApplication>(),
+    source: SOURCE,
+    kinds: ["analysisFiles", "interfaceOperations", "interfaceSchemas"],
+    state: ctx.state(),
+  });
+
+  return await preliminary.orchestrate(ctx, async (out) => {
+    const pointer: IPointer<AutoBeTestScenario | null> = {
+      value: null,
+    };
+
     const result: AutoBeContext.IResult = await ctx.conversate({
       source: SOURCE,
       controller: createController({
-        originalGroups: props.groups,
-        pointer,
-        preliminary: props.preliminary,
+        dict: props.dict,
+        operation: props.operation,
+        scenario: props.scenario,
+        authorizations,
+        preliminary,
+        build: (improved) => {
+          pointer.value = improved;
+        },
       }),
       enforceFunctionCall: true,
+      promptCacheKey: props.promptCacheKey,
       ...transformTestScenarioReviewHistory({
         state: ctx.state(),
-        groups: props.groups,
+        scenario: props.scenario,
         instruction: props.instruction,
-        preliminary: props.preliminary,
+        preliminary,
       }),
     });
-    if (pointer.value === null) return out(result)(null);
 
-    props.progress.total = Math.max(
-      props.progress.total,
-      (props.progress.completed += pointer.value.scenarioGroups.length),
-    );
-    ctx.dispatch({
+    // Create event with original and improved scenarios
+    const event: AutoBeTestScenarioReviewEvent = {
       type: SOURCE,
       id: v7(),
+      created_at: new Date().toISOString(),
       metric: result.metric,
       tokenUsage: result.tokenUsage,
+      endpoint: props.scenario.endpoint,
+      original: props.scenario,
+      improved: pointer.value,
       total: props.progress.total,
-      completed: props.progress.completed,
-      scenarios: pointer.value.scenarioGroups
-        .map((group) => {
-          return group.scenarios.map((s) => {
-            return {
-              ...s,
-              endpoint: group.endpoint,
-            } satisfies AutoBeTestScenario;
-          });
-        })
-        .flat(),
+      completed: ++props.progress.completed,
       step: ctx.state().interface?.step ?? 0,
-      created_at: new Date().toISOString(),
-    });
-    // @todo michael: need to investigate scenario removal more gracefully
-    return out(result)(
-      pointer.value.pass
-        ? // || pointer.value.scenarioGroups.length < props.groups.length
-          props.groups
-        : pointer.value.scenarioGroups,
-    );
-  });
+    };
 
-const createController = (props: {
-  pointer: IPointer<IAutoBeTestScenarioReviewApplication.IComplete | null>;
-  originalGroups: IAutoBeTestScenarioApplication.IScenarioGroup[];
+    ctx.dispatch(event);
+    return out(result)(event.improved ?? props.scenario);
+  });
+}
+
+/**
+ * Create function calling controller for test scenario review.
+ *
+ * Sets up the LLM application interface with validation and execution logic.
+ * The controller handles:
+ *
+ * - Validating review responses against TypeScript types
+ * - Processing preliminary data requests (analysisFiles, interfaceOperations,
+ *   interfaceSchemas)
+ * - Capturing improved scenario in build callback
+ *
+ * @param props - Controller configuration
+ * @param props.dict - Endpoint to operation lookup map
+ * @param props.scenario - Original scenario being reviewed
+ * @param props.preliminary - Controller for preliminary data requests
+ * @param props.build - Callback to capture improved scenario
+ * @returns Agentica controller instance for LLM function calling
+ */
+function createController(props: {
+  dict: HashMap<AutoBeOpenApi.IEndpoint, AutoBeOpenApi.IOperation>;
+  scenario: AutoBeTestScenario;
+  operation: AutoBeOpenApi.IOperation;
+  authorizations: AutoBeInterfaceAuthorization[];
   preliminary: AutoBePreliminaryController<
     "analysisFiles" | "interfaceOperations" | "interfaceSchemas"
   >;
-}): IAgenticaController.IClass => {
+  build: (improved: AutoBeTestScenario | null) => void;
+}): IAgenticaController.IClass {
   const validate = (
     next: unknown,
   ): IValidation<IAutoBeTestScenarioReviewApplication.IProps> => {
     const result: IValidation<IAutoBeTestScenarioReviewApplication.IProps> =
       typia.validate<IAutoBeTestScenarioReviewApplication.IProps>(next);
+
+    // Validation failed at type level
     if (result.success === false) return result;
-    else if (result.data.request.type !== "complete")
+
+    // Preliminary request (getAnalysisFiles, getInterfaceOperations, getInterfaceSchemas)
+    // Delegate validation to preliminary controller
+    if (result.data.request.type !== "complete") {
       return props.preliminary.validate({
         thinking: result.data.thinking,
         request: result.data.request,
       });
+    } else if (result.data.request.content === null) return result;
 
-    // merge to unique scenario groups
-    const scenarioGroups: IAutoBeTestScenarioApplication.IScenarioGroup[] =
-      uniqueScenarioGroups(result.data.request.scenarioGroups);
-
+    // Complete request validation
     const errors: IValidation.IError[] = [];
-
-    // validate endpoints between scenarioGroups and originalGroups
-    const filteredScenarioGroups: IAutoBeTestScenarioApplication.IScenarioGroup[] =
-      props.originalGroups.reduce<
-        IAutoBeTestScenarioApplication.IScenarioGroup[]
-      >((acc, originalGroup) => {
-        // Keep only groups whose endpoint matches with one in props.originalGroups
-        const matchingGroup = scenarioGroups.find(
-          (g) =>
-            g.endpoint.method === originalGroup.endpoint.method &&
-            g.endpoint.path === originalGroup.endpoint.path,
-        );
-
-        if (!matchingGroup) {
-          return [...acc, originalGroup];
-        }
-
-        return [...acc, matchingGroup];
-      }, []);
-    result.data.request.scenarioGroups = filteredScenarioGroups;
-
+    AutoBeTestScenarioProgrammer.validate({
+      errors,
+      dict: props.dict,
+      operation: props.operation,
+      scenario: result.data.request.content,
+      accessor: "$input.request.content",
+    });
     if (errors.length > 0) {
       return {
         success: false,
@@ -168,23 +231,22 @@ const createController = (props: {
     name: SOURCE,
     application,
     execute: {
-      process: (input) => {
-        if (input.request.type === "complete")
-          props.pointer.value = input.request;
+      process: (next) => {
+        if (next.request.type === "complete") {
+          // Fulfill missing authentication dependencies if content is not null
+          if (next.request.content !== null) {
+            AutoBeTestScenarioProgrammer.fulfill({
+              dict: props.dict,
+              authorizations: props.authorizations,
+              operation: props.operation,
+              scenario: next.request.content,
+            });
+          }
+          props.build(next.request.content);
+        }
       },
     } satisfies IAutoBeTestScenarioReviewApplication,
   };
-};
-
-const uniqueScenarioGroups = (
-  groups: IAutoBeTestScenarioApplication.IScenarioGroup[],
-): IAutoBeTestScenarioApplication.IScenarioGroup[] =>
-  new HashMap(
-    groups.map((g) => new Pair(g.endpoint, g)),
-    AutoBeOpenApiEndpointComparator.hashCode,
-    AutoBeOpenApiEndpointComparator.equals,
-  )
-    .toJSON()
-    .map((it) => it.second);
+}
 
 const SOURCE = "testScenarioReview" satisfies AutoBeEventSource;

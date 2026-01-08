@@ -1,7 +1,8 @@
+import { AutoBeTestScenario } from "@autobe/interface";
+
 import { IAutoBePreliminaryGetAnalysisFiles } from "../../common/structures/IAutoBePreliminaryGetAnalysisFiles";
 import { IAutoBePreliminaryGetInterfaceOperations } from "../../common/structures/IAutoBePreliminaryGetInterfaceOperations";
 import { IAutoBePreliminaryGetInterfaceSchemas } from "../../common/structures/IAutoBePreliminaryGetInterfaceSchemas";
-import { IAutoBeTestScenarioApplication } from "./IAutoBeTestScenarioApplication";
 
 export interface IAutoBeTestScenarioReviewApplication {
   /**
@@ -60,11 +61,11 @@ export namespace IAutoBeTestScenarioReviewApplication {
   }
 
   /**
-   * Request to review and refine test scenarios.
+   * Request to review and refine a single test scenario.
    *
    * Executes comprehensive scenario review to validate implementability,
    * dependency correctness, authentication flows, and business logic coverage,
-   * producing refined scenarios ready for test implementation.
+   * producing refined scenario ready for test implementation.
    */
   export interface IComplete {
     /**
@@ -77,54 +78,38 @@ export namespace IAutoBeTestScenarioReviewApplication {
     type: "complete";
 
     /**
-     * Comprehensive review analysis of all test scenarios.
+     * Comprehensive review analysis of the test scenario.
      *
-     * Contains detailed findings from holistic review including:
+     * Analyzes the scenario for implementability, dependency correctness,
+     * authentication flows, execution order, and business logic coverage.
+     * Documents identified issues and applied corrections.
      *
-     * - Executive summary of overall scenario quality
-     * - Critical issues requiring immediate fixes (non-existent dependencies,
-     *   unimplementable scenarios)
-     * - Key improvement recommendations (authentication flows, edge case
-     *   coverage)
-     * - Database schema compliance validation
-     * - Modified scenarios identification by functionName
+     * Should include:
      *
-     * The review provides actionable feedback for creating implementable,
-     * focused test scenarios (max 3 per endpoint) that accurately reflect
-     * business requirements.
+     * - Authentication validation (correct authorizationActor alignment)
+     * - Dependency completeness (all prerequisites present)
+     * - Execution order verification (proper sequencing)
+     * - Business logic coverage assessment
+     * - Specific issues found and corrections applied
      */
     review: string;
 
     /**
-     * Strategic test improvement plan.
+     * The improved test scenario, or null if no improvements needed.
      *
-     * Contains structured action plan with priority-based improvements:
+     * Decision logic:
      *
-     * - Critical fixes: Non-existent endpoints, impossible dependencies
-     * - High priority enhancements: Missing authentication, incomplete edge cases
-     * - Implementation guidance: Correct dependency patterns, proper test flows
-     * - Success criteria: Complete API coverage, implementable scenarios only
-     * - Specific scenario action items by functionName
+     * - If ANY improvements were made (auth fixes, dependency corrections,
+     *   reordering) → Return the complete improved AutoBeTestScenario
+     * - If scenario is already perfect with no issues → Return null
      *
-     * This plan serves as the blueprint for validating and improving test
-     * scenarios.
+     * When returning improved scenario:
+     *
+     * - Endpoint MUST match the original (same method and path)
+     * - FunctionName MUST match the original (same name)
+     * - Draft can be improved if needed
+     * - Dependencies should be corrected and properly ordered
      */
-    plan: string;
-
-    /** If the scenario groups pass the review, Set to true. */
-    pass: boolean;
-
-    /**
-     * The reviewed and improved scenario groups with all quality fixes applied.
-     *
-     * This is the primary output containing:
-     *
-     * - All critical issues resolved
-     * - Authentication flows corrected
-     * - Database dependencies validated
-     * - Quality enhancements implemented
-     * - Only implementable scenarios retained
-     */
-    scenarioGroups: IAutoBeTestScenarioApplication.IScenarioGroup[];
+    content: AutoBeTestScenario | null;
   }
 }

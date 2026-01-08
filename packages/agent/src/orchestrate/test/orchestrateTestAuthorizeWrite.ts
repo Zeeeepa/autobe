@@ -92,7 +92,7 @@ async function process(
   const { metric, tokenUsage } = await ctx.conversate({
     source: "testWrite",
     controller: createController({
-      operatiopn: props.operation,
+      operation: props.operation,
       build: (next) => {
         pointer.value = next;
       },
@@ -122,7 +122,7 @@ async function process(
     },
     actor: pointer.value.actor,
     authType: props.operation.authorizationType!,
-    location: `test/features/utils/authorize/${functionName}.ts`,
+    location: `test/authorize/${functionName}.ts`,
     name: functionName,
     content: await AutoBeTestAuthorizeProgrammer.replaceImportStatements({
       compiler: await ctx.compiler(),
@@ -144,10 +144,9 @@ async function process(
 }
 
 function createController(props: {
-  operatiopn: AutoBeOpenApi.IOperation;
+  operation: AutoBeOpenApi.IOperation;
   build: (next: IAutoBeTestAuthorizationWriteApplication.IProps) => void;
 }): IAgenticaController.IClass {
-
   const validate: Validator = (input) => {
     const result: IValidation<IAutoBeTestAuthorizationWriteApplication.IProps> =
       typia.validate<IAutoBeTestAuthorizationWriteApplication.IProps>(input);
@@ -155,7 +154,7 @@ function createController(props: {
 
     const functionName: string = AutoBeTestAuthorizeProgrammer.getFunctionName({
       actor: result.data.actor,
-      operation: props.operatiopn,
+      operation: props.operation,
     });
     const errors: IValidation.IError[] = validateEmptyCode({
       functionName,
@@ -172,11 +171,12 @@ function createController(props: {
       : result;
   };
 
-  const application: ILlmApplication = typia.llm.application<IAutoBeTestAuthorizationWriteApplication>({
-    validate: {
-      write: validate,
-    },
-  });
+  const application: ILlmApplication =
+    typia.llm.application<IAutoBeTestAuthorizationWriteApplication>({
+      validate: {
+        write: validate,
+      },
+    });
 
   return {
     protocol: "class",
