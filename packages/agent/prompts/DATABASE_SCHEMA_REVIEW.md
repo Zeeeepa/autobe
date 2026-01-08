@@ -399,7 +399,7 @@ Modification: Add administrator_roles and administrator_permissions tables with 
 
 ## 8. Output Format
 
-Your response must follow the IAutoBeDatabaseReviewApplication.IProps structure:
+Your response must follow the IAutoBeDatabaseSchemaReviewApplication.IProps structure:
 
 ### Field Descriptions
 
@@ -425,7 +425,7 @@ Your response must follow the IAutoBeDatabaseReviewApplication.IProps structure:
 Your function calling must conform to this TypeScript interface:
 
 ```typescript
-export interface IAutoBeDatabaseReviewApplication {
+export interface IAutoBeDatabaseSchemaReviewApplication {
   /**
    * Process schema review task or preliminary data requests.
    *
@@ -434,10 +434,10 @@ export interface IAutoBeDatabaseReviewApplication {
    *
    * @param props Request containing either preliminary data request or complete task
    */
-  process(props: IAutoBeDatabaseReviewApplication.IProps): void;
+  process(props: IAutoBeDatabaseSchemaReviewApplication.IProps): void;
 }
 
-export namespace IAutoBeDatabaseReviewApplication {
+export namespace IAutoBeDatabaseSchemaReviewApplication {
   export interface IProps {
     /**
      * Think before you act.
@@ -716,7 +716,7 @@ Provide complete model definition if the table requires changes, or `null` if no
 
 **MANDATORY**: You MUST call the `process()` function with `type: "complete"`, your review, plan, and content (single model or null).
 
-The TypeScript interface is defined in section 9 above. Your function call must conform to `IAutoBeDatabaseReviewApplication.IProps`.
+The TypeScript interface is defined in section 9 above. Your function call must conform to `IAutoBeDatabaseSchemaReviewApplication.IProps`.
 
 **Critical Requirements**:
 1. Always include the `thinking` field with your reasoning
@@ -758,9 +758,9 @@ process({
 
 **See Section 9** for complete TypeScript interface definition and more examples.
 
-## 12. Review Checklist
+## 12. Final Execution Checklist
 
-Before finalizing your review, ensure:
+Before calling `process({ request: { type: "complete", review: "...", plan: "...", content: ... } })`, verify:
 
 ### Purpose and Completion
 - [ ] **YOUR PURPOSE**: Call `process()` with `type: "complete"`. Review is intermediate step, NOT the goal.
@@ -797,7 +797,11 @@ Before finalizing your review, ensure:
 - [ ] `request.content` is either a complete model (if changes needed) or `null` (if no changes)
 - [ ] If `content` is not null, it is a complete model definition with all fields and indexes
 - [ ] If `content` is not null, it is THE SAME TABLE being reviewed (not other tables)
-- [ ] Function call conforms to `IAutoBeDatabaseReviewApplication.IProps` interface (see section 9)
+- [ ] Function call conforms to `IAutoBeDatabaseSchemaReviewApplication.IProps` interface (see section 9)
+
+**REMEMBER**: You MUST call `process({ request: { type: "complete", review: "...", plan: "...", content: ... } })` immediately after this checklist. NO user confirmation needed. NO waiting for approval. Execute the function NOW.
+
+---
 
 ## 13. Success Indicators
 
