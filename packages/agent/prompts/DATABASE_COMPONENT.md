@@ -44,16 +44,16 @@ This agent achieves its goal through function calling. **Function calling is MAN
 - ❌ NEVER say "I will now call the function..." or similar announcements
 - ❌ NEVER request confirmation before executing
 
-## Chain of Thought: The `thinking_preliminary` Field
+## Chain of Thought: The `thinking` Field
 
-Before calling `process()`, you MUST fill the `thinking_preliminary` field to reflect on your decision.
+Before calling `process()`, you MUST fill the `thinking` field to reflect on your decision.
 
 This is a required self-reflection step that helps you verify you have everything needed before completion and think through your work.
 
 **For preliminary requests** (getAnalysisFiles, getPreviousAnalysisFiles):
 ```typescript
 {
-  thinking_preliminary: "Missing detailed business domain context for comprehensive component organization. Don't have them.",
+  thinking: "Missing detailed business domain context for comprehensive component organization. Don't have them.",
   request: { type: "getAnalysisFiles", fileNames: ["Business_Model.md", "Domain_Context.md"] }
 }
 ```
@@ -61,7 +61,7 @@ This is a required self-reflection step that helps you verify you have everythin
 **For completion** (type: "complete"):
 ```typescript
 {
-  thinking_preliminary: "Organized all database tables into 8 logical components following DDD principles.",
+  thinking: "Organized all database tables into 8 logical components following DDD principles.",
   request: { type: "complete", thinking: "...", review: "...", decision: "...", components: [...] }
 }
 ```
@@ -74,13 +74,13 @@ This is a required self-reflection step that helps you verify you have everythin
 **Good examples**:
 ```typescript
 // ✅ Brief summary of need or work
-thinking_preliminary: "Missing domain relationship context for proper component boundaries. Need them."
-thinking_preliminary: "Organized complete component structure with proper normalization"
-thinking_preliminary: "Created comprehensive domain-driven component architecture"
+thinking: "Missing domain relationship context for proper component boundaries. Need them."
+thinking: "Organized complete component structure with proper normalization"
+thinking: "Created comprehensive domain-driven component architecture"
 
 // ❌ WRONG - too verbose, listing everything
-thinking_preliminary: "Need 00-toc.md, 01-overview.md, 02-business-model.md for understanding..."
-thinking_preliminary: "Created component 1 with 5 tables, component 2 with 8 tables..."
+thinking: "Need 00-toc.md, 01-overview.md, 02-business-model.md for understanding..."
+thinking: "Created component 1 with 5 tables, component 2 with 8 tables..."
 ```
 
 **IMPORTANT: Strategic File Retrieval**:
@@ -502,18 +502,38 @@ You must generate a structured function call using the `IAutoBeDatabaseComponent
 
 ```typescript
 export namespace IAutoBeDatabaseComponentApplication {
-  export interface IAutoBeDatabaseComponentApplication {
+  export interface IProps {
+    /**
+     * Outer thinking: Reflection on your current decision (preliminary vs complete).
+     * This is for deciding WHAT to do next.
+     */
+    thinking: string;
+
+    request: IComplete | /* preliminary types */;
+  }
+
+  export interface IComplete {
+    type: "complete";
+
+    /**
+     * Inner thinking: Initial thoughts on namespace classification criteria.
+     * This is for explaining HOW you organized the components.
+     */
     thinking: string;
     review: string;
     decision: string;
-    components: AutoBeDatabase.IComponent[];
+    components: AutoBeDatabaseComponent[];
   }
 }
 ```
 
+**Two Thinking Fields Explained:**
+- **Outer `thinking`** (in IProps): Brief reflection on why you're calling complete vs requesting more files
+- **Inner `thinking`** (in IComplete): Detailed analysis of how you classified namespaces and organized tables
+
 ### Component Interface Compliance
 
-Each component must follow the `AutoBeDatabase.IComponent` structure:
+Each component must follow the `AutoBeDatabaseComponent` structure:
 
 ```typescript
 interface IComponent {
@@ -522,7 +542,10 @@ interface IComponent {
   thinking: string;
   review: string;
   rationale: string;
-  tables: Array<string & tags.Pattern<"^[a-z][a-z0-9_]*$">>;
+  tables: Array<{
+    name: string & tags.Pattern<"^[a-z][a-z0-9_]*$">;
+    description: string;  // Why this table is needed and what it stores
+  }>;
 }
 ```
 
@@ -532,6 +555,7 @@ interface IComponent {
 - **Namespace Clarity**: Use PascalCase for namespace names that clearly represent the domain
 - **Table Completeness**: Include ALL tables required by the business requirements
 - **Pattern Compliance**: All table names must match the regex pattern `^[a-z][a-z0-9_]*$`
+- **Table Descriptions**: Each table MUST include a clear description explaining its purpose and what data it stores
 - **Top-Level Thought Process**:
   - `thinking`: Initial thoughts on namespace classification criteria across all domains
   - `review`: Review and refinement of the overall namespace classification
@@ -557,7 +581,11 @@ const componentExtraction: IAutoBeDatabaseComponentApplication.IProps = {
       thinking: "These tables all relate to system configuration and channel management. They form the foundation of the platform.",
       review: "Considering the relationships, configurations table has connections to multiple domains but fundamentally defines system behavior.",
       rationale: "Grouping all system configuration tables together provides a clear foundation layer that other domains can reference.",
-      tables: ["channels", "sections", "configurations"]
+      tables: [
+        { name: "channels", description: "Sales channels (e.g., online store, mobile app) with branding and configuration." },
+        { name: "sections", description: "Sections within a channel for organizing content and products hierarchically." },
+        { name: "configurations", description: "System-wide configuration settings and feature flags." }
+      ]
     },
     {
       filename: "schema-02-actors.prisma",
@@ -566,12 +594,12 @@ const componentExtraction: IAutoBeDatabaseComponentApplication.IProps = {
       review: "While customers interact with orders and sales, the customer entity itself is about identity, not transactions. Session tables must be here for all authenticated actors.",
       rationale: "This component groups all actor-related tables and their sessions to maintain separation between identity management and business transactions.",
       tables: [
-        "users",
-        "user_sessions",
-        "administrators",
-        "administrator_sessions",
-        "shopping_customers",
-        "shopping_customer_sessions"
+        { name: "users", description: "Platform users with authentication credentials and profile information." },
+        { name: "user_sessions", description: "Authentication sessions for users, tracking login state and tokens." },
+        { name: "administrators", description: "Admin users with elevated privileges for platform management." },
+        { name: "administrator_sessions", description: "Authentication sessions for administrators." },
+        { name: "shopping_customers", description: "Customer accounts for the shopping platform with profile data." },
+        { name: "shopping_customer_sessions", description: "Authentication sessions for shopping customers." }
       ]
     }
     // ... more components
@@ -629,7 +657,7 @@ export namespace IAutoBeDatabaseComponentApplication {
     /**
      * Think before you act - reflection on your current state and reasoning
      */
-    thinking_preliminary: string;
+    thinking: string;
 
     /**
      * Type discriminator for the request.
@@ -669,7 +697,7 @@ export namespace IAutoBeDatabaseComponentApplication {
     /**
      * Array of domain components that group related database tables
      */
-    components: AutoBeDatabase.IComponent[];
+    components: AutoBeDatabaseComponent[];
   }
 }
 
@@ -762,6 +790,7 @@ Before generating the function call, ensure:
 - [ ] All patterns match the required regex constraints
 - [ ] Top-level thinking, review, and decision fields are comprehensive
 - [ ] Each component has detailed thinking, review, and rationale fields
+- [ ] **TABLE DESCRIPTIONS**: Every table has a meaningful description explaining its purpose
 - [ ] **NO PREFIX DUPLICATION**: Verify that no table name has duplicated domain prefixes (e.g., `prefix_prefix_tablename`)
 - [ ] **NORMALIZATION COMPLIANCE**: Distinct entities are separated into different tables
 - [ ] **SEPARATE ENTITIES**: 1:1 relationships with distinct lifecycles use separate tables

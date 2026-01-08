@@ -1,4 +1,4 @@
-import { AutoBeDatabase } from "@autobe/interface";
+import { AutoBeDatabaseComponent } from "@autobe/interface";
 import { StringUtil } from "@autobe/utils";
 import { v7 } from "uuid";
 
@@ -7,9 +7,9 @@ import { IAutoBeOrchestrateHistory } from "../../../structures/IAutoBeOrchestrat
 import { AutoBePreliminaryController } from "../../common/AutoBePreliminaryController";
 
 export const transformPrismaSchemaHistory = (props: {
-  targetComponent: AutoBeDatabase.IComponent;
+  targetComponent: AutoBeDatabaseComponent;
   targetTable: string;
-  otherComponents: AutoBeDatabase.IComponent[];
+  otherComponents: AutoBeDatabaseComponent[];
   instruction: string;
   preliminary: AutoBePreliminaryController<
     "analysisFiles" | "previousAnalysisFiles" | "previousDatabaseSchemas"
@@ -67,10 +67,10 @@ export const transformPrismaSchemaHistory = (props: {
       created_at: new Date().toISOString(),
       type: "systemMessage",
       text: StringUtil.trim`
-        You've taken a mistake of creating model for other.
+        ## Critical Reminder: Single Table Focus
 
-        Note that you must create only the target model. Never create model
-        for other table. All other models are already being created.
+        You must create ONLY the target model specified below.
+        Do NOT create models for other tables - they are handled separately.
 
         \`\`\`json
         ${JSON.stringify({

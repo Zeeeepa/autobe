@@ -1,6 +1,7 @@
 import { IAgenticaController } from "@agentica/core";
 import {
   AutoBeDatabase,
+  AutoBeDatabaseComponent,
   AutoBeDatabaseReviewEvent,
   AutoBeEventSource,
   AutoBeProgressEventBase,
@@ -20,11 +21,11 @@ import { IAutoBeDatabaseReviewApplication } from "./structures/IAutoBeDatabaseRe
 export async function orchestratePrismaReview(
   ctx: AutoBeContext,
   application: AutoBeDatabase.IApplication,
-  componentList: AutoBeDatabase.IComponent[],
+  componentList: AutoBeDatabaseComponent[],
 ): Promise<AutoBeDatabaseReviewEvent[]> {
   // Flatten component list into individual table tasks
   const tableTasks: Array<{
-    component: AutoBeDatabase.IComponent;
+    component: AutoBeDatabaseComponent;
     table: string;
     model: AutoBeDatabase.IModel;
   }> = componentList.flatMap((component) => {
@@ -34,9 +35,9 @@ export async function orchestratePrismaReview(
     if (file === undefined) return [];
     return component.tables
       .map((table) => {
-        const model = file.models.find((m) => m.name === table);
+        const model = file.models.find((m) => m.name === table.name);
         if (model === undefined) return null;
-        return { component, table, model };
+        return { component, table: table.name, model };
       })
       .filter((task): task is NonNullable<typeof task> => task !== null);
   });
@@ -71,7 +72,7 @@ async function step(
   ctx: AutoBeContext,
   props: {
     application: AutoBeDatabase.IApplication;
-    component: AutoBeDatabase.IComponent;
+    component: AutoBeDatabaseComponent;
     model: AutoBeDatabase.IModel;
     progress: AutoBeProgressEventBase;
     promptCacheKey: string;
@@ -156,7 +157,7 @@ function createController(props: {
     | "previousDatabaseSchemas"
   >;
   build: (next: IAutoBeDatabaseReviewApplication.IComplete) => void;
-  targetComponent: AutoBeDatabase.IComponent;
+  targetComponent: AutoBeDatabaseComponent;
   targetTable: string;
 }): IAgenticaController.IClass {
   const validate = (
