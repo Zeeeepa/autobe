@@ -114,37 +114,38 @@ model User {
   // NO deleted_at
 }
 
+// Schema: IUser
 // ❌ WRONG: OpenAPI schema with phantom timestamps
 {
-  "IUser": {
-    "type": "object",
-    "x-autobe-database-schema": "User",
-    "properties": {
-      "id": { "type": "string" },
-      "email": { "type": "string" },
-      "name": { "type": "string" },
-      "created_at": { "type": "string" },
-      "updated_at": { "type": "string" },  // 🔴 PHANTOM - doesn't exist in database!
-      "deleted_at": { "type": "string" }   // 🔴 PHANTOM - doesn't exist in database!
-    }
-  }
+  "type": "object",
+  "description": "<DETAILED_DESCRIPTION>",
+  "x-autobe-database-schema": "User",
+  "properties": {
+    "id": { "type": "string", "description": "<DETAILED_DESCRIPTION>" },
+    "email": { "type": "string", "description": "<DETAILED_DESCRIPTION>" },
+    "name": { "type": "string", "description": "<DETAILED_DESCRIPTION>" },
+    "createdAt": { "type": "string", "format": "date-time", "description": "<DETAILED_DESCRIPTION>" },
+    "updatedAt": { "type": "string", "format": "date-time", "description": "<DETAILED_DESCRIPTION>" },  // 🔴 PHANTOM - doesn't exist in database!
+    "deletedAt": { "type": "string", "format": "date-time", "description": "<DETAILED_DESCRIPTION>" }   // 🔴 PHANTOM - doesn't exist in database!
+  },
+  "required": ["id", "email", "name", "createdAt"]
 }
 
+// Schema: IUser
 // ✅ CORRECT: Only fields that exist in database
 {
-  "IUser": {
-    "type": "object",
-    "description": "User entity with only verified database fields.",
-    "x-autobe-database-schema": "User",
-    "properties": {
-      "id": { "type": "string", "description": "Unique user identifier." },
-      "email": { "type": "string", "description": "User email address." },
-      "name": { "type": "string", "description": "User display name." },
-      "created_at": { "type": "string", "description": "Account creation timestamp." }
-      // No updated_at - doesn't exist in database
-      // No deleted_at - doesn't exist in database
-    }
-  }
+  "type": "object",
+  "description": "<DETAILED_DESCRIPTION>",
+  "x-autobe-database-schema": "User",
+  "properties": {
+    "id": { "type": "string", "description": "<DETAILED_DESCRIPTION>" },
+    "email": { "type": "string", "description": "<DETAILED_DESCRIPTION>" },
+    "name": { "type": "string", "description": "<DETAILED_DESCRIPTION>" },
+    "createdAt": { "type": "string", "format": "date-time", "description": "<DETAILED_DESCRIPTION>" }
+    // No updatedAt - doesn't exist in database
+    // No deletedAt - doesn't exist in database
+  },
+  "required": ["id", "email", "name", "createdAt"]
 }
 ```
 
@@ -663,14 +664,13 @@ model User {
 }
 
 // OpenAPI: NOT in required array
+// Schema: IUser
 {
-  "IUser": {
-    "type": "object",
-    "description": "User entity demonstrating optional field handling.",
-    "required": ["id", "email"],  // nickname NOT included
-    "properties": {
-      "nickname": { "type": "string", "description": "Optional user nickname." }
-    }
+  "type": "object",
+  "description": "<DETAILED_DESCRIPTION>",
+  "required": ["id", "email"],  // nickname NOT included
+  "properties": {
+    "nickname": { "type": "string", "description": "<DETAILED_DESCRIPTION>" }
   }
 }
 ```
@@ -785,9 +785,9 @@ model Article {
 // OpenAPI can have
 "_count": {
   "type": "object",
-  "description": "Computed relation counts.",
+  "description": "<DETAILED_DESCRIPTION>",
   "properties": {
-    "comments": { "type": "integer", "description": "Number of comments on this article." }
+    "comments": { "type": "integer", "description": "<DETAILED_DESCRIPTION>" }
   }
 }
 // ✅ ALLOWED - computed from relation
@@ -1002,13 +1002,13 @@ process({
     content: {
       "IUser": {
         "type": "object",
-        "description": "User entity with verified database fields only.",
+        "description": "<DETAILED_DESCRIPTION>",
         "x-autobe-database-schema": "User",
         "properties": {
-          "id": { "type": "string", "description": "Unique user identifier." },
-          "email": { "type": "string", "description": "User email address." },
-          "name": { "type": "string", "description": "User display name." },
-          "created_at": { "type": "string", "description": "Account creation timestamp." }
+          "id": { "type": "string", "description": "<DETAILED_DESCRIPTION>" },
+          "email": { "type": "string", "description": "<DETAILED_DESCRIPTION>" },
+          "name": { "type": "string", "description": "<DETAILED_DESCRIPTION>" },
+          "created_at": { "type": "string", "description": "<DETAILED_DESCRIPTION>" }
           // updated_at DELETED
           // deleted_at DELETED
         },
@@ -1016,12 +1016,12 @@ process({
       },
       "IProduct": {
         "type": "object",
-        "description": "Product entity with verified database fields only.",
+        "description": "<DETAILED_DESCRIPTION>",
         "x-autobe-database-schema": "Product",
         "properties": {
-          "id": { "type": "string", "description": "Unique product identifier." },
-          "name": { "type": "string", "description": "Product name." },
-          "price": { "type": "number", "description": "Product price." }
+          "id": { "type": "string", "description": "<DETAILED_DESCRIPTION>" },
+          "name": { "type": "string", "description": "<DETAILED_DESCRIPTION>" },
+          "price": { "type": "number", "description": "<DETAILED_DESCRIPTION>" }
           // nickname DELETED
         },
         "required": ["id", "name", "price"]
