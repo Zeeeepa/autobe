@@ -111,10 +111,10 @@ export const authorize_user_login = (
 }
 
 // ✅ CORRECT
-export const authorize_user_login = async (
+export async function authorize_user_login(
   connection: api.IConnection,
   props: {...}
-): Promise<IAuthResponse> => {
+): Promise<IAuthResponse> {
   const result = await api.functional...
 }
 ```
@@ -133,13 +133,13 @@ const result = await api.functional.auth.login(...);
 **Error**: Returning wrong type for JOIN operations
 ```typescript
 // ❌ WRONG
-export const authorize_user_join = async (...): Promise<IAuthResponse> => {
+export async function authorize_user_join(...): Promise<IAuthResponse> {
   // ...
   return joined;  // Should return user input data, not auth response
 }
 
 // ✅ CORRECT
-export const authorize_user_join = async (...): Promise<IUserCreate> => {
+export async function authorize_user_join(...): Promise<IUserCreate> {
   // ...
   return user;  // Return the user data for subsequent login
 }
@@ -197,10 +197,10 @@ Authorization functions exist solely to call authentication APIs (join, login, r
 **Error**: Adding try-catch blocks
 ```typescript
 // ❌ WRONG: Completely useless error wrapping
-export const authorize_user_login = async (
+export async function authorize_user_login(
   connection: api.IConnection,
   props: { body: IUser.ILogin }
-): Promise<IUser.IAuthorized> => {
+): Promise<IUser.IAuthorized> {
   try {
     const result = await api.functional.auth.user.login(connection, { body: props.body });
     return result;
@@ -213,10 +213,10 @@ export const authorize_user_login = async (
 };
 
 // ✅ CORRECT: No try-catch - just call the API directly
-export const authorize_user_login = async (
+export async function authorize_user_login(
   connection: api.IConnection,
   props: { body: IUser.ILogin }
-): Promise<IUser.IAuthorized> => {
+): Promise<IUser.IAuthorized> {
   return await api.functional.auth.user.login(connection, { body: props.body });
 };
 ```
@@ -275,10 +275,10 @@ This violates the **single assignment principle** (immutability-first programmin
 **Error**: Using `let` for mutable variables
 ```typescript
 // ❌ WRONG: Using let declaration
-export const authorize_user_login = async (
+export async function authorize_user_login(
   connection: api.IConnection,
   props: { body: IUser.ILogin }
-): Promise<IUser.IAuthorized> => {
+): Promise<IUser.IAuthorized> {
   let result;  // WRONG! Should use const
   result = await api.functional.auth.user.login(connection, { body: props.body });
 
@@ -306,10 +306,10 @@ counter = counter + 1;
 **Solution**: Always use `const` for immutability
 ```typescript
 // ✅ CORRECT: Use const for all declarations
-export const authorize_user_login = async (
+export async function authorize_user_login(
   connection: api.IConnection,
   props: { body: IUser.ILogin }
-): Promise<IUser.IAuthorized> => {
+): Promise<IUser.IAuthorized> {
   const result = await api.functional.auth.user.login(connection, { body: props.body });
 
   // Each value gets its own const declaration
@@ -394,12 +394,12 @@ Cannot assign to 'Authorization' because it is a read-only property
 ```typescript
 rewrite({
   think: "The error shows direct assignment to a read-only headers property. Need to create a new headers object with spread operator to maintain immutability.",
-  draft: `export const authorize_admin_login = async (
+  draft: `export async function authorize_admin_login(
   connection: api.IConnection,
   props: {
     body: IAdminLoginDto,
   }
-): Promise<IAuthResponse> => {
+): Promise<IAuthResponse> {
   const result = await api.functional.auth.admin.login(
     connection,
     {
