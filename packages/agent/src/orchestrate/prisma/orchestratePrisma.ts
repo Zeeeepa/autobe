@@ -3,7 +3,6 @@ import {
   AutoBeDatabase,
   AutoBeDatabaseCompleteEvent,
   AutoBeDatabaseComponent,
-  AutoBeDatabaseComponentReviewEvent,
   AutoBeDatabaseGroup,
   AutoBeDatabaseHistory,
   AutoBeDatabaseSchemaEvent,
@@ -62,22 +61,17 @@ export const orchestratePrisma = async (
     });
 
   // COMPONENT REVIEW (each event is dispatched inside)
-  const componentReviewEvents: AutoBeDatabaseComponentReviewEvent[] =
+  const reviewedComponents: AutoBeDatabaseComponent[] =
     await orchestratePrismaComponentReview(ctx, {
       instruction: props.instruction,
       components,
     });
 
-  // Extract reviewed components from all events
-  const finalComponents: AutoBeDatabaseComponent[] = componentReviewEvents.map(
-    (e) => e.modification,
-  );
-
   // CONSTRUCT AST DATA
   const schemaEvents: AutoBeDatabaseSchemaEvent[] =
-    await orchestratePrismaSchema(ctx, props.instruction, finalComponents);
+    await orchestratePrismaSchema(ctx, props.instruction, reviewedComponents);
   const application: AutoBeDatabase.IApplication = {
-    files: finalComponents.map((comp) => ({
+    files: reviewedComponents.map((comp) => ({
       filename: comp.filename,
       namespace: comp.namespace,
       models: schemaEvents
@@ -88,7 +82,7 @@ export const orchestratePrisma = async (
 
   // REVIEW
   const reviewEvents: AutoBeDatabaseSchemaReviewEvent[] =
-    await orchestratePrismaSchemaReview(ctx, application, finalComponents);
+    await orchestratePrismaSchemaReview(ctx, application, reviewedComponents);
   for (const event of reviewEvents) {
     if (event.content === null) continue;
 
