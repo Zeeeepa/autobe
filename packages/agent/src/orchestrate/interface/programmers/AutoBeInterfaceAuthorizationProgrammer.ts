@@ -66,10 +66,15 @@ export namespace AutoBeInterfaceAuthorizationProgrammer {
     // validate request body
     if (
       props.operation.authorizationType === "join" ||
-      props.operation.authorizationType === "login"
+      props.operation.authorizationType === "login" ||
+      props.operation.authorizationType === "refresh"
     ) {
       const expected: string =
-        props.operation.authorizationType === "login" ? "ILogin" : "IJoin";
+        props.operation.authorizationType === "login"
+          ? "ILogin"
+          : props.operation.authorizationType === "join"
+            ? "IJoin"
+            : "IRefresh";
       if (props.operation.requestBody === null)
         props.errors.push({
           path: `${props.accessor}.requestBody`,
