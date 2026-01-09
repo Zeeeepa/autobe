@@ -1,3 +1,4 @@
+import { StringUtil } from "@autobe/utils";
 import { ILlmSchema, LlmTypeChecker } from "@samchon/openapi";
 
 import { AutoBeState } from "../../../context/AutoBeState";
@@ -19,11 +20,12 @@ export namespace AutoBeLlmSchemaFactory {
       if (property === undefined || LlmTypeChecker.isAnyOf(property) === false)
         return;
 
-      const str: ILlmSchema.IString | undefined = property.anyOf.filter((s) =>
-        LlmTypeChecker.isString(s),
-      )[0];
-      if (str === undefined) return;
-      str.enum = models;
+      property.description += "\n\n";
+      property.description += StringUtil.trim`
+        Here is the list of database schemas available for association:
+
+        ${models.map((m) => `- \`${m}\``).join("\n")}
+      `;
     };
     fix($defs["AutoBeOpenApi.IJsonSchema.IObject"]);
     fix($defs["AutoBeOpenApi.IJsonSchemaDescriptive.IObject"]);
