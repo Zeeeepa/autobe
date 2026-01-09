@@ -1275,10 +1275,11 @@ export namespace AutoBeOpenApi {
        * model association, this field becomes `null`.
        *
        * **CRITICAL**: The database schema name MUST be an actually existing
-       * model name from the loaded Prisma schema. Never guess or invent schema
-       * names based on patterns or conventions. Only use schema names that have
-       * been verified to exist via preliminary data loading. Using non-existent
-       * schema names causes compilation failures and pipeline breakdown.
+       * model name from the loaded database schema. Never guess or invent
+       * schema names based on patterns or conventions. Only use schema names
+       * that have been verified to exist via preliminary data loading. Using
+       * non-existent schema names causes compilation failures and pipeline
+       * breakdown.
        */
       "x-autobe-database-schema"?: string | null | undefined;
 
