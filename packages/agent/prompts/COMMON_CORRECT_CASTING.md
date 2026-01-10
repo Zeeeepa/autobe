@@ -1421,52 +1421,26 @@ Object index access with dynamic keys requires **TWO fallback layers**:
 
 **Rule of Thumb:** Whenever you see `OBJECT[dynamicKey]` and the key might not exist in the object, immediately add `?? fallback` after the access.
 
-### 3.13. Severe Structural Syntax Errors - Complete Code Restructuring
+### 3.13. TypeScript Syntax Structure Errors
 
-**🚨 CRITICAL RESPONSIBILITY: Fixing Completely Broken TypeScript Syntax 🚨**
+When AI code generation produces invalid TypeScript grammar, you'll see multiple cascading compiler errors pointing to broken code structure. Your responsibility is to rebuild the code with valid TypeScript syntax while preserving all logic and function calls.
 
-This section addresses the most severe category of compilation errors: **fundamentally broken TypeScript grammar** that results from AI generation failures. These errors are characterized by:
-
-- Multiple cascading compilation errors (10+ errors from single structural issue)
-- Errors like "Unexpected keyword or identifier", "Expression expected", "',' expected"
-- Code structure that violates basic TypeScript syntax rules
-- Variable declarations appearing in impossible locations
-
-**Root Cause:**
-When AI code generation fails catastrophically, it can produce code that:
-1. Nests variable declarations inside object literals
-2. Confuses object properties with statements
-3. Creates malformed control flow structures
-4. Produces syntactically impossible code combinations
-
-**Error Pattern Recognition:**
-```typescript
-// 🔴 CATASTROPHIC SYNTAX ERROR INDICATORS:
-// - "error TS1005: ',' expected"
-// - "error TS1434: Unexpected keyword or identifier"
-// - "error TS1128: Declaration or statement expected"
-// - "error TS2304: Cannot find name 'const'" (const used as property)
-// Multiple errors pointing to same structural issue
-```
-
-**Common Pattern 1: Variable Declarations Inside Object Literals**
-
-This is the **most common** severe syntax error pattern:
+**Example: Broken Code Structure**
 
 ```typescript
-// ❌ CATASTROPHIC ERROR: Variable declarations nested in object literal
+// ❌ INVALID: Variable declarations nested inside object literal
 const userConnection: api.IConnection = {
   host: connection.host,
-  const: user = await authorize_member_join(userConnection, {  // ERROR!
+  const: user = await authorize_member_join(userConnection, {
     body: {
       email: RandomGenerator.alphaNumeric(16) + "@example.com",
       password: password,
       name: RandomGenerator.name(),
     },
   }),
-  typia, : .assert(user),  // ERROR!
-  const: authConnection, api, : .IConnection = { host: connection.host,  // ERROR!
-    const: auth = await authorize_member_login(authConnection, {  // ERROR!
+  typia, : .assert(user),
+  const: authConnection, api, : .IConnection = { host: connection.host,
+    const: auth = await authorize_member_login(authConnection, {
       body: {
         email: user.email,
         password: password,
@@ -1474,156 +1448,61 @@ const userConnection: api.IConnection = {
     }),
   }
 };
-
-// Compiler errors (multiple cascading):
-// - error TS1005: ',' expected.
-// - error TS2304: Cannot find name 'const'.
-// - error TS1434: Unexpected keyword or identifier.
-// - error TS1128: Declaration or statement expected.
 ```
 
-**What went wrong:**
-The AI attempted to create sequential variable declarations but accidentally nested them inside an object literal structure. This creates syntactically impossible code where:
-- `const: user =` treats `const` as an object property name
-- Statement keywords appear where only property values are allowed
-- Control flow and data structure syntax are mixed
-
-**✅ CORRECT SOLUTION: Flatten to Sequential Statements**
+**✅ CORRECT: Valid TypeScript Structure**
 
 ```typescript
-// ✅ CORRECT: Proper sequential variable declarations
-const password = RandomGenerator.alphaNumeric(16);
-
-// Step 1: Create user account
-const userConnection: api.IConnection = {
-  host: connection.host,
-};
-const user = await authorize_member_join(userConnection, {
-  body: {
-    email: RandomGenerator.alphaNumeric(16) + "@example.com",
-    password: password,
-    name: RandomGenerator.name(),
-  },
-});
-typia.assert(user);
-
-// Step 2: Login to get auth token
-const authConnection: api.IConnection = {
-  host: connection.host,
-};
-const auth = await authorize_member_login(authConnection, {
-  body: {
-    email: user.email,
-    password: password,
-  },
-});
-typia.assert(auth);
-
-// Step 3: Refresh token
-const refreshConnection: api.IConnection = {
-  host: connection.host,
-};
-const refreshed = await authorize_member_refresh(refreshConnection, {
-  body: {},
-});
-typia.assert(refreshed);
-
-// Step 4: Verify tokens are different
-TestValidator.equals(
-  "new access token differs from old access token",
-  refreshed.token.access !== auth.token.access,
-  true
-);
+export async function test_api_session_list_user(
+  connection: api.IConnection,
+): Promise<void> {
+  // 1. Create a new user account
+  const password = RandomGenerator.alphaNumeric(16);
+  const user: ITodoUser.IAuthorized = await authorize_member_join(
+    { host: connection.host },
+    {
+      body: {
+        email: typia.random<string & tags.Format<"email">>(),
+        password: password,
+        name: RandomGenerator.name(),
+      },
+    },
+  );
+  // 2. Create a new connection for user authentication
+  const userConnection: api.IConnection = { host: connection.host };
+  await authorize_member_login(userConnection, {
+    body: {
+      email: user.email,
+      password: password,
+    },
+  });
+  // 3. Get user ID for session listing
+  const userId = user.id;
+  // 4. Retrieve paginated session history
+  const sessions: IPageITodoUserSession.ISummary =
+    await api.functional.todo.user.users.sessions.index(userConnection, {
+      userId: userId,
+      body: {
+        page: 1,
+        limit: 10,
+      } satisfies ITodoUserSession.IRequest,
+    });
+  // 5. Validate session data
+  typia.assert(sessions);
+  TestValidator.equals(
+    "session data should contain at least one session",
+    sessions.data.length > 0,
+    true,
+  );
+}
 ```
 
-**Fix Strategy:**
-1. **Identify the outermost valid structure** (usually a variable declaration)
-2. **Extract each nested statement** and flatten to sequential declarations
-3. **Preserve the logical order** of operations
-4. **Maintain all function calls** and validations
-5. **Fix any broken syntax** in extracted statements
+**Fix Principles:**
 
-**Common Pattern 2: Malformed Array/Object Nesting**
-
-```typescript
-// ❌ ERROR: Statements mixed with array elements
-const items = [
-  item1,
-  const item2 = getValue(),  // ERROR: Can't declare variables in array
-  item3,
-];
-
-// ✅ CORRECT: Declare variables first
-const item2 = getValue();
-const items = [item1, item2, item3];
-```
-
-**Common Pattern 3: Control Flow Inside Expressions**
-
-```typescript
-// ❌ ERROR: If statement inside object literal
-const config = {
-  value: data,
-  if (condition) {  // ERROR: Impossible syntax
-    extra: true
-  }
-};
-
-// ✅ CORRECT: Conditional logic before object creation
-const extra = condition ? true : undefined;
-const config = {
-  value: data,
-  ...(extra !== undefined && { extra }),
-};
-```
-
-**Common Pattern 4: Function Calls as Object Property Names**
-
-```typescript
-// ❌ ERROR: Function call used as property key
-const obj = {
-  getValue(): result,  // ERROR: Not a method definition
-  typia, : .assert(value),  // ERROR: Completely broken syntax
-};
-
-// ✅ CORRECT: Proper method or computed property
-const result = getValue();
-typia.assert(value);
-const obj = {
-  result: result,
-  value: value,
-};
-```
-
-**Detection Algorithm:**
-
-When you see **multiple cascading errors** with patterns like:
-1. "Unexpected keyword" + "',' expected" → Variable declaration in wrong context
-2. "Cannot find name 'const'" → `const` used as identifier, not keyword
-3. "Expression expected" at object property location → Statement where value expected
-
-**Apply this fix sequence:**
-```
-Step 1: Identify the VALID outer structure (variable declaration, function, etc.)
-Step 2: Find all NESTED STATEMENTS (const, let, if, etc. inside expressions)
-Step 3: Extract each nested statement to SEQUENTIAL DECLARATIONS
-Step 4: Rebuild the original structure with ONLY VALID EXPRESSIONS
-Step 5: Verify all function calls and assertions are preserved
-```
-
-**Critical Rules:**
-- **Object literals** can only contain: property names, values, methods, computed properties
-- **Array literals** can only contain: expressions that evaluate to values
-- **Variable declarations** must be top-level statements or inside blocks (`{ }`)
-- **Control flow** (if/else/for/while) must be statements, not nested in expressions
-
-**When Compiler Feedback is Useless:**
-
-For these severe structural errors, compiler diagnostics often point to **secondary symptoms** rather than root causes. You must:
-1. **Ignore cascading errors** - Focus on the structural pattern
-2. **Identify the malformed structure** - Not individual error messages
-3. **Rebuild from scratch** if needed - Preserve logic, rewrite structure
-4. **Trust the pattern recognition** - These errors follow predictable patterns
+1. **Flatten nested statements** - Extract variable declarations, function calls, and control flow to sequential statements
+2. **Preserve execution order** - Maintain the original logical sequence of operations
+3. **Keep all logic intact** - Don't lose any function calls, validations, or assertions
+4. **Use valid TypeScript grammar** - Object literals contain only properties/values, arrays contain only expressions, statements are sequential
 
 ### 3.14. TypeScript Type Narrowing Compilation Errors - "No Overlap" Fix
 
