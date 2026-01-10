@@ -1,103 +1,65 @@
 export interface IAutoBeCommonCorrectCastingApplication {
   /**
-   * Rewrite function to fix type casting and assignment errors.
+   * Rewrite function to fix severe syntax structure errors and type system errors.
    *
-   * This function is called when the agent detects any type casting or
-   * assignment related compilation error patterns.
-   *
-   * The agent applies various fix strategies based on the error type:
-   *
-   * - **Typia tag incompatibilities**: Uses `satisfies ... as ...` pattern to
-   *   strip incompatible tags, or `typia.assert<T>()` as a last resort
-   * - **Date conversions**: Uses `.toISOString()` method for Date to string
-   *   conversions
-   * - **Nullable type narrowing**: Applies exhaustive checks (e.g., !== null &&
-   *   !== undefined)
-   * - **typia.assert vs assertGuard**: Uses assert for value assignment,
-   *   assertGuard for type narrowing
-   * - **Literal type conversions**: Uses `typia.assert<T>()` for runtime
-   *   validation
-   * - **Optional chaining results**: Uses `=== true` or `??` operators
-   * - **"No overlap" errors**: Removes redundant comparisons
+   * Called when detecting:
+   * - **Severe syntax errors**: Nested declarations in object literals, malformed structures
+   * - **Type system errors**: Typia tags, Date conversions, nullable narrowing, literal types
+   * - **Escape sequence errors**: Double backslashes in JSON context
    *
    * @param props The analysis and correction properties
    */
   rewrite(props: IAutoBeCommonCorrectCastingApplication.IProps): void;
 
   /**
-   * Reject function when error is not related to type casting or assignment.
+   * Reject function when error is outside scope.
    *
-   * This function is called when the compilation error is unrelated to type
-   * casting issues (e.g., missing imports, syntax errors, undefined variables),
-   * indicating the error should be handled by a different agent.
+   * Called when error is unrelated (imports, undefined variables, business logic).
+   * These errors are handled by subsequent agents.
    */
   reject(): void;
 }
 export namespace IAutoBeCommonCorrectCastingApplication {
   export interface IProps {
     /**
-     * Initial analysis of the type casting or assignment error.
+     * Analysis of syntax structure or type system error.
      *
-     * Contains the agent's analysis of the specific type mismatch pattern:
-     *
-     * - Type of casting error (tag incompatibility, nullable assignment, literal
-     *   type conversion, etc.)
-     * - Whether nullable or undefined types are involved
-     * - If Date to string conversions are needed
-     * - The chosen fix strategy for the specific error type
+     * Identifies error pattern and chosen fix strategy:
+     * - Syntax: Nested declarations, malformed structures
+     * - Type: Tag incompatibility, nullable narrowing, Date conversions
      */
     think: string;
 
     /**
-     * Draft correction with initial type casting fixes.
+     * Draft code with initial syntax/type fixes applied.
      *
-     * The code after applying the first round of fixes:
-     *
-     * - Satisfies patterns for tag stripping
-     * - Date.toISOString() conversions where needed
-     * - Nullable type narrowing checks
-     * - Literal type assertions
-     * - Optional chaining result handling
+     * After first correction round:
+     * - Syntax: Flattened declarations, restructured code
+     * - Type: Satisfies patterns, Date conversions, nullable checks
      */
     draft: string;
 
     /**
-     * Review and finalization of type casting corrections.
+     * Review and final code with all errors resolved.
      *
-     * Contains the review of applied corrections and the final code with all
-     * type casting issues resolved while preserving type safety and validation
-     * intent.
+     * Review of applied fixes and final code ready for compilation.
      */
     revise: IReviseProps;
   }
 
   export interface IReviseProps {
     /**
-     * Review of the type casting correction patterns applied.
+     * Review of syntax/type correction patterns applied.
      *
-     * Explains which correction strategies were used:
-     *
-     * - Which satisfies patterns were applied for tag issues
-     * - Where typia.assert or assertGuard was used
-     * - How Date conversions were handled
-     * - What nullable type narrowing was applied
-     * - How literal type conversions were resolved
-     * - Confirmation that all type casting issues are resolved
+     * Explains strategies used and confirms all errors resolved.
      */
     review: string;
 
     /**
-     * Final corrected code with all type casting issues resolved.
+     * Final corrected code ready for compilation.
      *
-     * The complete code ready for TypeScript compilation, with all type casting
-     * and assignment errors properly fixed using appropriate patterns while
-     * maintaining type safety and the original validation logic. When the draft
-     * already successfully resolves all type casting issues with no problems
-     * found during review, this value can be null, indicating no further
-     * refinements are necessary.
-     *
-     * A `null` value signifies the draft corrections were already optimal and
-     * require no additional modifications.
+     * Code with all syntax/type errors fixed. Set to `null` when draft
+     * already resolves all issues with no further refinements needed.
      */
     final: string | null;
   }

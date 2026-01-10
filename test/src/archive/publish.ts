@@ -14,14 +14,9 @@ import { TestGlobal } from "../TestGlobal";
 const main = async (): Promise<void> => {
   const experiments: IAutoBePlaygroundBenchmark[] = [];
   for (const vendor of await AutoBeExampleStorage.getVendorModels()) {
-    const replayList: IAutoBePlaygroundReplay[] =
-      await AutoBeReplayStorage.getAll(vendor, (project) =>
-        AutoBeReplayComputer.SIGNIFICANT_PROJECTS.includes(project),
-      );
-    if (replayList.length === 0) continue;
-    const summaries: IAutoBePlaygroundReplay.ISummary[] = replayList.map(
-      AutoBeReplayComputer.summarize,
-    );
+    const summaries: IAutoBePlaygroundReplay.ISummary[] =
+      await AutoBeReplayStorage.getAllSummaries(vendor);
+    if (summaries.length === 0) continue;
     experiments.push({
       vendor,
       replays: summaries,
