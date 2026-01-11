@@ -37,28 +37,35 @@ export async function orchestrateTestCorrectOverall<
     procedures: Procedure[];
     instruction: string;
     progress: AutoBeProgressEventBase;
+    discard: boolean;
   },
 ): Promise<Procedure[]> {
   const results: Array<Procedure | null> = await executeCachedBatch(
     ctx,
     props.procedures.map((procedure) => async (promptCacheKey) => {
-      const event: AutoBeTestValidateEvent<Procedure["function"]> =
-        await predicate(
-          ctx,
-          {
-            programmer: props.programmer,
-            procedure,
-            failures: [],
-            validate: await props.programmer.compile(procedure),
-            promptCacheKey,
-            instruction: props.instruction,
-          },
-          ctx.retry,
-        );
-      return {
-        ...procedure,
-        function: event.function,
-      };
+      try {
+        const event: AutoBeTestValidateEvent<Procedure["function"]> =
+          await predicate(
+            ctx,
+            {
+              programmer: props.programmer,
+              procedure,
+              failures: [],
+              validate: await props.programmer.compile(procedure),
+              promptCacheKey,
+              instruction: props.instruction,
+            },
+            ctx.retry,
+          );
+        if (event.result.type === "failure" && props.discard) return null;
+        return {
+          ...procedure,
+          function: event.function,
+        };
+      } catch (error) {
+        if (props.discard) return null;
+        else return procedure;
+      }
     }),
   );
   return results.filter((r) => r !== null);

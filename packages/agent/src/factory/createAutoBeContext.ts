@@ -36,7 +36,8 @@ import {
   StringUtil,
   TokenUsageComputer,
 } from "@autobe/utils";
-import { Semaphore } from "tstl";
+import { APIError } from "openai";
+import { Semaphore, Singleton } from "tstl";
 import typia from "typia";
 import { v7 } from "uuid";
 
@@ -322,10 +323,16 @@ export const createAutoBeContext = (props: {
         }
         return success(result.histories);
       };
-
-      if (next.enforceFunctionCall === true)
-        return await forceRetry(execute, config.retry);
-      else return await execute();
+      return await forceRetry(
+        execute,
+        config.retry,
+        (error) =>
+          error instanceof APIError ||
+          (error instanceof Error &&
+            OPENAI_API_ERROR_KEYS.get().every((key) =>
+              error.hasOwnProperty(key),
+            )),
+      );
     },
     getCurrentAggregates: (phase) => {
       const previous: AutoBeProcessAggregateCollection =
@@ -493,6 +500,10 @@ const STAGES =
   typia.misc.literals<
     keyof Pick<IAutoBeTokenUsageJson, "facade" | AutoBePhase>
   >();
+
+const OPENAI_API_ERROR_KEYS = new Singleton(() =>
+  Object.keys(new APIError(undefined, undefined, undefined, undefined)),
+);
 
 interface IProgress {
   request: number;
