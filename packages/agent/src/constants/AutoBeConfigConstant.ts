@@ -32,6 +32,43 @@ export const enum AutoBeConfigConstant {
   RETRY = 5,
 
   /**
+   * Retry attempts specifically for AutoBE compiler error correction loops.
+   *
+   * Used by compiler/diagnostic passes that iteratively refine generated code
+   * or AST based on compiler feedback (syntax errors, type errors, or invalid
+   * transformations). Unlike the general `RETRY` constant, this is scoped to
+   * compilation and code-fix phases where each iteration tends to be more
+   * expensive and has diminishing returns after a few attempts.
+   *
+   * Value of 3 keeps compiler correction cycles shorter than general LLM
+   * interaction retries (which default to 5). Most compiler issues are either
+   * resolved within the first couple of passes or indicate a fundamental
+   * mismatch that won't benefit from further attempts. The lower limit reduces
+   * end-to-end latency and avoids long-running compile/fix loops while still
+   * allowing meaningful automatic correction.
+   */
+  COMPILER_RETRY = 3,
+
+  /**
+   * Retry attempts for LLM function-calling execution flows.
+   *
+   * Applied when orchestrators invoke tools/functions through LLM
+   * function-calling interfaces (e.g., to resolve missing parameters,
+   * invalid argument shapes, or misaligned tool selections). Unlike the
+   * general `RETRY` constant (which also covers raw completion failures),
+   * this value is scoped to the tighter loop around function-call planning
+   * and argument repair.
+   *
+   * Value of 3 reflects the higher cost of each function-calling cycle
+   * (tool selection + argument generation + execution) compared to simple
+   * completions. Empirically, most function-call issues are corrected within
+   * 1–2 iterations once validation feedback is provided; additional attempts
+   * beyond 3 rarely improve success rates but notably increase latency and
+   * resource usage.
+   */
+  FUNCTION_CALLING_RETRY = 3,
+
+  /**
    * Batch count for parallel operation processing.
    *
    * Controls how many batches `divideArray` creates when splitting large
