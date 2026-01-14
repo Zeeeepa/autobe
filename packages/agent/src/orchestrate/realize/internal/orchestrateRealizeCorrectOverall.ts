@@ -72,11 +72,11 @@ export const orchestrateRealizeCorrectOverall = async <
   },
   life: number = AutoBeConfigConstant.COMPILER_RETRY,
 ): Promise<RealizeFunction[]> => {
-  const validateEvent: AutoBeRealizeValidateEvent = await compileRealizeFiles(
+  const validateEvent: AutoBeRealizeValidateEvent = await compileWithFiltering(
     ctx,
     {
       functions: props.functions,
-      additional: props.programmer.additional(props.functions),
+      programmer: props.programmer,
     },
   );
   return predicate(
@@ -192,11 +192,11 @@ const correct = async <
     ...converted.map((c) => c.function),
     ...unchangedFunctions,
   ];
-  const newValidate: AutoBeRealizeValidateEvent = await compileRealizeFiles(
+  const newValidate: AutoBeRealizeValidateEvent = await compileWithFiltering(
     ctx,
     {
       functions: allFunctionsForValidation,
-      additional: props.programmer.additional(allFunctionsForValidation),
+      programmer: props.programmer,
     },
   );
   const newResult: IAutoBeTypeScriptCompileResult = newValidate.result;
@@ -205,13 +205,6 @@ const correct = async <
   } else if (newResult.type === "exception") {
     // Compilation exception, return current functions. because retrying won't help.
     return props.functions;
-  }
-
-  if (
-    newResult.diagnostics.every((d) => !d.file?.startsWith("src/providers"))
-  ) {
-    // No diagnostics related to provider functions, stop correcting
-    return allFunctionsForValidation;
   }
 
   const newLocations: string[] =
@@ -333,6 +326,36 @@ const process = async <
       },
     });
   });
+};
+
+const compileWithFiltering = async <
+  RealizeFunction extends AutoBeRealizeFunction,
+  PreliminaryKind extends AutoBePreliminaryKind,
+  Complete extends IComplete,
+>(
+  ctx: AutoBeContext,
+  props: {
+    functions: RealizeFunction[];
+    programmer: IProgrammer<RealizeFunction, PreliminaryKind, Complete>;
+  },
+): Promise<AutoBeRealizeValidateEvent> => {
+  const compiled: AutoBeRealizeValidateEvent = await compileRealizeFiles(ctx, {
+    functions: props.functions,
+    additional: props.programmer.additional(props.functions),
+  });
+  if (compiled.result.type !== "failure") {
+    return compiled;
+  }
+
+  const functionLocations: string[] = props.functions.map((f) => f.location);
+
+  compiled.result.diagnostics = compiled.result.diagnostics.filter(
+    (d) => d.file !== null && functionLocations.includes(d.file),
+  );
+  if (compiled.result.diagnostics.length === 0) {
+    compiled.result = { type: "success" };
+  }
+  return compiled;
 };
 
 /**
