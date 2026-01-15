@@ -7,10 +7,7 @@ import {
 } from "@autobe/benchmark";
 import { AutoBeCompiler } from "@autobe/compiler";
 import { FileSystemIterator } from "@autobe/filesystem";
-import {
-  IAutoBePlaygroundBenchmark,
-  IAutoBePlaygroundReplay,
-} from "@autobe/interface";
+import { IAutoBePlaygroundReplay } from "@autobe/interface";
 import cp from "child_process";
 import fs from "fs";
 import OpenAI from "openai";
@@ -18,6 +15,10 @@ import OpenAI from "openai";
 import { TestGlobal } from "../TestGlobal";
 
 const initialize = async (): Promise<void> => {
+  cp.execSync("pnpm run archive:publish", {
+    cwd: TestGlobal.ROOT,
+    stdio: "inherit",
+  });
   cp.execSync("git config core.longpaths true", {
     cwd: AutoBeExampleStorage.repository(),
     stdio: "inherit",
@@ -42,7 +43,6 @@ const main = async (): Promise<void> => {
   initialize();
 
   // GATHER DATA
-  const experiments: IAutoBePlaygroundBenchmark[] = [];
   for (const vendor of await AutoBeExampleStorage.getVendorModels()) {
     const replayList: IAutoBePlaygroundReplay[] =
       await AutoBeReplayStorage.getAll(vendor, (project) =>
@@ -68,25 +68,18 @@ const main = async (): Promise<void> => {
         overwrite: false,
       });
     }
-
-    const summaries: IAutoBePlaygroundReplay.ISummary[] = replayList.map(
-      AutoBeReplayComputer.summarize,
-    );
-    experiments.push({
-      vendor,
-      replays: summaries,
-      score: AutoBeReplayComputer.score(summaries),
-      emoji: AutoBeReplayComputer.emoji(summaries),
-    });
   }
-  experiments.sort((a, b) =>
-    b.score === a.score
-      ? a.vendor.localeCompare(b.vendor)
-      : b.score.aggregate - a.score.aggregate,
-  );
+
   await fs.promises.writeFile(
     `${AutoBeExampleStorage.repository()}/README.md`,
-    AutoBeReplayDocumentation.readme(experiments),
+    AutoBeReplayDocumentation.readme(
+      JSON.parse(
+        await fs.promises.readFile(
+          `${TestGlobal.ROOT}/../website/src/data/benchmark.json`,
+          "utf8",
+        ),
+      ),
+    ),
     "utf8",
   );
 
