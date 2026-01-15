@@ -40,7 +40,7 @@ const initialize = async (): Promise<void> => {
 
 const main = async (): Promise<void> => {
   // INITIALIZE
-  initialize();
+  await initialize();
 
   // GATHER DATA
   for (const vendor of await AutoBeExampleStorage.getVendorModels()) {
