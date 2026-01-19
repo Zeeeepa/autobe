@@ -22,7 +22,7 @@ export const transformInterfaceSchemaReviewHistory = (props: {
   >;
   typeName: string;
   reviewOperations: AutoBeOpenApi.IOperation[];
-  reviewSchema: AutoBeOpenApi.IJsonSchemaDescriptive;
+  reviewSchema: AutoBeOpenApi.IJsonSchemaDescriptive.IObject;
 }): IAutoBeOrchestrateHistory => ({
   histories: [
     {
@@ -100,6 +100,13 @@ export const transformInterfaceSchemaReviewHistory = (props: {
         ${JSON.stringify(props.reviewSchema)}
         \`\`\`
 
+        Also, here is the list of properties currently defined in this schema,
+        so you have to check them one by one:
+
+        ${Object.keys(props.reviewSchema.properties)
+          .map((k) => `- ${k}`)
+          .join("\n")}
+
         IMPORTANT: Only this schema needs review and potential modification.
         Other schemas in the complete schema set are provided for reference 
         only.
@@ -107,13 +114,17 @@ export const transformInterfaceSchemaReviewHistory = (props: {
     },
   ],
   userMessage: StringUtil.trim`
-    Review ${JSON.stringify(props.typeName)} type named JSON schema 
-    component based on the provided API design instructions and 
+    Review ${JSON.stringify(props.typeName)} type named JSON schema
+    component based on the provided API design instructions and
     relevant operations.
 
-    Note that, when making changes, what you make is not
-    "Record<string, AutoBeOpenApi.IJsonSchemaDescriptive>" type,
-    but "AutoBeOpenApi.IJsonSchemaDescriptive" type directly for
-    the ${JSON.stringify(props.typeName)} type.
+    Return property-level revisions in the \`revises\` array. Each revision
+    represents an atomic change to a property:
+    - \`create\`: Add a new missing property
+    - \`erase\`: Remove an invalid property
+    - \`nullish\`: Correct nullable/required status
+    - \`update\`: Transform or modify a property schema
+
+    Return an empty \`revises\` array if no changes are needed.
   `,
 });

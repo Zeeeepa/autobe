@@ -7,7 +7,14 @@ import {
   IAutoBeCompiler,
 } from "@autobe/interface";
 import { AutoBeOpenApiTypeChecker, StringUtil } from "@autobe/utils";
-import { IValidation, OpenApiTypeChecker } from "@samchon/openapi";
+import {
+  ILlmApplication,
+  ILlmSchema,
+  IValidation,
+  LlmTypeChecker,
+  OpenApiTypeChecker,
+} from "@samchon/openapi";
+import typia from "typia";
 
 import { AutoBeContext } from "../../../context/AutoBeContext";
 import { AutoBeRealizeCollectorProgrammer } from "./AutoBeRealizeCollectorProgrammer";
@@ -212,9 +219,7 @@ ${Object.keys(props.schema.properties)
         props.errors.push({
           path: `$input.request.selectMappings[${i}].member`,
           value: m.member,
-          expected: required
-            .map((r) => `AutoBeRealizeMapping<"${r.member}">`)
-            .join(" | "),
+          expected: required.map((s) => JSON.stringify(s)).join(" | "),
           description: StringUtil.trim`
             '${m.member}' is not a valid Prisma member.
   
@@ -280,14 +285,11 @@ ${Object.keys(props.schema.properties)
     props.transformMappings.forEach((m, i) => {
       if (schema.properties[m.property] !== undefined) return;
       props.errors.push({
-        path: `$input.request.transformMappings[${i}]`,
-        value: m,
-        expected: StringUtil.trim`{
-            property: ${Object.keys(schema.properties)
-              .map((key) => `${JSON.stringify(key)}`)
-              .join(" | ")};
-            how: string;
-          }`,
+        path: `$input.request.transformMappings[${i}].property`,
+        value: m.property,
+        expected: Object.keys(schema.properties)
+          .map((key) => JSON.stringify(key))
+          .join(" | "),
         description: StringUtil.trim`
           The mapping for the property '${m.property}' does not exist in DTO '${props.plan.dtoTypeName}'.
 
@@ -395,4 +397,57 @@ ${Object.keys(props.schema.properties)
           `,
         });
   }
+
+  export const fixApplication = (props: {
+    definition: ILlmApplication;
+    application: AutoBeDatabase.IApplication;
+    document: AutoBeOpenApi.IDocument;
+    plan: AutoBeRealizeTransformerPlan;
+  }): void => {
+    const $defs: Record<string, ILlmSchema> =
+      props.definition.functions[0].parameters.$defs;
+
+    // transform
+    (() => {
+      const transform: ILlmSchema | undefined =
+        $defs[typia.reflect.name<AutoBeRealizeTransformerTransformMapping>()];
+      if (
+        transform === undefined ||
+        LlmTypeChecker.isObject(transform) === false
+      )
+        throw new Error(
+          `AutoBeRealizeTransformerTransformMapping type is not defined in the function calling schema.`,
+        );
+      const property: ILlmSchema | undefined = transform.properties.property;
+      if (property === undefined || LlmTypeChecker.isString(property) === false)
+        throw new Error(
+          `AutoBeRealizeTransformerTransformMapping.property is not defined as string type.`,
+        );
+      property.enum = getTransformMappingMetadata(props).map((m) => m.property);
+    })();
+
+    // select
+    (() => {
+      const select: ILlmSchema | undefined =
+        $defs[typia.reflect.name<AutoBeRealizeTransformerSelectMapping>()];
+      if (select === undefined || LlmTypeChecker.isObject(select) === false)
+        throw new Error(
+          `AutoBeRealizeTransformerSelectMapping type is not defined in the function calling schema.`,
+        );
+
+      const member: ILlmSchema | undefined = select.properties.member;
+      if (member === undefined || LlmTypeChecker.isString(member) === false)
+        throw new Error(
+          `AutoBeRealizeTransformerSelectMapping.member is not defined as string type.`,
+        );
+
+      member.enum = getSelectMappingMetadata({
+        application: props.application,
+        model: props.application.files
+          .map((f) => f.models)
+          .flat()
+          .find((m) => m.name === props.plan.databaseSchemaName)!,
+      }).map((m) => m.member);
+    })();
+  };
 }

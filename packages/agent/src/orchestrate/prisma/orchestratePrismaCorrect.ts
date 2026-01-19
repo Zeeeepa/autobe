@@ -143,7 +143,7 @@ async function execute(
         .filter((m) => m !== undefined),
     },
     config: {
-      prisma: "ast",
+      database: "ast",
     },
   });
   return await preliminary.orchestrate(ctx, async (out) => {

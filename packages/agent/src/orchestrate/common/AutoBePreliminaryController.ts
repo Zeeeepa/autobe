@@ -58,8 +58,8 @@ export class AutoBePreliminaryController<Kind extends AutoBePreliminaryKind> {
     this.source_id = v7();
     this.kinds = props.kinds;
     this.config = {
-      prisma: props.config?.prisma ?? "text",
-    } as any;
+      database: props.config?.database ?? "text",
+    } as AutoBePreliminaryController.IConfig<any>;
 
     this.argumentTypeNames = (() => {
       const func = props.application.functions.find(
@@ -308,7 +308,7 @@ export namespace AutoBePreliminaryController {
 
   /** Controller configuration options. */
   export interface IConfig<Kind extends AutoBePreliminaryKind> {
-    /** Database schema format: `"ast"` (JSON) or `"text"` (Prisma DSL). */
-    prisma: Kind extends "databaseSchemas" ? "ast" | "text" : never;
+    /** Database schema format: `"ast"` (JSON) or `"text"` (Database DSL). */
+    database: Kind extends "databaseSchemas" ? "ast" | "text" : never;
   }
 }

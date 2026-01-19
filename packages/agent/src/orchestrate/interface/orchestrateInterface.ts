@@ -188,7 +188,12 @@ export const orchestrateInterface =
       completed: 0,
       total:
         Object.keys(document.components.schemas).filter(
-          (k) => AutoBeJsonSchemaValidator.isPreset(k) === false,
+          (k) =>
+            AutoBeJsonSchemaValidator.isPreset(k) === false &&
+            AutoBeJsonSchemaValidator.isObjectType({
+              operations: document.operations,
+              typeName: k,
+            }),
         ).length * REVIEWERS.length,
     };
     for (const config of REVIEWERS)
@@ -269,12 +274,12 @@ const REVIEWERS = [
     systemPrompt: AutoBeSystemPromptConstant.INTERFACE_SCHEMA_RELATION_REVIEW,
   },
   {
-    kind: "security" as const,
-    systemPrompt: AutoBeSystemPromptConstant.INTERFACE_SCHEMA_SECURITY_REVIEW,
-  },
-  {
     kind: "content" as const,
     systemPrompt: AutoBeSystemPromptConstant.INTERFACE_SCHEMA_CONTENT_REVIEW,
+  },
+  {
+    kind: "security" as const,
+    systemPrompt: AutoBeSystemPromptConstant.INTERFACE_SCHEMA_SECURITY_REVIEW,
   },
   {
     kind: "phantom" as const,
