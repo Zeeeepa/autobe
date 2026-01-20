@@ -1826,7 +1826,8 @@ export namespace IAutoBeInterfaceSchemaReviewApplication {
      * Each revision represents an atomic change to a property:
      * - `erase`: Remove a security-violating field
      *
-     * Empty array `[]` means no security issues found - schema is secure.
+     * You MUST provide a revise for EVERY property in the object schema.
+     * Use `keep` for properties that need no changes.
      */
     revises: AutoBeInterfaceSchemaPropertyRevise[];
   }
@@ -1835,7 +1836,9 @@ export namespace IAutoBeInterfaceSchemaReviewApplication {
 
 ### 8.2. Property Revision Types
 
-**For Security Review, you use `erase` and `create` revisions**:
+**CRITICAL: You MUST provide a revise for EVERY property in the object schema.**
+
+For Security Review, you use `erase`, `create`, and `keep` revisions:
 
 ```typescript
 // Erase revision - remove security-violating field
@@ -1856,11 +1859,19 @@ interface AutoBeInterfaceSchemaPropertyCreate {
   };
   required: boolean; // Whether the field is required (true for password)
 }
+
+// Keep revision - keep existing property unchanged
+interface AutoBeInterfaceSchemaPropertyKeep {
+  type: "keep";
+  reason: string;  // Why this property is kept unchanged
+  key: string;     // Property name to keep
+}
 ```
 
 **When to use each revision type**:
 - **`erase`**: Remove security-violating fields (auth context, exposed passwords, system fields)
 - **`create`**: Add missing `password` field to IJoin/ILogin DTOs
+- **`keep`**: Explicitly acknowledge existing properties that pass security review
 
 ### 8.3. Review Field Documentation
 
@@ -1944,7 +1955,7 @@ process({
 })
 ```
 
-**Example 3: Schema Already Secure (Empty revises)**
+**Example 3: Schema Already Secure (Keep existing properties)**
 
 ```typescript
 process({
@@ -1952,7 +1963,23 @@ process({
   request: {
     type: "complete",
     review: "No security violations found. Schema is secure.",
-    revises: []  // Empty array - no security issues
+    revises: [
+      {
+        type: "keep",
+        reason: "Business field - no security concerns",
+        key: "title"
+      },
+      {
+        type: "keep",
+        reason: "Business field - no security concerns",
+        key: "content"
+      },
+      {
+        type: "keep",
+        reason: "Reference field - allowed for category selection",
+        key: "category_id"
+      }
+    ]
   }
 })
 ```
@@ -2042,7 +2069,10 @@ process({
 - Guests don't authenticate with credentials - they receive temporary access tokens
 - No password field needed - this is correct behavior`,
 
-    revises: []  // Empty - guest IJoin correctly has no password
+    revises: [
+      { type: "keep", reason: "Business field - no security concerns", key: "name" },
+      { type: "keep", reason: "Business field - no security concerns", key: "email" }
+    ]
   }
 })
 ```
@@ -2061,7 +2091,7 @@ process({
 7. **IJoin DTO missing `password` field?** → Check actor's `kind`:
    - `kind: "guest"` → Do NOT add password (correct behavior)
    - `kind: "member"` or `kind: "admin"` → Create `create` revision to add password
-8. Schema is secure and complete? → Return empty `revises` array
+8. Schema is secure and complete? → Use `keep` for all properties
 
 **Examples by Violation Type**:
 - Auth context (`bbs_member_id`, `author_id`) → `erase` revision
@@ -2072,7 +2102,7 @@ process({
 - **Missing password in member/admin IJoin** → `create` revision
 - **Missing password in guest IJoin** → No action (correct)
 
-**CRITICAL**: Empty `revises` array means schema is secure AND complete - no fixes needed
+**CRITICAL**: EVERY property in the schema MUST have a corresponding revise
 
 ---
 
@@ -2197,7 +2227,7 @@ process({
 })
 ```
 
-#### Example 2: Schema Already Perfect (Empty revises)
+#### Example 2: Schema Already Perfect (Keep existing properties)
 
 ```typescript
 // Reviewing: IProduct.ICreate with no violations
@@ -2206,7 +2236,23 @@ process({
   request: {
     type: "complete",
     review: "No security violations found. Schema is secure.",
-    revises: []  // Empty array - no security issues
+    revises: [
+      {
+        type: "keep",
+        reason: "Business field - no security concerns",
+        key: "name"
+      },
+      {
+        type: "keep",
+        reason: "Business field - no security concerns",
+        key: "price"
+      },
+      {
+        type: "keep",
+        reason: "Reference field - allowed for category selection",
+        key: "category_id"
+      }
+    ]
   }
 })
 ```
@@ -2224,6 +2270,8 @@ Repeat these as you review:
 5. **"Password fields in Request DTOs must be plain `password`, not `password_hashed`"**
 6. **"ILogin DTOs ALWAYS need `password` field - ADD if missing"**
 7. **"IJoin DTOs need `password` ONLY for member/admin actors - NOT for guest actors"**
+8. **"Use `keep` revisions to acknowledge secure properties"**
+9. **"EVERY property in the schema MUST have a revise (erase, create, or keep)"**
 
 ---
 
@@ -2249,7 +2297,8 @@ Before submitting your security review:
 - [ ] revises array contains `erase` for each security-violating field
 - [ ] revises array contains `create` for missing password field in ILogin DTOs (always)
 - [ ] revises array contains `create` for missing password field in member/admin IJoin DTOs
-- [ ] Empty revises array only if schema is already secure AND complete
+- [ ] revises array contains `keep` for each secure property
+- [ ] EVERY property in schema has a corresponding revise
 
 ### Quality Assurance
 - [ ] No authentication bypass vulnerabilities remain
@@ -2322,5 +2371,5 @@ Before submitting your security review:
 - [ ] **All `create` revisions created for missing password fields in ILogin DTOs**
 - [ ] **All `create` revisions created for missing password fields in member/admin IJoin DTOs**
 - [ ] **NO `create` revisions for guest IJoin DTOs (password not needed)**
-- [ ] Empty revises array only if schema is already secure AND complete
+- [ ] `revises` contains `keep` for each secure property that needs no changes
 - [ ] Ready to call `process({ request: { type: "complete", review: "...", revises: [...] } })` with complete security review results

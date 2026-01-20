@@ -15,11 +15,10 @@ import { AutoBeContext } from "../../context/AutoBeContext";
 import { executeCachedBatch } from "../../utils/executeCachedBatch";
 import { AutoBePreliminaryController } from "../common/AutoBePreliminaryController";
 import { transformInterfaceSchemaReviewHistory } from "./histories/transformInterfaceSchemaReviewHistory";
-import { AutoBeInterfaceSchemaProgrammer } from "./programmers/AutoBeInterfaceSchemaProgrammer";
+import { AutoBeInterfaceSchemaReviewProgrammer } from "./programmers/AutoBeInterfaceSchemaReviewProgrammer";
 import { IAutoBeInterfaceSchemaReviewApplication } from "./structures/IAutoBeInterfaceSchemaReviewApplication";
 import { AutoBeJsonSchemaFactory } from "./utils/AutoBeJsonSchemaFactory";
 import { AutoBeJsonSchemaValidator } from "./utils/AutoBeJsonSchemaValidator";
-import { AutoBeLlmSchemaFactory } from "./utils/AutoBeLlmSchemaFactory";
 import { fulfillJsonSchemaErrorMessages } from "./utils/fulfillJsonSchemaErrorMessages";
 
 interface IConfig {
@@ -160,16 +159,11 @@ async function process(
     if (pointer.value === null) return out(result)(null);
 
     // Apply revises to generate the modified schema content
-    for (const r of pointer.value.revises)
-      if (r.type === "create" || r.type === "update")
-        r.schema = AutoBeJsonSchemaFactory.fixSchema(r.schema);
     const content: AutoBeOpenApi.IJsonSchemaDescriptive.IObject =
-      pointer.value.revises.length === 0
-        ? props.reviewSchema
-        : AutoBeInterfaceSchemaProgrammer.reviseObjectType({
-            schema: props.reviewSchema,
-            revises: pointer.value.revises,
-          });
+      AutoBeInterfaceSchemaReviewProgrammer.refine({
+        schema: props.reviewSchema,
+        revises: pointer.value.revises,
+      });
     ctx.dispatch({
       type: SOURCE,
       kind: config.kind,
@@ -223,13 +217,11 @@ function createController(
       });
 
     const errors: IValidation.IError[] = [];
-    result.data.request.revises.forEach((r, i) => {
-      AutoBeInterfaceSchemaProgrammer.validateRevise({
-        schema: props.schema,
-        revise: r,
-        errors,
-        path: `$input.request.revises[${i}]`,
-      });
+    AutoBeInterfaceSchemaReviewProgrammer.validate({
+      schema: props.schema,
+      revises: result.data.request.revises,
+      errors,
+      path: `$input.request`,
     });
     return errors.length
       ? {
@@ -247,10 +239,11 @@ function createController(
       },
     }),
   );
-  AutoBeLlmSchemaFactory.fixDatabasePlugin(
-    ctx.state(),
-    application.functions[0].parameters.$defs,
-  );
+  AutoBeInterfaceSchemaReviewProgrammer.fixApplication({
+    state: ctx.state(),
+    application,
+    schema: props.schema,
+  });
 
   return {
     protocol: "class",
