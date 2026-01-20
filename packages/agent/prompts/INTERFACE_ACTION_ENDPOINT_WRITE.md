@@ -24,10 +24,10 @@ This agent achieves its goal through function calling. **Function calling is MAN
    - Request ONLY the specific schemas or files needed to resolve ambiguities
    - DON'T request everything - be strategic and selective
    - Use batch requests when requesting multiple related items
-4. **Execute Purpose Function**: Call `process({ request: { type: "complete", designs: [...] } })` with your designed endpoints
+4. **Execute Purpose Function**: Call `process({ request: { type: "complete", analysis: "...", rationale: "...", designs: [...] } })` with your designed endpoints
 
 **CRITICAL: Purpose Function is MANDATORY**
-- Your PRIMARY GOAL is to call `process({ request: { type: "complete", designs: [...] } })` with endpoint designs
+- Your PRIMARY GOAL is to call `process({ request: { type: "complete", analysis: "...", rationale: "...", designs: [...] } })` with endpoint designs
 - Gathering input materials is ONLY to resolve specific ambiguities or gaps
 - DON'T treat material gathering as a checklist to complete
 - Call the complete function as soon as you have sufficient context to design endpoints
@@ -71,7 +71,7 @@ This is a required self-reflection step that helps you avoid duplicate requests 
 ```typescript
 {
   thinking: "Identified dashboard and search endpoints from requirements. No analytics needed for this group.",
-  request: { type: "complete", designs: [...] }
+  request: { type: "complete", analysis: "...", rationale: "...", designs: [...] }
 }
 ```
 
@@ -475,6 +475,8 @@ process({
   thinking: "Generated analytics and dashboard endpoints based on requirements.",
   request: {
     type: "complete",
+    analysis: "Requirements mention 'monthly sales reporting', 'admin dashboard', and 'global search'. Database has no analytics/statistics tables, so these must be action endpoints aggregating from sales, users, and products tables.",
+    rationale: "Created statistics endpoint for sales reporting requirement. Dashboard endpoint aggregates user activity, revenue, and system health for admin use case. Global search handles cross-entity queries mentioned in requirements.",
     designs: [
       {
         description: "Monthly sales trends with revenue and order counts",
@@ -499,6 +501,8 @@ process({
   thinking: "No analytics, dashboard, or search requirements found for this group.",
   request: {
     type: "complete",
+    analysis: "Reviewed all requirements for this group. All business needs map directly to database tables and are covered by base CRUD endpoints.",
+    rationale: "No action endpoints needed - analytics table exists in database (handled by base generator), no dashboard/search requirements for this domain.",
     designs: []
   }
 })
@@ -770,10 +774,12 @@ This rule applies to **resource collections** (entities stored in database), NOT
 - [ ] Empty array used if all requirements are satisfied by Base CRUD
 
 ### Output Format
+- [ ] `analysis` field documents what requirements were analyzed, what action endpoints were identified
+- [ ] `rationale` field explains why endpoints were designed this way, what was excluded and why
 - [ ] Each endpoint has `endpoint` object with `path` and `method`
 - [ ] Each endpoint has `description` explaining business purpose
-- [ ] Ready to call `process()` with `type: "complete"`
+- [ ] Ready to call `process()` with `type: "complete"`, `analysis`, `rationale`, and `designs`
 
 ---
 
-**YOUR MISSION**: Discover and generate action endpoints for the specified group's domain. Focus on requirements that have NO corresponding database table but relate to this group's database schemas. This includes analytics, dashboards, search, reports, integrations, notifications, batch operations, workflows, and more. Verify NO exact (path + method) collision with Base CRUD endpoints. Nested paths under Base resources are allowed. If all requirements are satisfied by database table CRUD, return an empty designs array. Call `process()` with `type: "complete"` immediately.
+**YOUR MISSION**: Discover and generate action endpoints for the specified group's domain. Focus on requirements that have NO corresponding database table but relate to this group's database schemas. This includes analytics, dashboards, search, reports, integrations, notifications, batch operations, workflows, and more. Verify NO exact (path + method) collision with Base CRUD endpoints. Nested paths under Base resources are allowed. If all requirements are satisfied by database table CRUD, return an empty designs array. Call `process({ request: { type: "complete", analysis: "...", rationale: "...", designs: [...] } })` immediately.

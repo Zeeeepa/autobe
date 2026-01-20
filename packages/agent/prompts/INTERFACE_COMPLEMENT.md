@@ -63,7 +63,7 @@ This is a required self-reflection step that helps you avoid duplicate requests 
 ```typescript
 {
   thinking: "Generated missing schema definition, resolved undefined ref.",
-  request: { type: "complete", schema: {...} }
+  request: { type: "complete", analysis: "...", rationale: "...", schema: {...} }
 }
 ```
 
@@ -503,12 +503,12 @@ process({ thinking: "Missing entity field details for relationship mapping. Don'
 ```typescript
 // ❌ FORBIDDEN
 process({ thinking: "Missing relationship details. Need them.", request: { type: "getDatabaseSchemas", schemaNames: ["orders"] } })
-process({ thinking: "Missing schema generated", request: { type: "complete", schema: {...} } })  // Executes with OLD materials!
+process({ thinking: "Missing schema generated", request: { type: "complete", analysis: "...", rationale: "...", schema: {...} } })  // Executes with OLD materials!
 
 // ✅ CORRECT
 process({ thinking: "Missing entity relationships for ref resolution. Don't have them.", request: { type: "getDatabaseSchemas", schemaNames: ["orders", "products"] } })
 // Then after materials loaded:
-process({ thinking: "Loaded schemas, resolved undefined ref, ready to complete", request: { type: "complete", schema: {...} } })
+process({ thinking: "Loaded schemas, resolved undefined ref, ready to complete", request: { type: "complete", analysis: "...", rationale: "...", schema: {...} } })
 ```
 
 **Critical Warning: Runtime Validator Prevents Re-Requests**
@@ -617,6 +617,28 @@ export namespace IAutoBeInterfaceComplementApplication {
     type: "complete";
 
     /**
+     * Analysis of the missing type's purpose and context.
+     *
+     * Before designing the schema, analyze what you know:
+     * - What is this missing type for? Why is it referenced?
+     * - Where is it referenced from? ($ref in which schemas/operations?)
+     * - What does the reference context tell us about its expected structure?
+     * - Are there similar types that provide structural hints?
+     */
+    analysis: string;
+
+    /**
+     * Rationale for the schema design decisions.
+     *
+     * Explain why you designed the schema this way:
+     * - Which properties did you include and why?
+     * - What is required vs optional, and why?
+     * - How does this satisfy the referencing schemas' expectations?
+     * - What patterns from existing schemas did you follow?
+     */
+    rationale: string;
+
+    /**
      * The missing schema definition that needs to be added to the OpenAPI
      * document's `components.schemas` section.
      *
@@ -673,6 +695,16 @@ Discriminated union type that determines your action:
 
 Indicates this is the final task execution request, not a preliminary data request.
 
+#### analysis (IComplete)
+**Type**: `string` (REQUIRED)
+
+Your analysis of the missing type's purpose and context before designing the schema. Document why this type is referenced, where it's referenced from, what the reference context reveals about expected structure, and similar types that provide hints.
+
+#### rationale (IComplete)
+**Type**: `string` (REQUIRED)
+
+Your reasoning for the schema design decisions. Explain property choices, required vs optional decisions, how the schema satisfies referencing schemas' expectations, and what patterns you followed.
+
 #### schema (IComplete)
 **Type**: `AutoBeOpenApi.IJsonSchemaDescriptive` (REQUIRED)
 
@@ -689,6 +721,8 @@ process({
   thinking: "Generated missing schema definition, resolved undefined ref.",
   request: {
     type: "complete",
+    analysis: "IProduct.ISummary is referenced in IOrder.product and ICartItem.product. These are response DTOs showing order/cart details, so they need a lightweight product representation with essential fields.",
+    rationale: "Included id, name, price as core identifiers. Excluded detailed fields like description and inventory since summary is for display in lists. Required all fields since products always have these basics.",
     schema: {
       // Complete JSON Schema definition for the specific type
       type: "object",
@@ -729,7 +763,7 @@ From `INTERFACE_SCHEMA_REVIEW.md`:
 3. **Context**: Examine existing operations, database schemas, and related DTOs to understand the type's purpose
 4. **Generate**: Create the schema definition following rules from both `INTERFACE_SCHEMA.md` and `INTERFACE_SCHEMA_REVIEW.md`
 5. **Verify**: Ensure the schema may reference other types via `$ref` (this is expected and correct)
-6. **Call Function**: Use `process({ request: { type: "complete", schema: {...} } })` with the schema definition for this specific type
+6. **Call Function**: Use `process({ request: { type: "complete", analysis: "...", rationale: "...", schema: {...} } })` with the schema definition for this specific type
 7. **Note**: If the generated schema introduces new undefined references, those will be handled in subsequent iterations by the orchestrator
 
 ## 7. Validation
@@ -744,7 +778,9 @@ The generated schema MUST pass compliance validation based on both `INTERFACE_SC
 ## 9. Final Execution Checklist
 
 ### 9.1. Input Materials & Function Calling
-- [ ] **YOUR PURPOSE**: Call `process({ request: { type: "complete", schema: {...} } })`. Gathering input materials is intermediate step, NOT the goal.
+- [ ] **YOUR PURPOSE**: Call `process({ request: { type: "complete", analysis: "...", rationale: "...", schema: {...} } })`. Gathering input materials is intermediate step, NOT the goal.
+- [ ] `analysis` field documents the missing type's purpose, reference context, and structural influences
+- [ ] `rationale` field explains design decisions, property choices, and how referencing schemas' expectations are satisfied
 - [ ] **Available materials list** reviewed in conversation history
 - [ ] When you need specific schema details → Call `process({ request: { type: "getDatabaseSchemas", schemaNames: [...] } })` with SPECIFIC entity names
 - [ ] When you need specific operations → Call `process({ request: { type: "getInterfaceOperations", endpoints: [...] } })` with SPECIFIC endpoints
