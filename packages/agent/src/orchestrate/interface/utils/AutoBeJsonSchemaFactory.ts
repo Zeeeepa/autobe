@@ -362,9 +362,30 @@ export namespace AutoBeJsonSchemaFactory {
           else if (k.startsWith("x-")) delete (next as any)[k];
         if (AutoBeOpenApiTypeChecker.isString(next)) fixStringSchema(next);
         else if (AutoBeOpenApiTypeChecker.isArray(next)) fixArraySchema(next);
+        else if (AutoBeOpenApiTypeChecker.isInteger(next))
+          fixIntegerSchema(next);
+        else if (AutoBeOpenApiTypeChecker.isNumber(next)) fixNumberSchema(next);
       },
     });
     return emended as Schema;
+  };
+
+  const convertConst = (
+    schema:
+      | AutoBeOpenApi.IJsonSchema.INumber
+      | AutoBeOpenApi.IJsonSchema.IInteger,
+    value: number,
+  ): void => {
+    const description: string | undefined = (schema as any).description;
+
+    for (const key of Object.keys(schema)) {
+      delete (schema as any)[key];
+    }
+
+    (schema as any).const = value;
+    if (description !== undefined) {
+      (schema as any).description = description;
+    }
   };
 
   const fixStringSchema = (schema: AutoBeOpenApi.IJsonSchema.IString): void => {
@@ -389,6 +410,51 @@ export namespace AutoBeJsonSchemaFactory {
 
   const fixArraySchema = (schema: AutoBeOpenApi.IJsonSchema.IArray): void => {
     if (schema.minItems === 0) delete schema.minItems;
+  };
+
+  /**
+   * Fix integer schema by converting single valid value ranges to const.
+   *
+   * Handles:
+   *
+   * - minimum === maximum → const
+   * - minimum: N, exclusiveMaximum: N+1 → const N
+   * - exclusiveMinimum: N-1, maximum: N → const N
+   * - exclusiveMinimum: N-1, exclusiveMaximum: N+1 → const N
+   */
+  const fixIntegerSchema = (
+    schema: AutoBeOpenApi.IJsonSchema.IInteger,
+  ): void => {
+    const value: number | undefined = (() => {
+      if (schema.minimum !== undefined && schema.maximum === schema.minimum)
+        return schema.minimum;
+      if (schema.minimum !== undefined && schema.exclusiveMaximum === schema.minimum + 1)
+        return schema.minimum;
+      if (schema.maximum !== undefined && schema.exclusiveMinimum === schema.maximum - 1)
+        return schema.maximum;
+      if (schema.exclusiveMinimum !== undefined && schema.exclusiveMaximum === schema.exclusiveMinimum + 2)
+        return schema.exclusiveMinimum + 1;
+      return undefined;
+    })();
+
+    if (value !== undefined) convertConst(schema, value);
+  };
+
+  /**
+   * Fix number schema by converting single valid value ranges to const.
+   *
+   * Handles:
+   *
+   * - minimum === maximum → const
+   */
+  const fixNumberSchema = (schema: AutoBeOpenApi.IJsonSchema.INumber): void => {
+    // minimum === maximum → const
+    if (
+      schema.minimum !== undefined &&
+      schema.maximum !== undefined &&
+      schema.minimum === schema.maximum
+    )
+      return convertConst(schema, schema.minimum);
   };
 }
 
