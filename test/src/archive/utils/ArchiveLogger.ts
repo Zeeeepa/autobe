@@ -177,6 +177,9 @@ export namespace ArchiveLogger {
         `  - kind: ${event.kind}`,
         `  - group: ${event.group}`,
         `  - endpoints: ${event.designs.length}`,
+        ...event.designs.map(
+          (d) => `    - ${d.endpoint.method} ${d.endpoint.path}`,
+        ),
       );
     else if (event.type === "interfaceEndpointReview")
       content.push(
