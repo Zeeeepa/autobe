@@ -2,11 +2,10 @@ import { AutoBeDatabase, AutoBeOpenApi } from "@autobe/interface";
 import { AutoBeOpenApiTypeChecker, StringUtil } from "@autobe/utils";
 import { OpenApi, OpenApiTypeChecker } from "@samchon/openapi";
 import { OpenApiV3_1Emender } from "@samchon/openapi/lib/converters/OpenApiV3_1Emender";
-import { plural } from "pluralize";
 import typia, { tags } from "typia";
-import { NamingConvention } from "typia/lib/utils/NamingConvention";
 import { v7 } from "uuid";
 
+import { AutoBeInterfaceSchemaProgrammer } from "../programmers/AutoBeInterfaceSchemaProgrammer";
 import { AutoBeJsonSchemaValidator } from "./AutoBeJsonSchemaValidator";
 
 export namespace AutoBeJsonSchemaFactory {
@@ -51,6 +50,8 @@ export namespace AutoBeJsonSchemaFactory {
         value.properties.token = {
           $ref: "#/components/schemas/IAuthorizationToken",
           description: "Authorization token.",
+          "x-autobe-specification":
+            "Authorization token comes from the session table.",
           "x-autobe-database-schema-member": null,
         };
       value.required = Array.from(
@@ -201,56 +202,11 @@ export namespace AutoBeJsonSchemaFactory {
         continue;
 
       const typeName: string = key.split(".")[0]!.substring(1);
-      const modelName: string = getDatabaseModelName(typeName);
+      const modelName: string =
+        AutoBeInterfaceSchemaProgrammer.getDatabaseSchemaName(typeName);
       if (modelDict.has(modelName) === true)
         value["x-autobe-database-schema"] = modelName;
     }
-  };
-
-  const getDatabaseModelName = (typeName: string): string =>
-    plural(NamingConvention.snake(typeName.split(".")[0]!.substring(1)));
-
-  export const getNeighborDatabaseSchemas = (props: {
-    typeName: string;
-    application: AutoBeDatabase.IApplication;
-  }): AutoBeDatabase.IModel[] | undefined => {
-    const everything: Map<string, AutoBeDatabase.IModel> = new Map(
-      props.application.files
-        .map((f) => f.models)
-        .flat()
-        .map((m) => [m.name, m]),
-    );
-    const unique: Map<string, AutoBeDatabase.IModel> = new Map();
-    const found: AutoBeDatabase.IModel | undefined = everything.get(
-      getDatabaseModelName(props.typeName),
-    );
-    if (found === undefined) return;
-
-    // add myself
-    unique.set(found.name, found);
-
-    // add parent models
-    found.foreignFields.forEach((ff) => {
-      const gotten: AutoBeDatabase.IModel | undefined = everything.get(
-        ff.relation.targetModel,
-      );
-      if (gotten !== undefined) unique.set(gotten.name, gotten);
-    });
-
-    // add children models
-    for (const model of unique.values()) {
-      const ff: AutoBeDatabase.IForeignField | undefined =
-        model.foreignFields.find(
-          (ff) => ff.relation.targetModel === found.name,
-        );
-      if (ff !== undefined) {
-        const parent: AutoBeDatabase.IModel | undefined = everything.get(
-          ff.relation.targetModel,
-        );
-        if (parent !== undefined) unique.set(parent.name, parent);
-      }
-    }
-    return Array.from(unique.values());
   };
 
   /* -----------------------------------------------------------
@@ -264,6 +220,7 @@ export namespace AutoBeJsonSchemaFactory {
       pagination: {
         $ref: "#/components/schemas/IPage.IPagination",
         description: "Page information.",
+        "x-autobe-specification": "Pagination information for the page.",
         "x-autobe-database-schema-member": null,
       },
       data: {
@@ -272,6 +229,7 @@ export namespace AutoBeJsonSchemaFactory {
           $ref: `#/components/schemas/${key}`,
         },
         description: "List of records.",
+        "x-autobe-specification": `List of records of type ${key}.`,
         "x-autobe-database-schema-member": null,
       },
     },
@@ -281,6 +239,7 @@ export namespace AutoBeJsonSchemaFactory {
   
       Collection of records with pagination information.
     `,
+    "x-autobe-specification": `A page containing records of type ${key}.`,
     "x-autobe-database-schema": null, // filled by relation review agent
   });
 
@@ -459,87 +418,185 @@ export namespace AutoBeJsonSchemaFactory {
 }
 
 namespace IPage {
-  /** Page information. */
+  /**
+   * Pagination metadata containing current page position and total data statistics.
+   *
+   * This interface provides comprehensive pagination information returned alongside
+   * paginated list data. It enables clients to implement navigation controls,
+   * display progress indicators, and determine data boundaries for UI rendering.
+   *
+   * @x-autobe-specification Pagination metadata for paginated list responses. Included in all list endpoint responses.
+   */
   export interface IPagination {
-    /** Current page number. */
+    /**
+     * Current page number being viewed (1-indexed).
+     *
+     * Indicates which page of results is currently being returned. Page numbering
+     * starts from 1, so the first page is page 1 (not 0). This value reflects the
+     * page parameter from the request after validation and bounds checking.
+     *
+     * @x-autobe-specification 1-indexed current page number. Defaults to 1.
+     */
     current: number & tags.Type<"uint32">;
 
-    /** Limitation of records per a page. */
+    /**
+     * Maximum number of records per page.
+     *
+     * Defines the upper bound on how many records can be returned in a single page.
+     * This corresponds to the limit parameter from the request. The actual number
+     * of records in the data array may be less than this value on the final page
+     * or when total records are fewer than the limit.
+     *
+     * @x-autobe-specification Maximum records per page. Actual count may be less on last page.
+     */
     limit: number & tags.Type<"uint32">;
 
-    /** Total records in the database. */
+    /**
+     * Total count of all records matching the query criteria.
+     *
+     * Represents the complete number of records available across all pages,
+     * not just the current page. This value is computed via a COUNT query
+     * and is essential for calculating total pages and displaying pagination
+     * UI elements like "Showing 1-10 of 150 results".
+     *
+     * @x-autobe-specification Total record count across all pages.
+     */
     records: number & tags.Type<"uint32">;
 
     /**
-     * Total pages.
+     * Total number of pages available.
      *
-     * Equal to {@link records} / {@link limit} with ceiling.
+     * Calculated as ceiling of {@link records} divided by {@link limit}.
+     * When records is 0, pages will also be 0. This value enables clients
+     * to render page navigation controls and validate page bounds.
+     *
+     * @x-autobe-specification Total pages. Calculated as Math.ceil(records / limit).
      */
     pages: number & tags.Type<"uint32">;
   }
 
-  /** Page request data */
+  /**
+   * Pagination request parameters for list endpoints.
+   *
+   * Defines the query parameters used to control pagination when requesting
+   * list data. Both parameters are optional with sensible defaults, allowing
+   * clients to fetch data without specifying pagination if default behavior
+   * is acceptable.
+   *
+   * @x-autobe-specification Pagination query parameters for list endpoints. All fields optional.
+   */
   export interface IRequest {
-    /** Page number. */
+    /**
+     * Target page number to retrieve (1-indexed).
+     *
+     * Specifies which page of results to return. Page numbering starts from 1.
+     * If omitted, null, or undefined, defaults to page 1 (first page). Requesting
+     * a page beyond the available range returns an empty data array with valid
+     * pagination metadata reflecting the actual totals.
+     *
+     * @x-autobe-specification 1-indexed page number. Defaults to 1 if not provided.
+     */
     page?: null | (number & tags.Type<"uint32">);
 
     /**
-     * Limitation of records per a page.
+     * Maximum number of records to return per page.
+     *
+     * Controls how many records are included in each page response. If omitted,
+     * null, or undefined, defaults to 100 records per page. The server may enforce
+     * upper bounds to prevent excessive resource consumption on large requests.
      *
      * @default 100
+     *
+     * @x-autobe-specification Maximum records per page. Defaults to 100 if not provided.
      */
     limit?: null | (number & tags.Type<"uint32">);
   }
 }
 
 /**
- * Authorization token response structure.
+ * JWT-based authorization token pair with expiration metadata.
  *
- * This interface defines the structure of the authorization token response
- * returned after successful user authentication. It contains both access and
- * refresh tokens along with their expiration information.
+ * Provides a complete authentication token structure containing both access and
+ * refresh tokens along with their respective expiration timestamps. This dual-token
+ * pattern enables secure, stateless authentication with automatic session renewal
+ * capabilities.
  *
- * This token structure is automatically included in API schemas when the system
- * detects authorization actors in the requirements analysis phase. It provides
- * a standard format for JWT-based authentication across the generated backend
- * applications.
+ * The access token is short-lived for security, while the refresh token allows
+ * obtaining new access tokens without requiring the user to re-enter credentials.
+ * This structure is automatically included in authentication responses across
+ * all generated backend applications.
+ *
+ * @x-autobe-specification Dual-token authentication structure with access/refresh tokens and expiration info.
  */
 interface IAuthorizationToken {
   /**
-   * JWT access token for authenticated requests.
+   * Short-lived JWT access token for authenticating API requests.
    *
-   * This token should be included in the Authorization header for subsequent
-   * authenticated API requests as `Bearer {token}`.
+   * This token must be included in the Authorization header using the Bearer scheme
+   * (e.g., `Authorization: Bearer {access}`) for all endpoints requiring authentication.
+   * The token contains encoded claims including user identity, roles, and permissions.
+   * Typically expires within 15-60 minutes for security; use the refresh token to
+   * obtain a new access token when expired.
+   *
+   * @x-autobe-specification JWT access token. Use in Authorization header as "Bearer {access}".
    */
   access: string;
 
   /**
-   * Refresh token for obtaining new access tokens.
+   * Long-lived refresh token for obtaining new access tokens.
    *
-   * This token can be used to request new access tokens when the current access
-   * token expires, extending the user's session.
+   * Used to request new access tokens when the current access token expires,
+   * allowing session continuation without re-authentication. Should be stored
+   * securely and transmitted only to the token refresh endpoint. Typical lifetime
+   * ranges from 7 to 30 days depending on security requirements.
+   *
+   * @x-autobe-specification Refresh token for obtaining new access tokens without re-authentication.
    */
   refresh: string;
 
   /**
-   * Access token expiration timestamp.
+   * ISO 8601 timestamp when the access token expires.
    *
-   * ISO 8601 date-time string indicating when the access token will expire and
-   * can no longer be used for authentication.
+   * After this timestamp, the access token will be rejected by authenticated endpoints.
+   * Clients should proactively refresh before expiration to maintain seamless user
+   * experience. A common strategy is to refresh when remaining time falls below
+   * 5 minutes. This timestamp is also embedded within the JWT itself as the "exp" claim.
+   *
+   * @x-autobe-specification Access token expiration timestamp in ISO 8601 format.
    */
   expired_at: string & tags.Format<"date-time">;
 
   /**
-   * Refresh token expiration timestamp.
+   * ISO 8601 timestamp indicating the absolute session expiration deadline.
    *
-   * ISO 8601 date-time string indicating the latest time until which the
-   * refresh token can be used to obtain new access tokens.
+   * Represents the latest possible time the refresh token can be used. Once this
+   * timestamp is reached, the user must fully re-authenticate with credentials.
+   * This defines the maximum session duration regardless of activity. If refresh
+   * token rotation is enabled, this deadline may extend with each successful refresh.
+   *
+   * @x-autobe-specification Refresh token expiration timestamp. Re-authentication required after this time.
    */
   refreshable_until: string & tags.Format<"date-time">;
 }
 
-/** Just a base entity interface for referencing. */
+/**
+ * Base entity interface providing standard primary key identification.
+ *
+ * Serves as the foundational interface for all database entities in the generated
+ * application. Every model and record type extends this interface, ensuring
+ * consistent identification semantics across all database tables and API responses.
+ *
+ * @x-autobe-specification Base interface for all database entities. Contains the primary key.
+ */
 interface IEntity {
-  /** Primary Key. */
+  /**
+   * Unique identifier for this entity (UUID format).
+   *
+   * Auto-generated primary key using UUID format. This value is assigned by the
+   * system upon record creation and cannot be modified afterward. All foreign key
+   * relationships in the database reference this field.
+   *
+   * @x-autobe-specification Primary key in UUID format. Auto-generated, read-only.
+   */
   id: string & tags.Format<"uuid">;
 }
