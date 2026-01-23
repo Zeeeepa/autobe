@@ -91,6 +91,14 @@ export const orchestrateInterfaceEndpointReview = async (
       }),
     });
     if (pointer.value === null) return out(result)(null);
+    pointer.value.revises.forEach((r) => {
+      const design: AutoBeInterfaceEndpointDesign | null =
+        r.type === "create" ? r.design : r.type === "update" ? r.updated : null;
+      if (design === null) return null;
+      AutoBeInterfaceEndpointProgrammer.fixDesign({
+        design,
+      });
+    });
 
     // Filter authorization actors and exclude auth-generated endpoints
     const actors: AutoBeAnalyzeActor[] = ctx.state().analyze?.actors ?? [];
