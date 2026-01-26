@@ -271,19 +271,22 @@ Correct type: [description of what it should be, if REFINE]
   "x-autobe-database-schema": null,
   "properties": {
     "theme": {
-      "type": "string",
+      "x-autobe-database-schema-property": null,
+      "x-autobe-specification": "Stored as 'theme' key in the JSON structure.",
       "description": "UI theme preference.",
-      "x-autobe-specification": "Stored as 'theme' key in the JSON structure."
+      "type": "string"
     },
     "language": {
-      "type": "string",
+      "x-autobe-database-schema-property": null,
+      "x-autobe-specification": "Stored as 'language' key in the JSON structure.",
       "description": "Preferred language code.",
-      "x-autobe-specification": "Stored as 'language' key in the JSON structure."
+      "type": "string"
     },
     "timezone": {
-      "type": "string",
+      "x-autobe-database-schema-property": null,
+      "x-autobe-specification": "Stored as 'timezone' key in the JSON structure.",
       "description": "User's timezone identifier.",
-      "x-autobe-specification": "Stored as 'timezone' key in the JSON structure."
+      "type": "string"
     }
   }
 }
@@ -320,21 +323,126 @@ All refined object schemas MUST include `x-autobe-database-schema`:
 1. **`description`**: API documentation for consumers (WHAT/WHY) - Swagger UI, SDK docs
 2. **`x-autobe-specification`**: Implementation specification for Realize Agent (HOW) - source tables, formulas, join conditions
 
-**⚠️ IMPORTANT**: Object-level `x-autobe-specification` is for the **object type itself**, NOT for individual properties. Each property has its own `x-autobe-specification` field.
+**⚠️ MANDATORY: `x-autobe-specification` is Required for ALL Object Types and Properties**
 
-The `x-autobe-specification` must be **precise enough for downstream agents to implement** the data retrieval or computation.
+This field is NOT optional. You MUST provide `x-autobe-specification` for:
+- Every object type schema (explains how to retrieve/construct the object)
+- Every property within an object (explains how to get/compute the property value)
 
-**`x-autobe-database-schema-member` Property-Level Mapping**:
+For computed properties (`x-autobe-database-schema-property` is null), the specification MUST contain:
+- Data sources: ALL columns and/or tables involved
+- Computation formula: Exact algorithm or SQL-like expression
+- Join conditions: How related tables connect
+- Edge cases: Behavior for nulls, empty sets, defaults
 
-Every property within a refined object schema must specify its database member mapping:
+The specification must be **precise enough for downstream agents to implement** the data retrieval or computation. Vague or missing specifications will cause validation failures.
+
+**`x-autobe-database-schema-property` Property-Level Mapping**:
+
+Every property within a refined object schema must specify its database schema property mapping.
+
+**What is a "Database Schema Property"?**
+
+In Prisma schema, a **database schema property** is any named element within a model that represents data or a relationship. This includes both **columns** and **relationships**.
+
+**⚠️ CRITICAL DISTINCTION**: Indexes (`@@index`), constraints (`@@unique`), and other table-level metadata are **NOT** properties.
+
+**Example Prisma Model**:
+
+```prisma
+model shopping_articles {
+  // ═══════════════════════════════════════════════════════════════════════════
+  // COLUMNS — All of them are database schema properties
+  // ═══════════════════════════════════════════════════════════════════════════
+  id                   String    @id @db.Uuid
+  shopping_customer_id String    @db.Uuid
+  title                String
+  body                 String
+  created_at           DateTime  @db.Timestamptz
+  updated_at           DateTime  @db.Timestamptz
+  deleted_at           DateTime? @db.Timestamptz
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // RELATIONSHIPS — All of them are database schema properties
+  // ═══════════════════════════════════════════════════════════════════════════
+  customer  shopping_customers                      @relation(fields: [shopping_customer_id], references: [id])  // belongs to
+  of_review shopping_sale_snapshot_review_snapshots?  // has one
+  comments  shopping_article_comments[]             // has many
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // INDEXES — These are NOT properties (table-level metadata only)
+  // ═══════════════════════════════════════════════════════════════════════════
+  @@index([shopping_customer_id])
+  @@index([created_at])
+  @@index([title(ops: raw("gin_trgm_ops"))], type: Gin)
+}
+```
+
+**Valid for `x-autobe-database-schema-property`**: `id`, `shopping_customer_id`, `title`, `body`, `created_at`, `updated_at`, `deleted_at`, `customer`, `of_review`, `comments`
+
+**NOT valid**: `@@index`, `@@unique`, `@@map` (these are table-level metadata, not properties)
+
+**Usage Rules**:
 
 - When `x-autobe-database-schema` has a valid table name:
-  - Set `x-autobe-database-schema-member` to the member name (scalar field, FK field, or relation) for direct mappings
+  - Set `x-autobe-database-schema-property` to the property name for direct mappings
   - Set to `null` for computed properties, with detailed computation spec in `x-autobe-specification`
 
 - When `x-autobe-database-schema` is `null`:
-  - `x-autobe-database-schema-member` is not applicable
+  - `x-autobe-database-schema-property` is not applicable
   - Each property's `x-autobe-specification` must still contain detailed data sourcing specs
+
+**⚠️ ABSOLUTE RULE: Never Imagine Database Schema Properties**
+
+When setting `x-autobe-database-schema-property`, you MUST:
+1. **Carefully verify against the actual Prisma schema definition** - Confirm the property (column or relation) actually exists
+2. **Only use property names that exist** - Never guess or invent property names
+3. **If validation feedback says a property does not exist, it is 100% correct** - Validation feedback is generated by deterministic code logic, NOT by AI judgment. Its reliability is guaranteed. It has absolute authority - do not insist the property "should" exist. Never prioritize your own judgment over validation feedback
+4. **If no matching property exists**: Set to `null` (computed property)
+
+The database schema is the **source of truth**. Your assumptions are irrelevant.
+
+**⚠️ MANDATORY: Property Construction Order for AI Function Calling**
+
+When constructing or refining properties for object types, you MUST follow this strict field ordering:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  STEP 1: x-autobe-database-schema-property  →  WHERE does data come from?    │
+│  STEP 2: x-autobe-specification           →  HOW to implement/compute?     │
+│  STEP 3: description                      →  WHAT for API consumers?       │
+│  STEP 4: Type metadata (type, format...)  →  WHAT technically?             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Why This Order is Mandatory**:
+
+This ordering enforces **grounded reasoning** - you must first establish the data source before proceeding to implementation and documentation:
+
+1. **STEP 1 - WHERE**: First determine if this is a direct DB column or computed property
+2. **STEP 2 - HOW**: Based on the data source, specify implementation details
+3. **STEP 3 - WHAT (consumer)**: Now that you know WHERE and HOW, write API documentation
+4. **STEP 4 - WHAT (technical)**: Finally, record type information consistent with the source
+
+**ABSOLUTE PROHIBITIONS**:
+- NEVER omit `x-autobe-database-schema-property` (every property MUST have this field)
+- NEVER omit `x-autobe-specification` (every property MUST have implementation details)
+- NEVER write fields out of order (the cognitive flow ensures consistency)
+
+**Example - Correct Refined Property Structure**:
+```json
+{
+  "theme": {
+    "x-autobe-database-schema-property": null,
+    "x-autobe-specification": "Stored as 'theme' key in the preferences JSON structure.",
+    "description": "User's preferred UI theme setting.",
+    "type": "string",
+    "enum": ["light", "dark", "system"]
+  }
+}
+```
+
+This order is a prompt engineering technique that ensures reasoning consistency. Follow it without exception.
 
 ---
 
@@ -511,22 +619,22 @@ process({
       "x-autobe-database-schema": null,
       properties: {
         email: {
-          type: "boolean",
-          description: "Whether to receive email notifications.",
+          "x-autobe-database-schema-property": null,  // Parent has no DB mapping
           "x-autobe-specification": "Stored as 'email' key in the JSON structure.",
-          "x-autobe-database-schema-member": null  // Parent has no DB mapping
+          description: "Whether to receive email notifications.",
+          type: "boolean"
         },
         push: {
-          type: "boolean",
-          description: "Whether to receive push notifications.",
+          "x-autobe-database-schema-property": null,  // Parent has no DB mapping
           "x-autobe-specification": "Stored as 'push' key in the JSON structure.",
-          "x-autobe-database-schema-member": null  // Parent has no DB mapping
+          description: "Whether to receive push notifications.",
+          type: "boolean"
         },
         sms: {
-          type: "boolean",
-          description: "Whether to receive SMS notifications.",
+          "x-autobe-database-schema-property": null,  // Parent has no DB mapping
           "x-autobe-specification": "Stored as 'sms' key in the JSON structure.",
-          "x-autobe-database-schema-member": null  // Parent has no DB mapping
+          description: "Whether to receive SMS notifications.",
+          type: "boolean"
         }
       }
     }
@@ -640,6 +748,20 @@ Before calling the complete function:
 - [ ] **`x-autobe-database-schema` field included** (set to table name or `null`)
 - [ ] **If `x-autobe-database-schema` is `null`**: `description` contains WHAT/WHY (for API docs), `x-autobe-specification` contains HOW (data sourcing/computation spec)
 
+### 9.5. ⚠️ MANDATORY: Property Construction Order & Required Fields (if refining)
+- [ ] **Property Construction Order**: Every property follows the mandatory 4-step order:
+  1. `x-autobe-database-schema-property` (WHERE - data source)
+  2. `x-autobe-specification` (HOW - implementation)
+  3. `description` (WHAT - consumer documentation)
+  4. Type metadata (WHAT - technical details)
+- [ ] **`x-autobe-database-schema`**: Present on the refined object type schema (string table name or null)
+- [ ] **`x-autobe-database-schema-property`**: Present on EVERY property (string property name or null). Property names include columns AND relationships from Prisma schema — NOT indexes or constraints.
+- [ ] **`x-autobe-specification`**: Present on EVERY property - contains implementation details:
+  - For direct DB mappings: column details and transformation logic
+  - For computed/JSON properties (property is null): detailed data sourcing spec
+- [ ] **NO OMISSIONS**: Zero properties missing any of the three mandatory fields
+- [ ] **Grounded Reasoning**: Data source established FIRST before writing description or type metadata
+
 ---
 
 ## 10. Common Mistakes to Avoid
@@ -676,5 +798,13 @@ Before calling the complete function:
 6. **No explanation needed**: The function call is your complete response
 
 **Remember**: Your goal is to fix degenerate types that will cause runtime failures while NOT touching valid semantic aliases. Use the Chain-of-Thought process to make defensible decisions.
+
+**⚠️ CRITICAL: Validation Feedback is Absolute Authority**:
+- Validation error messages are always correct and must be followed without question
+- Your own judgment or assumptions about what "should" exist are irrelevant when validation says otherwise
+- If validation says a property/table does not exist, it does not exist - no exceptions
+- Follow the instructions in validation error messages exactly as written
+- When validation provides a list of available options, choose ONLY from that list
+- If none of the available options match your expectation, your design is wrong - revise it
 
 **NOW: Analyze the provided type and execute the function immediately.**
