@@ -8,7 +8,7 @@ import { AutoBeSystemPromptConstant } from "../../../constants/AutoBeSystemPromp
 import { IAutoBeOrchestrateHistory } from "../../../structures/IAutoBeOrchestrateHistory";
 import { AutoBePreliminaryController } from "../../common/AutoBePreliminaryController";
 
-export const transformInterfaceComplementHistory = (props: {
+export const transformInterfaceSchemaComplementHistory = (props: {
   instruction: string;
   document: AutoBeOpenApi.IDocument;
   typeName: string;
@@ -34,7 +34,7 @@ export const transformInterfaceComplementHistory = (props: {
       type: "systemMessage",
       id: v7(),
       created_at: new Date().toISOString(),
-      text: AutoBeSystemPromptConstant.INTERFACE_COMPLEMENT,
+      text: AutoBeSystemPromptConstant.INTERFACE_SCHEMA_COMPLEMENT,
     },
     ...props.preliminary.getHistories(),
     ...[
@@ -93,22 +93,19 @@ export const transformInterfaceComplementHistory = (props: {
     **1. MANDATORY Property Field Order:**
     Every property MUST be constructed in this exact order:
     \`\`\`
-    1. x-autobe-database-schema-property  →  WHERE does data come from?
-    2. x-autobe-specification           →  HOW to implement/compute?
-    3. description                      →  WHAT for API consumers?
-    4. Type metadata (type, format...)  →  WHAT technically?
+    1. x-autobe-specification           →  HOW to implement/compute?
+    2. description                      →  WHAT for API consumers?
+    3. Type metadata (type, format...)  →  WHAT technically?
     \`\`\`
 
     **2. NEVER Omit Required Fields:**
-    - \`x-autobe-database-schema-property\`: MANDATORY on every property (string property name or null)
     - \`x-autobe-specification\`: MANDATORY on every property (implementation details)
-    - Omitting these fields is a CRITICAL ERROR that will cause validation failure
+    - Omitting this field is a CRITICAL ERROR that will cause validation failure
 
     **3. Example - Correct Property Structure:**
     \`\`\`json
     {
       "email": {
-        "x-autobe-database-schema-property": "email",
         "x-autobe-specification": "Direct mapping from users.email column.",
         "description": "User's email address for login.",
         "type": "string",

@@ -195,9 +195,9 @@ Not all fields that don't exist in database schema are phantom fields. **DO NOT 
   "IBbsArticle": {
     "x-autobe-database-schema": "Article",
     "properties": {
-      "id": { "x-autobe-database-schema-property": "id", "x-autobe-specification": "Direct mapping.", "description": "Article identifier.", "type": "string" },
-      "title": { "x-autobe-database-schema-property": "title", "x-autobe-specification": "Direct mapping.", "description": "Article title.", "type": "string" },
-      "total_comments": { "x-autobe-database-schema-property": null, "x-autobe-specification": "COUNT of related comments.", "description": "Total number of comments on this article.", "type": "number" }  // ✅ DO NOT DELETE - computed from relation count
+      "id": { "x-autobe-specification": "Direct mapping from bbs_articles.id.", "description": "Article identifier.", "type": "string" },
+      "title": { "x-autobe-specification": "Direct mapping from bbs_articles.title.", "description": "Article title.", "type": "string" },
+      "total_comments": { "x-autobe-specification": "COUNT of related comments.", "description": "Total number of comments on this article.", "type": "number" }  // ✅ DO NOT DELETE - computed from relation count
     }
   }
 }
@@ -365,105 +365,59 @@ IInvert types            // Alternative view types
 System types             // Error responses, etc.
 ```
 
-### 2.3. `x-autobe-database-schema-property` Property-Level Mapping
+### 2.3. Two-Field Documentation Pattern: Your Primary Review Target
 
-Every property within an object schema should specify its database schema property mapping.
+**⚠️ CRITICAL: Carefully Examine These Fields for Each Property**
 
-**What is a "Database Schema Property"?**
+The `x-autobe-specification` and `description` fields contain ALL conceptual information about each property. Use them to understand what data source and implementation the Schema Agent intended, then compare against the actual database schema.
 
-In Prisma schema, a **database schema property** is any named element within a model that represents data or a relationship. This includes both **columns** and **relationships**.
+- **`x-autobe-specification`**: Implementation specification for Realize Agent (HOW to implement/compute)
+  - Contains the intended data source (table, column, join, computation)
+  - Describes how the property should be implemented
+  - **For Phantom Review**: Verify the claimed data source actually exists in the database
 
-**⚠️ CRITICAL DISTINCTION**: Indexes (`@@index`), constraints (`@@unique`), and other table-level metadata are **NOT** properties.
+- **`description`**: API documentation for consumers (WHAT/WHY) - Swagger UI, SDK docs
+  - Explains what the property represents conceptually
+  - **For Phantom Review**: Helps understand the semantic intent when verifying against DB schema
 
-**Example Prisma Model**:
+**How to Use These Fields for Phantom Detection**:
 
-```prisma
-model shopping_articles {
-  // ═══════════════════════════════════════════════════════════════════════════
-  // COLUMNS — All of them are database schema properties
-  // ═══════════════════════════════════════════════════════════════════════════
-  id                   String    @id @db.Uuid
-  shopping_customer_id String    @db.Uuid
-  title                String
-  body                 String
-  created_at           DateTime  @db.Timestamptz
-  updated_at           DateTime  @db.Timestamptz
-  deleted_at           DateTime? @db.Timestamptz
+1. **Read `x-autobe-specification` carefully** - It tells you WHERE the data should come from
+2. **Compare against the actual database schema** - Does the claimed column/relation exist?
+3. **If mismatch found** → The property is a PHANTOM - create `erase` revision
+4. **If specification says "computed/derived"** → Verify the source tables/columns mentioned exist
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // RELATIONSHIPS — All of them are database schema properties
-  // ═══════════════════════════════════════════════════════════════════════════
-  customer  shopping_customers                      @relation(fields: [shopping_customer_id], references: [id])  // belongs to
-  of_review shopping_sale_snapshot_review_snapshots?  // has one
-  comments  shopping_article_comments[]             // has many
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // INDEXES — These are NOT properties (table-level metadata only)
-  // ═══════════════════════════════════════════════════════════════════════════
-  @@index([shopping_customer_id])
-  @@index([created_at])
-  @@index([title(ops: raw("gin_trgm_ops"))], type: Gin)
+**Example Analysis**:
+```json
+{
+  "fullName": {
+    "x-autobe-specification": "Concatenation of users.first_name and users.last_name columns.",
+    "description": "User's full display name.",
+    "type": "string"
+  }
 }
 ```
+→ Check: Do `first_name` and `last_name` columns exist in `users` table?
+→ If yes: Valid computed field (keep)
+→ If no: Phantom field based on imaginary columns (erase)
 
-**Valid for `x-autobe-database-schema-property`**: `id`, `shopping_customer_id`, `title`, `body`, `created_at`, `updated_at`, `deleted_at`, `customer`, `of_review`, `comments`
-
-**NOT valid**: `@@index`, `@@unique`, `@@map` (these are table-level metadata, not properties)
-
-**Usage Rules**:
-
-- When `x-autobe-database-schema` has a valid table name:
-  - `x-autobe-database-schema-property` should be set to the property name for direct mappings
-  - Set to `null` for computed properties, with detailed computation spec in `x-autobe-specification`
-
-- When `x-autobe-database-schema` is `null`:
-  - `x-autobe-database-schema-property` is not applicable
-  - Each property's `x-autobe-specification` must still contain detailed data sourcing specs
-
-**⚠️ ABSOLUTE RULE: Never Imagine Database Schema Properties**
-
-When verifying `x-autobe-database-schema-property`, remember:
-1. **The property name MUST exist in the actual Prisma schema** - If it doesn't exist, create an `erase` revision
-2. **Validation feedback is 100% correct** - Validation feedback is generated by deterministic code logic, NOT by AI judgment. Its reliability is guaranteed. If validation says a property does not exist, it does not exist. Do not argue or insist otherwise. Never prioritize your own judgment over validation feedback
-3. **Your assumptions about what "should" exist are irrelevant** - The database schema is the source of truth
-
-**Two-Field Documentation Pattern** (for reference):
-- `description`: API documentation for consumers (WHAT/WHY) - Swagger UI, SDK docs
-- `x-autobe-specification`: Implementation specification for Realize Agent (HOW)
-
-**Note**: Phantom Review focuses on detecting phantom fields and nullability issues. You verify that `x-autobe-database-schema-property` values match actual database schema properties, but you cannot modify `x-autobe-specification` content - that is handled by other agents (Schema, Complement, Content Review).
-
-**⚠️ Property Construction Order Reference (for Verification)**
-
-When reviewing properties, be aware of the mandatory field ordering used in schema generation:
+**Property Construction Order Reference**:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│  STEP 1: x-autobe-database-schema-property  →  WHERE does data come from?    │
-│  STEP 2: x-autobe-specification           →  HOW to implement/compute?     │
-│  STEP 3: description                      →  WHAT for API consumers?       │
-│  STEP 4: Type metadata (type, format...)  →  WHAT technically?             │
+│  STEP 1: x-autobe-specification           →  HOW to implement/compute?     │
+│  STEP 2: description                      →  WHAT for API consumers?       │
+│  STEP 3: Type metadata (type, format...)  →  WHAT technically?             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Why This Order Matters for Phantom Review**:
-
-The field ordering enforces **grounded reasoning** - data source (`x-autobe-database-schema-property`) is established FIRST:
-
-1. **STEP 1 - WHERE**: Determines if this is a direct DB column or computed property
-2. **STEP 2 - HOW**: Implementation based on the data source
-3. **STEP 3 - WHAT (consumer)**: API documentation
-4. **STEP 4 - WHAT (technical)**: Type information
-
 **For Phantom Review Verification**:
-- Check that `x-autobe-database-schema-property` is present on every property
-- If it's a string value, verify the property exists in the database schema
-- If it's `null`, the property is computed/derived (do not flag as phantom)
-- Properties with missing `x-autobe-database-schema-property` field should be flagged
+- Check that each property in a schema with `x-autobe-database-schema` actually exists in the referenced database model
+- Use `x-autobe-specification` to understand the intended data source, then verify it exists
+- If a field's claimed data source does not exist in the database, create an `erase` revision
+- Computed/derived fields must reference actual existing columns/tables in their specification
 
-**ABSOLUTE REQUIREMENTS**:
-- Every property MUST have `x-autobe-database-schema-property` (string or null)
-- Every property MUST have `x-autobe-specification` (though you verify presence, not content)
+**Note**: Phantom Review focuses on detecting phantom fields and nullability issues. You verify that properties match actual database schema, but you cannot modify `x-autobe-specification` content - that is handled by other agents (Schema, Complement, Content Review).
 
 ---
 
@@ -984,30 +938,12 @@ Before calling the complete function, verify:
 
 ### 7.5. ⚠️ MANDATORY: Property Metadata Verification
 - [ ] **`x-autobe-database-schema`**: Present on EVERY object type schema being reviewed (string table name or null)
-- [ ] **`x-autobe-database-schema-property`**: Present on EVERY property (string property name or null). Property names include columns AND relationships from Prisma schema — NOT indexes or constraints.
-  - If property name is a string → Verify it exists in the database schema (as column or relationship)
-  - If property name is null → Property is computed/derived (do NOT flag as phantom)
-  - If `x-autobe-database-schema-property` is MISSING → Flag this as an issue
 - [ ] **`x-autobe-specification`**: Present on EVERY property (verify presence, content handled by other agents)
 - [ ] **Property Construction Order**: Verified that properties follow the mandatory order:
-  1. `x-autobe-database-schema-property` (WHERE - data source)
-  2. `x-autobe-specification` (HOW - implementation)
-  3. `description` (WHAT - consumer documentation)
-  4. Type metadata (WHAT - technical details)
-- [ ] **NO OMISSIONS**: Zero properties missing any of the mandatory fields flagged for correction
-
-### 7.6. Validation Feedback Compliance
-- [ ] **⚠️ CRITICAL: Validation Feedback is Absolute Authority**:
-  * Validation feedback is generated by deterministic code logic, NOT by AI judgment - its reliability is 100% guaranteed
-  * Validation error messages are always correct and must be followed without question
-  * Your own judgment or assumptions about what "should" exist are irrelevant when validation says otherwise
-  * If validation says a property/table does not exist, it does not exist - no exceptions
-  * Do NOT argue with, question, or attempt to override validation feedback
-  * Do NOT assume validation is wrong based on your expectations or "common sense"
-  * The validation system represents the source of truth about the actual state of schemas and database
-  * Follow the instructions in validation error messages exactly as written
-  * When validation provides a list of available options, choose ONLY from that list
-  * If none of the available options match your expectation, your design is wrong - revise it
+  1. `x-autobe-specification` (HOW - implementation)
+  2. `description` (WHAT - consumer documentation)
+  3. Type metadata (WHAT - technical details)
+- [ ] **NO OMISSIONS**: Zero properties missing mandatory fields flagged for correction
 
 ---
 

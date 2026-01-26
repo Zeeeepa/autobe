@@ -711,7 +711,6 @@ If IProduct is missing `stock`, `featured`, `discount`, or `createdAt`, create `
   reason: "Database field 'stock' exists but was missing from IProduct",
   key: "stock",
   schema: {
-    "x-autobe-database-schema-property": "stock",
     "x-autobe-specification": "Direct mapping from products.stock column. Integer value representing available inventory.",
     description: "Current inventory quantity. Automatically decremented when orders are placed.",
     type: "integer"
@@ -720,83 +719,48 @@ If IProduct is missing `stock`, `featured`, `discount`, or `createdAt`, create `
 }
 ```
 
-**`x-autobe-database-schema-property` Requirement**:
+**Two-Field Documentation Pattern: Your Primary Review Reference**
 
-Every property you create MUST specify its database schema property mapping.
+**⚠️ CRITICAL: Carefully Examine Existing Properties' Fields**
 
-**What is a "Database Schema Property"?**
+The `x-autobe-specification` and `description` fields in EXISTING properties contain ALL conceptual information about the schema's design intent. Use them to understand the patterns, then compare against the actual database schema to find what's MISSING.
 
-In Prisma schema, a **database schema property** is any named element within a model that represents data or a relationship. This includes both **columns** and **relationships**.
+- **`x-autobe-specification`**: Implementation specification for Realize Agent (HOW to implement/compute)
+  - Shows the data mapping patterns used in this schema
+  - Reveals the naming conventions (e.g., `users.email` → `email`)
+  - **For Content Review**: Follow the same patterns when adding missing fields
 
-**⚠️ CRITICAL DISTINCTION**: Indexes (`@@index`), constraints (`@@unique`), and other table-level metadata are **NOT** properties.
+- **`description`**: API documentation for consumers (WHAT/WHY)
+  - Explains the semantic meaning of each property
+  - **For Content Review**: Helps understand the DTO's purpose and what fields it should include
 
-**Example Prisma Model**:
+**How to Use These Fields for Content Review**:
 
-```prisma
-model shopping_articles {
-  // ═══════════════════════════════════════════════════════════════════════════
-  // COLUMNS — All of them are database schema properties
-  // ═══════════════════════════════════════════════════════════════════════════
-  id                   String    @id @db.Uuid
-  shopping_customer_id String    @db.Uuid
-  title                String
-  body                 String
-  created_at           DateTime  @db.Timestamptz
-  updated_at           DateTime  @db.Timestamptz
-  deleted_at           DateTime? @db.Timestamptz
+1. **Study existing properties' `x-autobe-specification`** - Understand the mapping patterns
+2. **Compare against the database schema** - Which DB fields are NOT represented?
+3. **For each missing field** → Create a `create` revision following the same patterns
+4. **Write `x-autobe-specification`** for new fields using the same style as existing ones
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // RELATIONSHIPS — All of them are database schema properties
-  // ═══════════════════════════════════════════════════════════════════════════
-  customer  shopping_customers                      @relation(fields: [shopping_customer_id], references: [id])  // belongs to
-  of_review shopping_sale_snapshot_review_snapshots?  // has one
-  comments  shopping_article_comments[]             // has many
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // INDEXES — These are NOT properties (table-level metadata only)
-  // ═══════════════════════════════════════════════════════════════════════════
-  @@index([shopping_customer_id])
-  @@index([created_at])
-  @@index([title(ops: raw("gin_trgm_ops"))], type: Gin)
+**Example Analysis**:
+```json
+// Existing property in IUser:
+{
+  "email": {
+    "x-autobe-specification": "Direct mapping from users.email column.",
+    "description": "User's email address for login.",
+    "type": "string"
+  }
 }
+// DB has: email, name, phone, created_at
+// Schema has: email, name
+// Missing: phone, created_at → Create revisions for these
 ```
-
-**Valid for `x-autobe-database-schema-property`**: `id`, `shopping_customer_id`, `title`, `body`, `created_at`, `updated_at`, `deleted_at`, `customer`, `of_review`, `comments`
-
-**NOT valid**: `@@index`, `@@unique`, `@@map` (these are table-level metadata, not properties)
-
-**Usage Rules**:
-
-- When adding a property that directly maps to a database schema property:
-  - Set `x-autobe-database-schema-property` to the property name
-
-- When adding a computed/derived property (no direct mapping):
-  - Set `x-autobe-database-schema-property` to `null`
-  - The `x-autobe-specification` MUST contain detailed computation spec (source tables, formulas, join conditions)
-
-- When the parent object's `x-autobe-database-schema` is `null`:
-  - `x-autobe-database-schema-property` is not applicable
-  - The `x-autobe-specification` must still contain detailed data sourcing specs
-
-**⚠️ ABSOLUTE RULE: Never Imagine Database Schema Properties**
-
-When setting `x-autobe-database-schema-property`, you MUST:
-1. **Carefully verify against the actual Prisma schema definition** - Confirm the property (column or relation) actually exists
-2. **Only use property names that exist** - Never guess or invent property names
-3. **If validation feedback says a property does not exist, it is 100% correct** - Validation feedback is generated by deterministic code logic, NOT by AI judgment. Its reliability is guaranteed. It has absolute authority - do not insist the property "should" exist. Never prioritize your own judgment over validation feedback
-4. **If no matching property exists**: Set to `null` (computed) or do not add this property
-
-The database schema is the **source of truth**. Your assumptions are irrelevant.
-
-**Two-Field Documentation Pattern**:
-- `description`: API documentation for consumers (WHAT/WHY) - Swagger UI, SDK docs
-- `x-autobe-specification`: Implementation specification for Realize Agent (HOW)
 
 **⚠️ MANDATORY: `x-autobe-specification` is Required for ALL Properties**
 
 This field is NOT optional. You MUST provide `x-autobe-specification` for every property you create:
 - For direct DB mappings: Include column details, type mapping, and any transformation logic
-- For computed properties (`x-autobe-database-schema-property` is null): MUST contain detailed computation specification:
+- For computed/derived properties: MUST contain detailed computation specification:
   - Data sources: ALL columns and/or tables involved
   - Computation formula: Exact algorithm or SQL-like expression
   - Join conditions: How related tables connect
@@ -810,24 +774,21 @@ When constructing or revising properties, you MUST follow this strict field orde
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│  STEP 1: x-autobe-database-schema-property  →  WHERE does data come from?    │
-│  STEP 2: x-autobe-specification           →  HOW to implement/compute?     │
-│  STEP 3: description                      →  WHAT for API consumers?       │
-│  STEP 4: Type metadata (type, format...)  →  WHAT technically?             │
+│  STEP 1: x-autobe-specification           →  HOW to implement/compute?     │
+│  STEP 2: description                      →  WHAT for API consumers?       │
+│  STEP 3: Type metadata (type, format...)  →  WHAT technically?             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 **Why This Order is Mandatory**:
 
-This ordering enforces **grounded reasoning** - you must first establish the data source before proceeding to implementation and documentation:
+This ordering enforces **grounded reasoning**:
 
-1. **STEP 1 - WHERE**: First determine if this is a direct DB column or computed property
-2. **STEP 2 - HOW**: Based on the data source, specify implementation details
-3. **STEP 3 - WHAT (consumer)**: Now that you know WHERE and HOW, write API documentation
-4. **STEP 4 - WHAT (technical)**: Finally, record type information consistent with the source
+1. **STEP 1 - HOW**: First specify implementation details and data source
+2. **STEP 2 - WHAT (consumer)**: Now that you know HOW, write API documentation
+3. **STEP 3 - WHAT (technical)**: Finally, record type information consistent with the source
 
 **ABSOLUTE PROHIBITIONS**:
-- NEVER omit `x-autobe-database-schema-property` (every property MUST have this field)
 - NEVER omit `x-autobe-specification` (every property MUST have implementation details)
 - NEVER write fields out of order (the cognitive flow ensures consistency)
 
@@ -835,7 +796,6 @@ This ordering enforces **grounded reasoning** - you must first establish the dat
 ```json
 {
   "stock": {
-    "x-autobe-database-schema-property": "stock",
     "x-autobe-specification": "Direct mapping from products.stock column. Integer value representing available inventory.",
     "description": "Current inventory quantity. Automatically decremented when orders are placed.",
     "type": "integer",
@@ -860,9 +820,9 @@ This order is a prompt engineering technique that ensures reasoning consistency.
 ```json
 {
   "schema": {
+    "x-autobe-specification": "Direct mapping from users.role column. Uses @default value 'user' when not provided.",
     "type": "string",
-    "description": "User role. Optional - if not provided, defaults to 'user'.",
-    "x-autobe-database-schema-property": "role"
+    "description": "User role. Optional - if not provided, defaults to 'user'."
   },
   "required": false  // DB is non-null but has @default
 }
@@ -944,7 +904,7 @@ interface AutoBeInterfaceSchemaPropertyCreate {
   type: "create";
   reason: string;  // Why this field is being added
   key: string;     // Property name to add
-  schema: AutoBeOpenApi.IJsonSchemaProperty;  // Schema definition with x-autobe-database-schema-property
+  schema: AutoBeOpenApi.IJsonSchemaProperty;  // Schema definition with x-autobe-specification
   required: boolean;  // Add to required array?
 }
 
@@ -982,7 +942,6 @@ process({
         reason: "Database field 'stock' exists but missing from IProduct",
         key: "stock",
         schema: {
-          "x-autobe-database-schema-property": "stock",
           "x-autobe-specification": "Direct mapping from products.stock column. Integer value representing available inventory.",
           description: "Current inventory quantity. Automatically decremented when orders are placed.",
           type: "integer"
@@ -994,7 +953,6 @@ process({
         reason: "Database field 'featured' exists but missing from IProduct",
         key: "featured",
         schema: {
-          "x-autobe-database-schema-property": "featured",
           "x-autobe-specification": "Direct mapping from products.featured column. Boolean flag for homepage display.",
           description: "Whether this product is featured on the homepage.",
           type: "boolean"
@@ -1006,7 +964,6 @@ process({
         reason: "Database field 'discount' (optional) exists but missing from IProduct",
         key: "discount",
         schema: {
-          "x-autobe-database-schema-property": "discount",
           "x-autobe-specification": "Direct mapping from products.discount column. Nullable decimal value representing discount percentage.",
           description: "Discount percentage applied to the product price.",
           type: "number"
@@ -1018,7 +975,6 @@ process({
         reason: "Database field 'createdAt' exists but missing from IProduct",
         key: "createdAt",
         schema: {
-          "x-autobe-database-schema-property": "created_at",
           "x-autobe-specification": "Direct mapping from products.created_at column. DateTime value converted to ISO 8601 string format.",
           description: "Timestamp when the product was created.",
           type: "string",
@@ -1142,32 +1098,17 @@ Before submitting your content review:
   * If you needed schema/requirement details → You called the appropriate function FIRST
   * ALL data used in your output was actually loaded and verified via function calling
 
-### 10.4. Validation Feedback Compliance
-- [ ] **⚠️ CRITICAL: Validation Feedback is Absolute Authority**:
-  * Validation error messages are always correct and must be followed without question
-  * Your own judgment or assumptions about what "should" exist are irrelevant when validation says otherwise
-  * If validation says a property/table does not exist, it does not exist - no exceptions
-  * Do NOT argue with, question, or attempt to override validation feedback
-  * Do NOT assume validation is wrong based on your expectations or "common sense"
-  * The validation system represents the source of truth about the actual state of schemas and database
-  * Follow the instructions in validation error messages exactly as written
-  * When validation provides a list of available options, choose ONLY from that list
-  * If none of the available options match your expectation, your design is wrong - revise it
-
-### 10.5. ⚠️ MANDATORY: Property Construction Order & Required Fields
-- [ ] **Property Construction Order**: Every created/modified property follows the mandatory 4-step order:
-  1. `x-autobe-database-schema-property` (WHERE - data source)
-  2. `x-autobe-specification` (HOW - implementation)
-  3. `description` (WHAT - consumer documentation)
-  4. Type metadata (WHAT - technical details)
-- [ ] **`x-autobe-database-schema-property`**: Present on EVERY property in `create` revisions (string property name or null). Property names include columns AND relationships from Prisma schema — NOT indexes or constraints.
+### 10.4. ⚠️ MANDATORY: Property Construction Order & Required Fields
+- [ ] **Property Construction Order**: Every created/modified property follows the mandatory 3-step order:
+  1. `x-autobe-specification` (HOW - implementation)
+  2. `description` (WHAT - consumer documentation)
+  3. Type metadata (WHAT - technical details)
 - [ ] **`x-autobe-specification`**: Present on EVERY property in `create` revisions - contains implementation details:
   - For direct DB mappings: column details and transformation logic
-  - For computed properties (property is null): MUST have detailed computation spec
+  - For computed properties: MUST have detailed computation spec
 - [ ] **NO OMISSIONS**: Zero properties in revisions missing any of the mandatory fields
-- [ ] **Grounded Reasoning**: Data source established FIRST before writing description or type metadata
 
-### 10.6. Ready for Completion
+### 10.5. Ready for Completion
 - [ ] `thinking` field filled with self-reflection before action
 - [ ] For preliminary requests: Explained what critical information is missing
 - [ ] For completion: Summarized key accomplishments and why it's sufficient

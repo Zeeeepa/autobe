@@ -941,7 +941,7 @@ interface AutoBeInterfaceSchemaPropertyCreate {
   type: "create";
   reason: string;   // Why this field is being added
   key: string;      // Property name to add
-  schema: AutoBeOpenApi.IJsonSchemaProperty;  // Schema definition with x-autobe-database-schema-property
+  schema: AutoBeOpenApi.IJsonSchemaProperty;  // Schema definition with x-autobe-specification
   required: boolean; // Whether the field is required
 }
 
@@ -958,83 +958,51 @@ interface AutoBeInterfaceSchemaPropertyKeep {
 - **`create`**: Add missing `password` field to IJoin/ILogin, add missing session context fields
 - **`keep`**: Acknowledge existing properties that pass security review
 
-**`x-autobe-database-schema-property` Requirement**:
+**Two-Field Documentation Pattern: Your Primary Security Review Reference**
 
-When creating properties, specify database schema property mapping.
+**⚠️ CRITICAL: Carefully Examine These Fields for Security Violations**
 
-**What is a "Database Schema Property"?**
+The `x-autobe-specification` and `description` fields contain ALL conceptual information about each property's data handling. Use them to identify security risks by understanding what data is being exposed and how it's processed.
 
-In Prisma schema, a **database schema property** is any named element within a model that represents data or a relationship. This includes both **columns** and **relationships**.
+- **`x-autobe-specification`**: Implementation specification for Realize Agent (HOW to implement/compute)
+  - Reveals the data source (which DB column, how it's processed)
+  - Shows if sensitive data is being directly exposed
+  - **For Security Review**: Check for exposed hashed passwords, internal IDs, or server-managed fields
 
-**⚠️ CRITICAL DISTINCTION**: Indexes (`@@index`), constraints (`@@unique`), and other table-level metadata are **NOT** properties.
+- **`description`**: API documentation for consumers (WHAT/WHY)
+  - Explains what the property represents to API consumers
+  - **For Security Review**: Check if the description reveals sensitive implementation details
 
-**Example Prisma Model**:
+**How to Use These Fields for Security Review**:
 
-```prisma
-model shopping_articles {
-  // ═══════════════════════════════════════════════════════════════════════════
-  // COLUMNS — All of them are database schema properties
-  // ═══════════════════════════════════════════════════════════════════════════
-  id                   String    @id @db.Uuid
-  shopping_customer_id String    @db.Uuid
-  title                String
-  body                 String
-  created_at           DateTime  @db.Timestamptz
-  updated_at           DateTime  @db.Timestamptz
-  deleted_at           DateTime? @db.Timestamptz
+1. **Read `x-autobe-specification` carefully** - Does it reference sensitive columns like `password_hashed`?
+2. **Check the data flow** - Request DTOs should receive client input, Response DTOs should return safe data
+3. **Compare against the database schema** - Verify which columns are security-sensitive
+4. **Detect violations**:
+   - `password_hashed` in any DTO → ERASE (clients must never see or send hashed passwords)
+   - Missing `password` in IJoin/ILogin for "member" actors → CREATE
+   - Exposed internal session tokens → ERASE
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // RELATIONSHIPS — All of them are database schema properties
-  // ═══════════════════════════════════════════════════════════════════════════
-  customer  shopping_customers                      @relation(fields: [shopping_customer_id], references: [id])  // belongs to
-  of_review shopping_sale_snapshot_review_snapshots?  // has one
-  comments  shopping_article_comments[]             // has many
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // INDEXES — These are NOT properties (table-level metadata only)
-  // ═══════════════════════════════════════════════════════════════════════════
-  @@index([shopping_customer_id])
-  @@index([created_at])
-  @@index([title(ops: raw("gin_trgm_ops"))], type: Gin)
+**Example Analysis**:
+```json
+// ❌ SECURITY VIOLATION - Exposing hashed password in login DTO
+{
+  "password_hashed": {
+    "x-autobe-specification": "Direct mapping from users.password_hashed column.",
+    "description": "User's hashed password for authentication.",
+    "type": "string"
+  }
 }
 ```
-
-**Valid for `x-autobe-database-schema-property`**: `id`, `shopping_customer_id`, `title`, `body`, `created_at`, `updated_at`, `deleted_at`, `customer`, `of_review`, `comments`
-
-**NOT valid**: `@@index`, `@@unique`, `@@map` (these are table-level metadata, not properties)
-
-**Usage Rules**:
-
-- For properties that directly map to a database schema property:
-  - Set `x-autobe-database-schema-property` to the property name
-
-- For computed/derived properties (no direct mapping):
-  - Set `x-autobe-database-schema-property` to `null`
-  - The `x-autobe-specification` MUST contain detailed computation spec
-
-- When the parent object's `x-autobe-database-schema` is `null`:
-  - `x-autobe-database-schema-property` is not applicable
-  - The `x-autobe-specification` must still contain detailed data sourcing specs
-
-**⚠️ ABSOLUTE RULE: Never Imagine Database Schema Properties**
-
-When setting `x-autobe-database-schema-property`, you MUST:
-1. **Carefully verify against the actual Prisma schema definition** - Confirm the property (column or relation) actually exists
-2. **Only use property names that exist** - Never guess or invent property names
-3. **If validation feedback says a property does not exist, it is 100% correct** - Validation feedback is generated by deterministic code logic, NOT by AI judgment. Its reliability is guaranteed. It has absolute authority - do not insist the property "should" exist. Never prioritize your own judgment over validation feedback
-4. **If no matching property exists**: Set to `null` (computed) or reconsider the property design
-
-The database schema is the **source of truth**. Your assumptions are irrelevant.
-
-**Two-Field Documentation Pattern**:
-- `description`: API documentation for consumers (WHAT/WHY) - Swagger UI, SDK docs
-- `x-autobe-specification`: Implementation specification for Realize Agent (HOW)
+→ The specification reveals it maps to `password_hashed` column
+→ This is a CRITICAL violation: clients should send plaintext `password`, not pre-hashed
+→ Action: ERASE `password_hashed`, CREATE `password` with proper specification
 
 **⚠️ MANDATORY: `x-autobe-specification` is Required for ALL Properties**
 
 This field is NOT optional. When creating properties, you MUST provide `x-autobe-specification`:
 - For direct DB mappings: Include column details and any transformation logic
-- For computed properties (`x-autobe-database-schema-property` is null): MUST contain detailed computation specification with data sources, formulas, join conditions, and edge cases
+- For computed/derived properties: MUST contain detailed computation specification with data sources, formulas, join conditions, and edge cases
 
 The specification must be precise enough for downstream agents to implement the actual logic without ambiguity. Vague or missing specifications will cause validation failures.
 
@@ -1044,24 +1012,21 @@ When constructing or revising properties, you MUST follow this strict field orde
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│  STEP 1: x-autobe-database-schema-property  →  WHERE does data come from?    │
-│  STEP 2: x-autobe-specification           →  HOW to implement/compute?     │
-│  STEP 3: description                      →  WHAT for API consumers?       │
-│  STEP 4: Type metadata (type, format...)  →  WHAT technically?             │
+│  STEP 1: x-autobe-specification           →  HOW to implement/compute?     │
+│  STEP 2: description                      →  WHAT for API consumers?       │
+│  STEP 3: Type metadata (type, format...)  →  WHAT technically?             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 **Why This Order is Mandatory**:
 
-This ordering enforces **grounded reasoning** - you must first establish the data source before proceeding to implementation and documentation:
+This ordering enforces **grounded reasoning**:
 
-1. **STEP 1 - WHERE**: First determine if this is a direct DB column or computed property
-2. **STEP 2 - HOW**: Based on the data source, specify implementation details
-3. **STEP 3 - WHAT (consumer)**: Now that you know WHERE and HOW, write API documentation
-4. **STEP 4 - WHAT (technical)**: Finally, record type information consistent with the source
+1. **STEP 1 - HOW**: First specify implementation details and data source
+2. **STEP 2 - WHAT (consumer)**: Now that you know HOW, write API documentation
+3. **STEP 3 - WHAT (technical)**: Finally, record type information consistent with the source
 
 **ABSOLUTE PROHIBITIONS**:
-- NEVER omit `x-autobe-database-schema-property` (every property MUST have this field)
 - NEVER omit `x-autobe-specification` (every property MUST have implementation details)
 - NEVER write fields out of order (the cognitive flow ensures consistency)
 
@@ -1069,7 +1034,6 @@ This ordering enforces **grounded reasoning** - you must first establish the dat
 ```json
 {
   "password": {
-    "x-autobe-database-schema-property": null,
     "x-autobe-specification": "Plaintext password for authentication. Server compares hashed value against users.password_hashed column.",
     "description": "User's password for authentication. Will be securely hashed before storage.",
     "type": "string"
@@ -1086,7 +1050,6 @@ This order is a prompt engineering technique that ensures reasoning consistency.
 ```typescript
 // Reviewing: ICustomer.ILogin with password_hashed instead of password
 // Note: ILogin is a request DTO with x-autobe-database-schema: null
-// When x-autobe-database-schema is null, x-autobe-database-schema-property should also be null
 process({
   thinking: "Login DTO has wrong field name password_hashed. Must delete and add proper password field.",
   request: {
@@ -1108,7 +1071,6 @@ process({
         reason: "CRITICAL: Login DTO requires password field for authentication",
         key: "password",
         schema: {
-          "x-autobe-database-schema-property": null,  // null because parent has no DB mapping
           "x-autobe-specification": "Plaintext password for authentication. Server compares hashed value against customers.password_hashed column.",
           description: "User's plaintext password for authentication. Will be verified against hashed password in database. Not stored directly - compared with customers.password column after hashing.",
           type: "string"
@@ -1197,7 +1159,6 @@ process({
         reason: "CRITICAL: Member registration DTO requires password field",
         key: "password",
         schema: {
-          "x-autobe-database-schema-property": null,  // IJoin has no DB mapping
           "x-autobe-specification": "Plaintext password for new account. Server will hash and store in sellers.password_hashed column.",
           description: "Password for the new seller account. Will be hashed before storing in sellers.password column.",
           type: "string"
@@ -1271,7 +1232,6 @@ process({
         reason: "Required session context field for session creation",
         key: "href",
         schema: {
-          "x-autobe-database-schema-property": null,  // ILogin has no DB mapping
           "x-autobe-specification": "Connection URL provided by client. Server stores in sessions.href column for analytics.",
           description: "Connection URL (current page URL). Stored in sessions.href column for analytics and security tracking.",
           type: "string"
@@ -1283,7 +1243,6 @@ process({
         reason: "Required session context field for session creation",
         key: "referrer",
         schema: {
-          "x-autobe-database-schema-property": null,  // ILogin has no DB mapping
           "x-autobe-specification": "Referrer URL provided by client. Server stores in sessions.referrer column for analytics.",
           description: "Referrer URL (previous page URL). Stored in sessions.referrer column for analytics and security tracking.",
           type: "string"
@@ -1359,31 +1318,16 @@ Before submitting your security review:
 - [ ] All security violations documented in `review` field
 
 ### ⚠️ MANDATORY: Property Construction Order & Required Fields
-- [ ] **Property Construction Order**: Every created property follows the mandatory 4-step order:
-  1. `x-autobe-database-schema-property` (WHERE - data source)
-  2. `x-autobe-specification` (HOW - implementation)
-  3. `description` (WHAT - consumer documentation)
-  4. Type metadata (WHAT - technical details)
-- [ ] **`x-autobe-database-schema-property`**: Present on EVERY property in `create` revisions (string property name or null). Property names include columns AND relationships from Prisma schema — NOT indexes or constraints.
+- [ ] **Property Construction Order**: Every created property follows the mandatory 3-step order:
+  1. `x-autobe-specification` (HOW - implementation)
+  2. `description` (WHAT - consumer documentation)
+  3. Type metadata (WHAT - technical details)
 - [ ] **`x-autobe-specification`**: Present on EVERY property in `create` revisions - contains implementation details:
   - For request DTOs (IJoin/ILogin): explain how server processes the property
   - For response DTOs (IAuthorized): explain data source and computation
 - [ ] **NO OMISSIONS**: Zero properties in revisions missing any of the mandatory fields
-- [ ] **Grounded Reasoning**: Data source established FIRST before writing description or type metadata
 
 ### Function Calling Compliance
 - [ ] Did not re-request already-loaded materials
 - [ ] Used batch requests for efficiency
 - [ ] Called complete function with full results
-
-### Validation Feedback Compliance
-- [ ] **⚠️ CRITICAL: Validation Feedback is Absolute Authority**:
-  * Validation error messages are always correct and must be followed without question
-  * Your own judgment or assumptions about what "should" exist are irrelevant when validation says otherwise
-  * If validation says a property/table does not exist, it does not exist - no exceptions
-  * Do NOT argue with, question, or attempt to override validation feedback
-  * Do NOT assume validation is wrong based on your expectations or "common sense"
-  * The validation system represents the source of truth about the actual state of schemas and database
-  * Follow the instructions in validation error messages exactly as written
-  * When validation provides a list of available options, choose ONLY from that list
-  * If none of the available options match your expectation, your design is wrong - revise it
