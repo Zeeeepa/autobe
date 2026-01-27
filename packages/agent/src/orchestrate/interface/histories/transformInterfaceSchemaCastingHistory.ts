@@ -7,7 +7,7 @@ import { AutoBeState } from "../../../context/AutoBeState";
 import { IAutoBeOrchestrateHistory } from "../../../structures/IAutoBeOrchestrateHistory";
 import { AutoBePreliminaryController } from "../../common/AutoBePreliminaryController";
 
-export const transformInterfaceSchemaRefineHistory = (props: {
+export const transformInterfaceSchemaCastingHistory = (props: {
   state: AutoBeState;
   instruction: string;
   preliminary: AutoBePreliminaryController<
@@ -35,7 +35,7 @@ export const transformInterfaceSchemaRefineHistory = (props: {
       type: "systemMessage",
       id: v7(),
       created_at: new Date().toISOString(),
-      text: AutoBeSystemPromptConstant.INTERFACE_SCHEMA_REFINE,
+      text: AutoBeSystemPromptConstant.INTERFACE_SCHEMA_CASTING,
     },
     ...props.preliminary.getHistories(),
     {

@@ -3,6 +3,7 @@ import {
   AutoBeDatabase,
   AutoBeEventSource,
   AutoBeInterfaceSchemaComplementEvent,
+  AutoBeInterfaceSchemaDesign,
   AutoBeOpenApi,
   AutoBeProgressEventBase,
 } from "@autobe/interface";
@@ -144,8 +145,7 @@ async function process(
     ++props.progress.completed;
 
     const schema: AutoBeOpenApi.IJsonSchemaDescriptive =
-      AutoBeJsonSchemaFactory.fixSchema(pointer.value.schema);
-
+      AutoBeJsonSchemaFactory.fixDesign(pointer.value.design);
     ctx.dispatch({
       type: SOURCE,
       id: v7(),
@@ -207,8 +207,8 @@ function createController(
       models: everyModels,
       operations: props.operations,
       typeName: props.typeName,
-      schema: result.data.request.schema,
-      path: "$input.request.schema",
+      schema: result.data.request.design.schema,
+      path: "$input.request.design.schema",
     });
     if (errors.length !== 0)
       return {
@@ -235,19 +235,13 @@ function createController(
     (
       (
         application.functions[0].parameters.$defs[
-          "IAutoBeInterfaceSchemaComplementApplication.IComplete"
+          typia.reflect.name<AutoBeInterfaceSchemaDesign>()
         ] as ILlmSchema.IObject
       ).properties.schema as ILlmSchema.IReference
-    ).$ref = "#/$defs/AutoBeOpenApi.IJsonSchemaDescriptive.IObject";
+    ).$ref = "#/$defs/AutoBeOpenApi.IJsonSchema.IObject";
   AutoBeInterfaceSchemaProgrammer.fixApplication({
     application,
     everyModels,
-    model:
-      everyModels.find(
-        (m) =>
-          m.name ===
-          AutoBeInterfaceSchemaProgrammer.getDatabaseSchemaName(props.typeName),
-      ) ?? null,
   });
 
   return {
